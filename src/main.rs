@@ -245,7 +245,7 @@ fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
                     alts
                 })
                 .keep(parse_yue_clause())
-                .skip(parse_br())
+                .skip(optional((), parse_br()))
                 .keep(optional(None, succeed!(Some).keep(parse_eng_clause())))
                 .skip(optional((), parse_br()))
                 .keep(zero_or_more(
@@ -437,6 +437,32 @@ eng:Stop tsking!",
                     }],
                 }],
             }),
+        );
+    }
+    {
+        let variants = vec![Variant {
+            word: "hihi".to_string(),
+            prs: vec!["haai1 haai1".to_string()],
+        }];
+        assert_succeed(
+            parse_content(variants.clone()),
+            "(pos:動詞)(label:潮語)(label:粗俗)(ref:http://evchk.wikia.com/wiki/%E9%AB%98%E7%99%BB%E7%B2%97%E5%8F%A3Filter)
+yue:「#仆街」嘅代名詞",
+            Some(Entry {
+                variants,
+                poses: vec!["動詞".to_string()],
+                labels: vec!["潮語".to_string(), "粗俗".to_string()],
+                sims: vec![],
+                ants: vec![],
+                refs: vec!["http://evchk.wikia.com/wiki/%E9%AB%98%E7%99%BB%E7%B2%97%E5%8F%A3Filter".to_string()],
+                imgs: vec![],
+                defs: vec![Def {
+                    yue: "「#仆街」嘅代名詞".to_string(),
+                    eng: None,
+                    alts: vec![],
+                    egs: vec![],
+                }]
+            })
         );
     }
 }
