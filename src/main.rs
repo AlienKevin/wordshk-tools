@@ -27,7 +27,7 @@ struct Variant {
 #[derive(Debug, PartialEq)]
 struct Def {
     yue: String,
-    eng: String,
+    eng: Option<String>,
     alts: Vec<AltClause>,
     egs: Vec<Eg>,
 }
@@ -222,8 +222,10 @@ fn parse_explaination<'a>() -> lip::BoxedParser<'a, Def, ()> {
     .skip(parse_br())
     .keep(parse_yue_clause())
     .skip(parse_br())
-    .keep(parse_eng_clause())
-    .skip(parse_br())
+    .keep(optional(
+        None,
+        succeed!(Some).keep(parse_eng_clause()).skip(parse_br()),
+    ))
     .keep(zero_or_more(
         succeed!(|clause| clause)
             .keep(parse_alt_clause())
@@ -244,7 +246,7 @@ fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
                 })
                 .keep(parse_yue_clause())
                 .skip(parse_br())
-                .keep(parse_eng_clause())
+                .keep(optional(None, succeed!(Some).keep(parse_eng_clause())))
                 .skip(optional((), parse_br()))
                 .keep(zero_or_more(
                     succeed!(|clause| clause)
@@ -348,7 +350,7 @@ yue:你可唔可以唔好成日zip呀，吓！ (nei5 ho2 m4 ho2 ji5 m4 hou2 sing
 eng:Stop tsking!",
         Def {
             yue: "表現不屑而發出嘅聲音".to_string(),
-            eng: "tsk".to_string(),
+            eng: Some("tsk".to_string()),
             alts: vec![],
             egs: vec![Eg {
                 zho: None,
@@ -374,7 +376,7 @@ yue:你可唔可以唔好成日zip呀，吓！ (nei5 ho2 m4 ho2 ji5 m4 hou2 sing
 eng:Stop tsking!",
         vec![Def {
             yue: "表現不屑而發出嘅聲音".to_string(),
-            eng: "tsk".to_string(),
+            eng: Some("tsk".to_string()),
             alts: vec![],
             egs: vec![Eg {
                 zho: None,
@@ -420,7 +422,7 @@ eng:Stop tsking!",
                 imgs: vec![],
                 defs: vec![Def {
                     yue: "表現不屑而發出嘅聲音".to_string(),
-                    eng: "tsk".to_string(),
+                    eng: Some("tsk".to_string()),
                     alts: vec![],
                     egs: vec![Eg {
                         zho: None,
