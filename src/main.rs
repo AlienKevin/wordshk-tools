@@ -42,7 +42,7 @@ enum AltLang {
     Lat,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Eg {
     zho: Option<PrClause>,
     yue: Option<PrClause>,
@@ -211,6 +211,27 @@ fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
         .skip(optional((), parse_br()))
 }
 
+fn parse_explaination<'a>() -> lip::BoxedParser<'a, Def, ()> {
+    succeed!(|yue, eng, alts, egs| Def {
+        yue,
+        eng,
+        alts,
+        egs
+    })
+    .skip(token("<explanation>"))
+    .skip(parse_br())
+    .keep(parse_yue_clause())
+    .skip(parse_br())
+    .keep(parse_eng_clause())
+    .skip(parse_br())
+    .keep(zero_or_more(
+        succeed!(|clause| clause)
+            .keep(parse_alt_clause())
+            .skip(optional((), parse_br())),
+    ))
+    .keep(one_or_more(parse_eg()))
+}
+
 fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
     succeed!(|defs| defs).keep(one_or_more(
         succeed!(|def| def)
@@ -230,24 +251,7 @@ fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
                         .keep(parse_alt_clause())
                         .skip(optional((), parse_br()))
                 )),
-                succeed!(|yue, eng, alts, egs| Def {
-                    yue,
-                    eng,
-                    alts,
-                    egs
-                })
-                .skip(token("<explanation>"))
-                .skip(parse_br())
-                .keep(parse_yue_clause())
-                .skip(parse_br())
-                .keep(parse_eng_clause())
-                .skip(parse_br())
-                .keep(zero_or_more(
-                    succeed!(|clause| clause)
-                        .keep(parse_alt_clause())
-                        .skip(optional((), parse_br()))
-                ))
-                .keep(one_or_more(parse_eg()))
+                parse_explaination()
             ))
             .skip(optional(
                 (),
@@ -314,4 +318,22 @@ fn test_parse_pr() {
         ),
     );
     assert_succeed(parse_pr_clause("yue"), "yue:條八婆好扮嘢㗎，連嗌個叉飯都要講英文。 (tiu4 baat3 po4 hou2 baan6 je5 gaa3, lin4 aai3 go3 caa1 faan6 dou1 jiu3 gong2 jing1 man2.)", ("條八婆好扮嘢㗎，連嗌個叉飯都要講英文。".to_string(), Some("tiu4 baat3 po4 hou2 baan6 je5 gaa3, lin4 aai3 go3 caa1 faan6 dou1 jiu3 gong2 jing1 man2.".to_string())));
+}
+
+#[test]
+fn test_parse_eg() {
+    assert_succeed(
+        parse_eg(),
+        "<eg>
+yue:你可唔可以唔好成日zip呀，吓！ (nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!)
+eng:Stop tsking!",
+        Eg {
+            zho: None,
+            yue: Some((
+                "你可唔可以唔好成日zip呀，吓！".to_string(),
+                Some("nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!".to_string()),
+            )),
+            eng: Some("Stop tsking!".to_string()),
+        },
+    );
 }
