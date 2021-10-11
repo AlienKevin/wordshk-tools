@@ -363,3 +363,29 @@ eng:Stop tsking!",
         },
     );
 }
+
+#[test]
+fn test_parse_defs() {
+    assert_succeed(
+        parse_defs(),
+        "<explanation>
+yue:表現不屑而發出嘅聲音
+eng:tsk
+<eg>
+yue:你可唔可以唔好成日zip呀，吓！ (nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!)
+eng:Stop tsking!",
+        vec![Def {
+            yue: "表現不屑而發出嘅聲音".to_string(),
+            eng: "tsk".to_string(),
+            alts: vec![],
+            egs: vec![Eg {
+                zho: None,
+                yue: Some((
+                    "你可唔可以唔好成日zip呀，吓！".to_string(),
+                    Some("nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!".to_string()),
+                )),
+                eng: Some("Stop tsking!".to_string()),
+            }],
+        }],
+    );
+}
