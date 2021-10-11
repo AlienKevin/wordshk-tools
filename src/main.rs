@@ -6,10 +6,10 @@ use std::process;
 
 type Dict = Vec<Entry>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Entry {
     variants: Vec<Variant>,
-    pos: String,
+    poses: Vec<String>,
     labels: Vec<String>,
     sims: Vec<String>,
     ants: Vec<String>,
@@ -18,7 +18,7 @@ struct Entry {
     defs: Vec<Def>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Variant {
     word: String,
     prs: Vec<String>,
@@ -265,9 +265,9 @@ fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 
 fn parse_content<'a>(variants: Vec<Variant>) -> lip::BoxedParser<'a, Option<Entry>, ()> {
     one_of!(
-        succeed!(|pos, labels, sims, ants, refs, imgs, defs| Some(Entry {
+        succeed!(|poses, labels, sims, ants, refs, imgs, defs| Some(Entry {
             variants,
-            pos,
+            poses,
             labels,
             sims,
             ants,
@@ -275,9 +275,7 @@ fn parse_content<'a>(variants: Vec<Variant>) -> lip::BoxedParser<'a, Option<Entr
             imgs,
             defs,
         }))
-        .skip(token("(pos:"))
-        .keep(take_chomped(chomp_while1(&(|c: &char| c != &')'), "pos")))
-        .skip(token(")"))
+        .keep(parse_tags("pos"))
         .keep(parse_tags("label"))
         .keep(parse_tags("sim"))
         .keep(parse_tags("ant"))
@@ -388,4 +386,55 @@ eng:Stop tsking!",
             }],
         }],
     );
+}
+
+#[test]
+fn test_parse_content() {
+    {
+        let variants = vec![
+            Variant {
+                word: "zip".to_string(),
+                prs: vec!["zip4".to_string()],
+            },
+            Variant {
+                word: "jip".to_string(),
+                prs: vec!["zip4".to_string()],
+            },
+        ];
+        assert_succeed(
+            parse_content(variants.clone()),
+            "(pos:動詞)(pos:擬聲詞)
+<explanation>
+yue:表現不屑而發出嘅聲音
+eng:tsk
+<eg>
+yue:你可唔可以唔好成日zip呀，吓！ (nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!)
+eng:Stop tsking!",
+            Some(Entry {
+                variants,
+                poses: vec!["動詞".to_string(), "擬聲詞".to_string()],
+                labels: vec![],
+                sims: vec![],
+                ants: vec![],
+                refs: vec![],
+                imgs: vec![],
+                defs: vec![Def {
+                    yue: "表現不屑而發出嘅聲音".to_string(),
+                    eng: "tsk".to_string(),
+                    alts: vec![],
+                    egs: vec![Eg {
+                        zho: None,
+                        yue: Some((
+                            "你可唔可以唔好成日zip呀，吓！".to_string(),
+                            Some(
+                                "nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!"
+                                    .to_string(),
+                            ),
+                        )),
+                        eng: Some("Stop tsking!".to_string()),
+                    }],
+                }],
+            }),
+        );
+    }
 }
