@@ -83,28 +83,34 @@ fn to_apple_dict() -> Result<Dict, Box<dyn Error>> {
             )
             .run(head, ());
             let entry: Option<Entry> = match head_parse_result {
-                ParseResult::Ok { output: head_result, .. } => {
+                ParseResult::Ok {
+                    output: head_result,
+                    ..
+                } => {
                     println!("{:?}", head_result);
                     match parse_content(head_result).run(content, ()) {
-                        ParseResult::Ok { output: content_result, .. } => content_result,
+                        ParseResult::Ok {
+                            output: content_result,
+                            ..
+                        } => content_result,
                         ParseResult::Err { message, .. } => {
                             println!("{:?}", message);
                             None
                         }
                     }
-                },
+                }
                 ParseResult::Err { message, .. } => {
                     println!("{:?}", message);
                     None
-                },
+                }
             };
-           match entry {
-               Some(e) => {
-                   println!("{:?}", e);
-                   dict.push(e);
-               },
-               None => {},
-           };
+            match entry {
+                Some(e) => {
+                    println!("{:?}", e);
+                    dict.push(e);
+                }
+                None => {}
+            };
         }
     }
     Ok(dict)
@@ -125,7 +131,10 @@ fn parse_br<'a>() -> lip::BoxedParser<'a, (), ()> {
     newline1(indent(0))
 }
 
-fn parse_clause<'a, F: 'a>(name: &'static str, cont_parse: F) -> lip::BoxedParser<'a, String, ()> where F: Fn(&char) -> bool {
+fn parse_clause<'a, F: 'a>(name: &'static str, cont_parse: F) -> lip::BoxedParser<'a, String, ()>
+where
+    F: Fn(&char) -> bool,
+{
     succeed!(|clause| clause)
         .skip(token(name))
         .skip(token(":"))
@@ -142,65 +151,111 @@ fn parse_eng_clause<'a>() -> lip::BoxedParser<'a, String, ()> {
 
 fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
     (succeed!(|alt_lang: Located<String>, clause: String| (alt_lang, clause))
-        .keep(located(take_chomped(chomp_while1(|c: &char| *c != ':', "alternative languages"))))
+        .keep(located(take_chomped(chomp_while1(
+            |c: &char| *c != ':',
+            "alternative languages",
+        ))))
         .skip(token(":"))
-        .keep(take_chomped(chomp_while1(|c: &char| *c != '\n' && *c != '\r', "alternative language clause")))
-    ).and_then(|(alt_lang, clause)|(match &alt_lang.value[..] {
-            "jpn" => succeed!(|_| (AltLang::Jpn, clause)).keep(token("")),
-            "kor" => succeed!(|_| (AltLang::Kor, clause)).keep(token("")),
-            "vie" => succeed!(|_| (AltLang::Vie, clause)).keep(token("")),
-            "lat" => succeed!(|_| (AltLang::Lat, clause)).keep(token("")),
-            _ => {
-                let from = alt_lang.from;
-                let to = alt_lang.to;
-                problem(format!("Invalid alternative language: {}", alt_lang.value), move |_| from, move |_| to)
-            }
-        })
-    )
+        .keep(take_chomped(chomp_while1(
+            |c: &char| *c != '\n' && *c != '\r',
+            "alternative language clause",
+        ))))
+    .and_then(|(alt_lang, clause)| match &alt_lang.value[..] {
+        "jpn" => succeed!(|_| (AltLang::Jpn, clause)).keep(token("")),
+        "kor" => succeed!(|_| (AltLang::Kor, clause)).keep(token("")),
+        "vie" => succeed!(|_| (AltLang::Vie, clause)).keep(token("")),
+        "lat" => succeed!(|_| (AltLang::Lat, clause)).keep(token("")),
+        _ => {
+            let from = alt_lang.from;
+            let to = alt_lang.to;
+            problem(
+                format!("Invalid alternative language: {}", alt_lang.value),
+                move |_| from,
+                move |_| to,
+            )
+        }
+    })
 }
 
 fn parse_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, (String, Option<String>), ()> {
     succeed!(|clause, pr| (clause, pr))
-        .keep(parse_clause(name, |c: &char| *c != '(' && *c != '\n' && *c != '\r').map(|clause| clause.trim_end().to_string()))
-        .keep(optional(None,
+        .keep(
+            parse_clause(name, |c: &char| *c != '(' && *c != '\n' && *c != '\r')
+                .map(|clause| clause.trim_end().to_string()),
+        )
+        .keep(optional(
+            None,
             succeed!(Some)
-            .skip(token("("))
-            .keep(take_chomped(chomp_while1(&|c: &char| *c != ')', "jyutping")))
-            .skip(token(")"))
+                .skip(token("("))
+                .keep(take_chomped(chomp_while1(
+                    &|c: &char| *c != ')',
+                    "jyutping",
+                )))
+                .skip(token(")")),
         ))
 }
 
+fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
+    succeed!(|zho, yue, eng| Eg { zho, yue, eng })
+        .skip(token("<eg>"))
+        .skip(parse_br())
+        .keep(optional(
+            None,
+            succeed!(Some).keep(parse_pr_clause("zho")).skip(parse_br()),
+        ))
+        .keep(optional(
+            None,
+            succeed!(Some).keep(parse_pr_clause("yue")).skip(parse_br()),
+        ))
+        .keep(optional(None, succeed!(Some).keep(parse_eng_clause())))
+        .skip(optional((), parse_br()))
+}
+
 fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
-    succeed!(|defs| defs)
-        .keep(one_or_more(succeed!(|def| def)
-        .keep(one_of!(
-        succeed!(|yue, eng, alts| Def { yue, eng, egs: Vec::new(), alts })
-            .keep(parse_yue_clause())
-            .skip(parse_br())
-            .keep(parse_eng_clause())
-            .skip(optional((), parse_br()))
-            .keep(zero_or_more(succeed!(|clause| clause).keep(parse_alt_clause()).skip(optional((), parse_br())))),
-        succeed!(|yue, eng, alts, egs| Def { yue, eng, alts, egs })
-            .skip(token("<explanation>"))
-            .skip(parse_br())
-            .keep(parse_yue_clause())
-            .skip(parse_br())
-            .keep(parse_eng_clause())
-            .skip(parse_br())
-            .keep(zero_or_more(succeed!(|clause| clause).keep(parse_alt_clause()).skip(optional((), parse_br()))))
-            .keep(one_or_more(
-                succeed!(|zho, yue, eng| Eg { zho, yue, eng })
-                    .skip(token("<eg>"))
+    succeed!(|defs| defs).keep(one_or_more(
+        succeed!(|def| def)
+            .keep(one_of!(
+                succeed!(|yue, eng, alts| Def {
+                    yue,
+                    eng,
+                    egs: Vec::new(),
+                    alts
+                })
+                .keep(parse_yue_clause())
+                .skip(parse_br())
+                .keep(parse_eng_clause())
+                .skip(optional((), parse_br()))
+                .keep(zero_or_more(
+                    succeed!(|clause| clause)
+                        .keep(parse_alt_clause())
+                        .skip(optional((), parse_br()))
+                )),
+                succeed!(|yue, eng, alts, egs| Def {
+                    yue,
+                    eng,
+                    alts,
+                    egs
+                })
+                .skip(token("<explanation>"))
+                .skip(parse_br())
+                .keep(parse_yue_clause())
+                .skip(parse_br())
+                .keep(parse_eng_clause())
+                .skip(parse_br())
+                .keep(zero_or_more(
+                    succeed!(|clause| clause)
+                        .keep(parse_alt_clause())
+                        .skip(optional((), parse_br()))
+                ))
+                .keep(one_or_more(parse_eg()))
+            ))
+            .skip(optional(
+                (),
+                succeed!(|_| ())
                     .skip(parse_br())
-                    .keep(optional(None, succeed!(Some).keep(parse_pr_clause("zho")).skip(parse_br())))
-                    .keep(optional(None, succeed!(Some).keep(parse_pr_clause("yue")).skip(parse_br())))
-                    .keep(optional(None, succeed!(Some).keep(parse_eng_clause())))
-                    .skip(optional((), parse_br()))
-                    ))
-        ))
-        .skip(optional((),
-            succeed!(|_| ()).skip(parse_br()).keep(token("----")).skip(parse_br())
-        ))
+                    .keep(token("----"))
+                    .skip(parse_br()),
+            )),
     ))
 }
 
@@ -238,14 +293,25 @@ fn main() {
 }
 
 #[cfg(test)]
-
 #[test]
 fn test_parse_pr() {
-    assert_succeed(parse_pr_clause("yue"), "yue:《飛狐外傳》 (fei1 wu4 ngoi6 zyun2)", ("《飛狐外傳》".to_string(), Some("fei1 wu4 ngoi6 zyun2".to_string())));
+    assert_succeed(
+        parse_pr_clause("yue"),
+        "yue:《飛狐外傳》 (fei1 wu4 ngoi6 zyun2)",
+        (
+            "《飛狐外傳》".to_string(),
+            Some("fei1 wu4 ngoi6 zyun2".to_string()),
+        ),
+    );
     assert_succeed(parse_pr_clause("yue"), "yue:《哈利波特》出外傳喎，你會唔會睇啊？ (\"haa1 lei6 bo1 dak6\" ceot1 ngoi6 zyun2 wo3, nei5 wui5 m4 wui5 tai2 aa3?)",
     ("《哈利波特》出外傳喎，你會唔會睇啊？".to_string(), Some("\"haa1 lei6 bo1 dak6\" ceot1 ngoi6 zyun2 wo3, nei5 wui5 m4 wui5 tai2 aa3?".to_string())));
-    assert_succeed(parse_pr_clause("yue"), "yue:佢唔係真喊架，扮嘢㗎咋。 (keoi5 m4 hai6 zan1 haam3 gaa3, baan6 je5 gaa3 zaa3.)",
-    ("佢唔係真喊架，扮嘢㗎咋。".to_string(), Some("keoi5 m4 hai6 zan1 haam3 gaa3, baan6 je5 gaa3 zaa3.".to_string())));
+    assert_succeed(
+        parse_pr_clause("yue"),
+        "yue:佢唔係真喊架，扮嘢㗎咋。 (keoi5 m4 hai6 zan1 haam3 gaa3, baan6 je5 gaa3 zaa3.)",
+        (
+            "佢唔係真喊架，扮嘢㗎咋。".to_string(),
+            Some("keoi5 m4 hai6 zan1 haam3 gaa3, baan6 je5 gaa3 zaa3.".to_string()),
+        ),
+    );
     assert_succeed(parse_pr_clause("yue"), "yue:條八婆好扮嘢㗎，連嗌個叉飯都要講英文。 (tiu4 baat3 po4 hou2 baan6 je5 gaa3, lin4 aai3 go3 caa1 faan6 dou1 jiu3 gong2 jing1 man2.)", ("條八婆好扮嘢㗎，連嗌個叉飯都要講英文。".to_string(), Some("tiu4 baat3 po4 hou2 baan6 je5 gaa3, lin4 aai3 go3 caa1 faan6 dou1 jiu3 gong2 jing1 man2.".to_string())));
 }
-
