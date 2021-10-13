@@ -215,7 +215,7 @@ fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
         .skip(optional((), parse_br()))
 }
 
-fn parse_explaination<'a>() -> lip::BoxedParser<'a, Def, ()> {
+fn parse_explanation<'a>() -> lip::BoxedParser<'a, Def, ()> {
     succeed!(|yue, eng, alts, egs| Def {
         yue,
         eng,
@@ -257,7 +257,7 @@ fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
                         .keep(parse_alt_clause())
                         .skip(optional((), parse_br()))
                 )),
-                parse_explaination()
+                parse_explanation()
             ))
             .skip(optional(
                 (),
@@ -353,9 +353,9 @@ yue:佢今日心神恍惚，時時做錯嘢，好似有心事喎。 (keoi5 gam1 
 }
 
 #[test]
-fn test_parse_explaination() {
+fn test_parse_explanation() {
     assert_succeed(
-        parse_explaination(),
+        parse_explanation(),
         "<explanation>
 yue:表現不屑而發出嘅聲音
 eng:tsk
