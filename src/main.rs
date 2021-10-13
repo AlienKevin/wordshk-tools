@@ -201,11 +201,15 @@ fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
         .skip(parse_br())
         .keep(optional(
             None,
-            succeed!(Some).keep(parse_pr_clause("zho")).skip(parse_br()),
+            succeed!(Some)
+                .keep(parse_pr_clause("zho"))
+                .skip(optional((), parse_br())),
         ))
         .keep(optional(
             None,
-            succeed!(Some).keep(parse_pr_clause("yue")).skip(parse_br()),
+            succeed!(Some)
+                .keep(parse_pr_clause("yue"))
+                .skip(optional((), parse_br())),
         ))
         .keep(optional(None, succeed!(Some).keep(parse_eng_clause())))
         .skip(optional((), parse_br()))
@@ -334,6 +338,16 @@ eng:Stop tsking!",
                 Some("nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!".to_string()),
             )),
             eng: Some("Stop tsking!".to_string()),
+        },
+    );
+    assert_succeed(
+        parse_eg(),
+        "<eg>
+yue:佢今日心神恍惚，時時做錯嘢，好似有心事喎。 (keoi5 gam1 jat6 sam1 san4 fong2 fat1, si4 si4 zou6 co3 je5, hou2 ci5 jau5 sam1 si6 wo3.)",
+        Eg {
+            zho: None,
+            yue: Some(("佢今日心神恍惚，時時做錯嘢，好似有心事喎。".to_string(), Some("keoi5 gam1 jat6 sam1 san4 fong2 fat1, si4 si4 zou6 co3 je5, hou2 ci5 jau5 sam1 si6 wo3.".to_string()))),
+            eng: None,
         },
     );
 }
