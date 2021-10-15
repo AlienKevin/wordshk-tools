@@ -376,6 +376,26 @@ eng:Stop tsking!",
             }],
         },
     );
+
+    assert_succeed(
+        parse_explanation(),
+        "<explanation>
+yue:字面義指一個人做出啲好古怪嘅表情或者動作，或者大聲講嘢，令其他人感到困擾。引申出表達意見，尤其是過度表達意見嘅行為。
+eng:to clench one's teeth or show weird gesture, which implies speaking improperly or with exaggerating manner.
+<eg>
+yue:觀棋不語真君子，旁觀者不得𪘲牙聳䚗（依牙鬆鋼）。 (gun1 kei4 bat1 jyu5 zan1 gwan1 zi2，pong4 gun1 ze2 bat1 dak1 ji1 ngaa4 sung1 gong3.)
+eng:Gentlemen observe chess match with respectful silence. Spectators are not allowed to disturb the competitors.",
+        Def {
+            yue: "字面義指一個人做出啲好古怪嘅表情或者動作，或者大聲講嘢，令其他人感到困擾。引申出表達意見，尤其是過度表達意見嘅行為。".to_string(),
+            eng: Some("to clench one's teeth or show weird gesture, which implies speaking improperly or with exaggerating manner.".to_string()),
+            alts: vec![],
+            egs: vec![Eg {
+                zho: None,
+                yue: Some(("觀棋不語真君子，旁觀者不得𪘲牙聳䚗（依牙鬆鋼）。".to_string(), Some("gun1 kei4 bat1 jyu5 zan1 gwan1 zi2，pong4 gun1 ze2 bat1 dak1 ji1 ngaa4 sung1 gong3.".to_string()))),
+eng: Some("Gentlemen observe chess match with respectful silence. Spectators are not allowed to disturb the competitors.".to_string()),
+            }],
+        }
+        )
 }
 
 #[test]
