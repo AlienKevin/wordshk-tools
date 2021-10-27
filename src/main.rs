@@ -147,7 +147,7 @@ fn parse_eng_clause<'a>() -> lip::BoxedParser<'a, String, ()> {
 }
 
 fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, String, ()> {
-    succeed!(|lines: Vec<String>| {println!("{:#?}", lines); lines.join("\n")})
+    succeed!(|lines: Vec<String>| lines.join("\n"))
         .skip(token(name))
         .skip(token(":"))
         .keep(one_or_more_until(
