@@ -88,18 +88,16 @@ fn to_apple_dict() -> Result<Dict, Box<dyn Error>> {
                 ParseResult::Ok {
                     output: head_result,
                     ..
-                } => {
-                    match parse_content(id, head_result).run(content, ()) {
-                        ParseResult::Ok {
-                            output: content_result,
-                            ..
-                        } => content_result,
-                        ParseResult::Err { message, .. } => {
-                            println!("Error in #{}: {:?}", id , message);
-                            None
-                        }
+                } => match parse_content(id, head_result).run(content, ()) {
+                    ParseResult::Ok {
+                        output: content_result,
+                        ..
+                    } => content_result,
+                    ParseResult::Err { message, .. } => {
+                        println!("Error in #{}: {:?}", id, message);
+                        None
                     }
-                }
+                },
                 ParseResult::Err { message, .. } => {
                     println!("Error in #{}: {:?}", id, message);
                     None
@@ -272,22 +270,19 @@ fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
     .keep(parse_multiline_clause("yue"))
     .keep(optional(
         None,
-        succeed!(Some).keep(parse_multiline_clause("eng"))
+        succeed!(Some).keep(parse_multiline_clause("eng")),
     ))
     .keep(zero_or_more(
         succeed!(|clause| clause)
             .keep(parse_alt_clause())
-            .skip(optional((), parse_br()))
+            .skip(optional((), parse_br())),
     ))
 }
 
 fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
     succeed!(|defs| defs).keep(one_or_more(
         succeed!(|def| def)
-            .keep(one_of!(
-                parse_simple_def(),
-                parse_rich_def()
-            ))
+            .keep(one_of!(parse_simple_def(), parse_rich_def()))
             .skip(optional(
                 (),
                 succeed!(|_| ())
