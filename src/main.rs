@@ -64,10 +64,10 @@ fn to_apple_dict() -> Result<Dict, Box<dyn Error>> {
             let head_parse_result = sequence(
                 "",
                 succeed!(|word, prs| Variant { word, prs })
-                    .keep(take_chomped(chomp_while1(&(|c: &char| c != &':'), "word")))
+                    .keep(take_chomped(chomp_while1c(&(|c: &char| c != &':'), "word")))
                     .keep(sequence(
                         ":",
-                        BoxedParser::new(take_chomped(chomp_while1(
+                        BoxedParser::new(take_chomped(chomp_while1c(
                             &(|c: &char| c != &':' && c != &','),
                             "jyutping",
                         ))),
@@ -122,7 +122,7 @@ fn parse_tags<'a>(name: &'static str) -> lip::BoxedParser<'a, Vec<String>, ()> {
             .skip(token("("))
             .skip(token(name))
             .skip(token(":"))
-            .keep(take_chomped(chomp_while1(&(|c: &char| c != &')'), name)))
+            .keep(take_chomped(chomp_while1c(&(|c: &char| c != &')'), name)))
             .skip(token(")")),
     );
 }
@@ -138,25 +138,48 @@ where
     succeed!(|clause| clause)
         .skip(token(name))
         .skip(token(":"))
-        .keep(take_chomped(chomp_while1(cont_parse, name)))
-}
-
-fn parse_yue_clause<'a>() -> lip::BoxedParser<'a, String, ()> {
-    parse_clause("yue", |c: &char| *c != '\n' && *c != '\r')
+        .keep(take_chomped(chomp_while1c(cont_parse, name)))
 }
 
 fn parse_eng_clause<'a>() -> lip::BoxedParser<'a, String, ()> {
     parse_clause("eng", |c: &char| *c != '\n' && *c != '\r')
 }
 
+fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, String, ()> {
+    succeed!(|lines: Vec<String>| {println!("{:#?}", lines); lines.join("\n")})
+        .skip(token(name))
+        .skip(token(":"))
+        .keep(one_or_more_until(
+            succeed!(|line| line).keep(one_of!(
+                // empty line
+                succeed!(|_| "".to_string()).keep(parse_br()),
+                // non-empty line
+                succeed!(|line| line)
+                    .keep(take_chomped(chomp_while1c(
+                        |c| *c != '\n' && *c != '\r',
+                        "a line",
+                    )))
+                    .skip(optional((), parse_br()))
+            )),
+            succeed!(|_| ()).keep(one_of!(
+                succeed!(|_| ()).keep(token("<eg>")),
+                succeed!(|_| ())
+                    .keep(chomp_ifc(|_| true, "any char"))
+                    .skip(chomp_ifc(|_| true, "any char"))
+                    .skip(chomp_ifc(|_| true, "any char"))
+                    .skip(chomp_ifc(|c| *c == ':', "colon `:`"))
+            )),
+        ))
+}
+
 fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
     (succeed!(|alt_lang: Located<String>, clause: String| (alt_lang, clause))
-        .keep(located(take_chomped(chomp_while1(
+        .keep(located(take_chomped(chomp_while1c(
             |c: &char| *c != ':',
             "alternative languages",
         ))))
         .skip(token(":"))
-        .keep(take_chomped(chomp_while1(
+        .keep(take_chomped(chomp_while1c(
             |c: &char| *c != '\n' && *c != '\r',
             "alternative language clause",
         ))))
@@ -187,7 +210,7 @@ fn parse_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, (String, Opti
             None,
             succeed!(Some)
                 .skip(token("("))
-                .keep(take_chomped(chomp_while1(
+                .keep(take_chomped(chomp_while1c(
                     &|c: &char| *c != ')',
                     "jyutping",
                 )))
@@ -224,11 +247,10 @@ fn parse_explanation<'a>() -> lip::BoxedParser<'a, Def, ()> {
     })
     .skip(token("<explanation>"))
     .skip(parse_br())
-    .keep(parse_yue_clause())
-    .skip(parse_br())
+    .keep(parse_multiline_clause("yue"))
     .keep(optional(
         None,
-        succeed!(Some).keep(parse_eng_clause()).skip(parse_br()),
+        succeed!(Some).keep(parse_multiline_clause("eng")),
     ))
     .keep(zero_or_more(
         succeed!(|clause| clause)
@@ -248,10 +270,11 @@ fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
                     egs: Vec::new(),
                     alts
                 })
-                .keep(parse_yue_clause())
-                .skip(optional((), parse_br()))
-                .keep(optional(None, succeed!(Some).keep(parse_eng_clause())))
-                .skip(optional((), parse_br()))
+                .keep(parse_multiline_clause("yue"))
+                .keep(optional(
+                    None,
+                    succeed!(Some).keep(parse_multiline_clause("eng"))
+                ))
                 .keep(zero_or_more(
                     succeed!(|clause| clause)
                         .keep(parse_alt_clause())
@@ -422,6 +445,79 @@ eng:Stop tsking!",
             }],
         }],
     );
+    assert_succeed(
+        parse_defs(),
+        "yue:「#仆街」嘅代名詞",
+        vec![Def {
+            yue: "「#仆街」嘅代名詞".to_string(),
+            eng: None,
+            alts: vec![],
+            egs: vec![],
+        }],
+    );
+
+    assert_succeed(
+        parse_defs(),
+        r#"<explanation>
+yue:#天干
+
+#地支
+eng:Heavenly Stems
+
+Earthly Branches
+<eg>
+yue:乙等 / 乙級 (jyut6 dang2 / jyut6 kap1)
+eng:B grade"#,
+        vec![Def {
+            yue: "#天干\n\n#地支".to_string(),
+            eng: Some("Heavenly Stems\n\nEarthly Branches".to_string()),
+            alts: vec![],
+            egs: vec![Eg {
+                zho: None,
+                yue: Some((
+                    "乙等 / 乙級".to_string(),
+                    Some("jyut6 dang2 / jyut6 kap1".to_string()),
+                )),
+                eng: Some("B grade".to_string()),
+            }],
+        }],
+    );
+
+    assert_succeed(parse_defs(), r#"<explanation>
+yue:「#天干」同「#地支」嘅合稱。十天干分別係「#甲#乙#丙#丁#戊#己#庚#辛#壬#癸」。 十二地支係：「#子#丑#寅#卯#辰#巳#午#未#申#酉#戌#亥」。 天干同地支組合就成為以「#甲子」為首嘅六十干支循環。
+
+干支循環通常用嚟計年份。天干亦可以獨立用嚟順序將物件命名，第一個叫「甲」、第二個叫「乙」，如此類推。用法類似西方嘅「A, B, C」 或 「α, β, γ」。中國傳統紀時間嘅方法係將一日分成十二個時辰，每一個時辰由一個地支表示，「子時」係半夜 (11pm 至 1am)，如此類推。
+eng:Literally ""Heavenly Stems and Earthly Branches"". It is a traditional Chinese system of counting. Heavenly Stems and Earthly Branches are collectively known as ""Stem-Branch"".
+
+The 10 Heavenly Stems are 甲(gaap3) 乙(jyut6) 丙(bing2) 丁(ding1) 戊(mou6) 己(gei2) 庚(gang1) 辛(san1) 壬(jam4) 癸(gwai3).
+
+The 12 Earthly Branches are 子(zi2) 丑(cau2) 寅(jan4) 卯(maau5) 辰(san4) 巳(zi6) 午(ng5) 未(mei6) 申(san1) 酉(jau5) 戌(seot1) 亥(hoi6). Each Heavenly Stem is paired with an Earthly Branch to form the ""stem-branch"" sexagenary (i.e. 60 element) cycle that starts with 甲子 (gaap3 zi2)
+
+The sexagenary cycle is often used for counting years in the Chinese calendar. Heavenly Stems are also used independently to name things in a particular order -- the first is labeled ""gaap3"", the second ""jyut6"", the third ""bing2"", and so on. It is similar to how ""A, B, C"" and ""α, β, γ"" are used in western cultures. Earthly Branches are also traditionally used to denote time. One day is divided into twelve slots called Chinese-hours (#時辰), starting from 子時 (zi2 si4), which is 11pm to 1am.
+<eg>
+yue:乙等 / 乙級 (jyut6 dang2 / jyut6 kap1)
+eng:B grade"#
+, vec![Def {
+    yue: r#"「#天干」同「#地支」嘅合稱。十天干分別係「#甲#乙#丙#丁#戊#己#庚#辛#壬#癸」。 十二地支係：「#子#丑#寅#卯#辰#巳#午#未#申#酉#戌#亥」。 天干同地支組合就成為以「#甲子」為首嘅六十干支循環。
+
+干支循環通常用嚟計年份。天干亦可以獨立用嚟順序將物件命名，第一個叫「甲」、第二個叫「乙」，如此類推。用法類似西方嘅「A, B, C」 或 「α, β, γ」。中國傳統紀時間嘅方法係將一日分成十二個時辰，每一個時辰由一個地支表示，「子時」係半夜 (11pm 至 1am)，如此類推。"#.to_string(),
+    eng: Some(r#"Literally ""Heavenly Stems and Earthly Branches"". It is a traditional Chinese system of counting. Heavenly Stems and Earthly Branches are collectively known as ""Stem-Branch"".
+
+The 10 Heavenly Stems are 甲(gaap3) 乙(jyut6) 丙(bing2) 丁(ding1) 戊(mou6) 己(gei2) 庚(gang1) 辛(san1) 壬(jam4) 癸(gwai3).
+
+The 12 Earthly Branches are 子(zi2) 丑(cau2) 寅(jan4) 卯(maau5) 辰(san4) 巳(zi6) 午(ng5) 未(mei6) 申(san1) 酉(jau5) 戌(seot1) 亥(hoi6). Each Heavenly Stem is paired with an Earthly Branch to form the ""stem-branch"" sexagenary (i.e. 60 element) cycle that starts with 甲子 (gaap3 zi2)
+
+The sexagenary cycle is often used for counting years in the Chinese calendar. Heavenly Stems are also used independently to name things in a particular order -- the first is labeled ""gaap3"", the second ""jyut6"", the third ""bing2"", and so on. It is similar to how ""A, B, C"" and ""α, β, γ"" are used in western cultures. Earthly Branches are also traditionally used to denote time. One day is divided into twelve slots called Chinese-hours (#時辰), starting from 子時 (zi2 si4), which is 11pm to 1am."#.to_string()),
+    alts: vec![],
+    egs: vec![Eg {
+        zho: None,
+        yue: Some((
+            "乙等 / 乙級".to_string(),
+            Some("jyut6 dang2 / jyut6 kap1".to_string()),
+        )),
+        eng: Some("B grade".to_string()),
+    }],
+}]);
 }
 
 #[test]
@@ -479,24 +575,24 @@ eng:Stop tsking!",
             prs: vec!["haai1 haai1".to_string()],
         }];
         assert_succeed(
-            parse_content(variants.clone()),
-            "(pos:動詞)(label:潮語)(label:粗俗)(ref:http://evchk.wikia.com/wiki/%E9%AB%98%E7%99%BB%E7%B2%97%E5%8F%A3Filter)
+                parse_content(variants.clone()),
+                "(pos:動詞)(label:潮語)(label:粗俗)(ref:http://evchk.wikia.com/wiki/%E9%AB%98%E7%99%BB%E7%B2%97%E5%8F%A3Filter)
 yue:「#仆街」嘅代名詞",
-            Some(Entry {
-                variants,
-                poses: vec!["動詞".to_string()],
-                labels: vec!["潮語".to_string(), "粗俗".to_string()],
-                sims: vec![],
-                ants: vec![],
-                refs: vec!["http://evchk.wikia.com/wiki/%E9%AB%98%E7%99%BB%E7%B2%97%E5%8F%A3Filter".to_string()],
-                imgs: vec![],
-                defs: vec![Def {
-                    yue: "「#仆街」嘅代名詞".to_string(),
-                    eng: None,
-                    alts: vec![],
-                    egs: vec![],
-                }]
-            })
-        );
+                Some(Entry {
+                    variants,
+                    poses: vec!["動詞".to_string()],
+                    labels: vec!["潮語".to_string(), "粗俗".to_string()],
+                    sims: vec![],
+                    ants: vec![],
+                    refs: vec!["http://evchk.wikia.com/wiki/%E9%AB%98%E7%99%BB%E7%B2%97%E5%8F%A3Filter".to_string()],
+                    imgs: vec![],
+                    defs: vec![Def {
+                        yue: "「#仆街」嘅代名詞".to_string(),
+                        eng: None,
+                        alts: vec![],
+                        egs: vec![],
+                    }]
+                })
+            );
     }
 }

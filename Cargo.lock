@@ -50,9 +50,12 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "lip"
-version = "4.1.3"
+version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f23aa989dc3183b61888298d4b4beec6dcb17d3f0801f16d1765c43ad801cc3c"
+checksum = "cb2484858b437d330b89dc917f81ae13acdb3f4ce16995146adc54ebce64246a"
+dependencies = [
+ "unicode-segmentation",
+]
 
 [[package]]
 name = "memchr"
@@ -85,3 +88,9 @@ name = "serde"
 version = "1.0.130"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f12d06de37cf59146fbdecab66aa99f9fe4f78722e3607577a5375d66bd0c913"
+
+[[package]]
+name = "unicode-segmentation"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8895849a949e7845e06bd6dc1aa51731a103c42707010a5b591c0038fb73385b"
