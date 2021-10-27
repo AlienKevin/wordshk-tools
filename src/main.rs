@@ -88,20 +88,19 @@ fn to_apple_dict() -> Result<Dict, Box<dyn Error>> {
                     output: head_result,
                     ..
                 } => {
-                    println!("{:?}", head_result);
                     match parse_content(id, head_result).run(content, ()) {
                         ParseResult::Ok {
                             output: content_result,
                             ..
                         } => content_result,
                         ParseResult::Err { message, .. } => {
-                            println!("{:?}", message);
+                            println!("Error in #{}: {:?}", id , message);
                             None
                         }
                     }
                 }
                 ParseResult::Err { message, .. } => {
-                    println!("{:?}", message);
+                    println!("Error in #{}: {:?}", id, message);
                     None
                 }
             };
