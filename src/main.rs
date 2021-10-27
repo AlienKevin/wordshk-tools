@@ -8,6 +8,7 @@ type Dict = Vec<Entry>;
 
 #[derive(Debug, PartialEq)]
 struct Entry {
+    id: usize,
     variants: Vec<Variant>,
     poses: Vec<String>,
     labels: Vec<String>,
@@ -57,7 +58,7 @@ fn to_apple_dict() -> Result<Dict, Box<dyn Error>> {
     for result in rdr.records() {
         let entry = result?;
         if &entry[4] == "OK" {
-            let id = &entry[0];
+            let id: usize = entry[0].parse().unwrap();
             let head = &entry[1];
             let content = &entry[2];
             // entry[3] is always an empty string
@@ -88,7 +89,7 @@ fn to_apple_dict() -> Result<Dict, Box<dyn Error>> {
                     ..
                 } => {
                     println!("{:?}", head_result);
-                    match parse_content(head_result).run(content, ()) {
+                    match parse_content(id, head_result).run(content, ()) {
                         ParseResult::Ok {
                             output: content_result,
                             ..
@@ -292,9 +293,10 @@ fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
     ))
 }
 
-fn parse_content<'a>(variants: Vec<Variant>) -> lip::BoxedParser<'a, Option<Entry>, ()> {
+fn parse_content<'a>(id: usize, variants: Vec<Variant>) -> lip::BoxedParser<'a, Option<Entry>, ()> {
     one_of!(
         succeed!(|poses, labels, sims, ants, refs, imgs, defs| Some(Entry {
+            id,
             variants,
             poses,
             labels,
@@ -523,6 +525,7 @@ The sexagenary cycle is often used for counting years in the Chinese calendar. H
 #[test]
 fn test_parse_content() {
     {
+        let id = 103022;
         let variants = vec![
             Variant {
                 word: "zip".to_string(),
@@ -534,7 +537,7 @@ fn test_parse_content() {
             },
         ];
         assert_succeed(
-            parse_content(variants.clone()),
+            parse_content(id, variants.clone()),
             "(pos:動詞)(pos:擬聲詞)
 <explanation>
 yue:表現不屑而發出嘅聲音
@@ -543,6 +546,7 @@ eng:tsk
 yue:你可唔可以唔好成日zip呀，吓！ (nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!)
 eng:Stop tsking!",
             Some(Entry {
+                id,
                 variants,
                 poses: vec!["動詞".to_string(), "擬聲詞".to_string()],
                 labels: vec![],
@@ -570,15 +574,17 @@ eng:Stop tsking!",
         );
     }
     {
+        let id = 20;
         let variants = vec![Variant {
             word: "hihi".to_string(),
             prs: vec!["haai1 haai1".to_string()],
         }];
         assert_succeed(
-                parse_content(variants.clone()),
+                parse_content(id, variants.clone()),
                 "(pos:動詞)(label:潮語)(label:粗俗)(ref:http://evchk.wikia.com/wiki/%E9%AB%98%E7%99%BB%E7%B2%97%E5%8F%A3Filter)
 yue:「#仆街」嘅代名詞",
                 Some(Entry {
+                    id,
                     variants,
                     poses: vec!["動詞".to_string()],
                     labels: vec!["潮語".to_string(), "粗俗".to_string()],
