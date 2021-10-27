@@ -39,6 +39,7 @@ type AltClause = (AltLang, String);
 enum AltLang {
     Jpn,
     Kor,
+    Por,
     Vie,
     Lat,
     Fra,
@@ -185,6 +186,7 @@ fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
     .and_then(|(alt_lang, clause)| match &alt_lang.value[..] {
         "jpn" => succeed!(|_| (AltLang::Jpn, clause)).keep(token("")),
         "kor" => succeed!(|_| (AltLang::Kor, clause)).keep(token("")),
+        "por" => succeed!(|_| (AltLang::Por, clause)).keep(token("")),
         "vie" => succeed!(|_| (AltLang::Vie, clause)).keep(token("")),
         "lat" => succeed!(|_| (AltLang::Lat, clause)).keep(token("")),
         "fra" => succeed!(|_| (AltLang::Fra, clause)).keep(token("")),
@@ -388,6 +390,19 @@ fra:briguer une promotion",
             yue: "嘗試去爬上一個更高的位置，泛指响職業上".to_string(),
             eng: Some("try to archive a higher position in career".to_string()),
             alts: vec![(AltLang::Fra, "briguer une promotion".to_string())],
+            egs: vec![],
+        },
+    );
+
+    assert_succeed(
+        parse_simple_def(),
+        "yue:地方名
+eng:Macau; Macao
+por:Macau",
+        Def {
+            yue: "地方名".to_string(),
+            eng: Some("Macau; Macao".to_string()),
+            alts: vec![(AltLang::Por, "Macau".to_string())],
             egs: vec![],
         },
     );
