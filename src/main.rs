@@ -383,6 +383,41 @@ yue:佢今日心神恍惚，時時做錯嘢，好似有心事喎。 (keoi5 gam1 
 }
 
 #[test]
+fn test_parse_simple_def() {
+    assert_succeed(
+        parse_simple_def(),
+        "yue:嘗試去爬上一個更高的位置，泛指响職業上
+eng:try to archive a higher position in career
+fra:briguer une promotion",
+        Def {
+            yue: "嘗試去爬上一個更高的位置，泛指响職業上".to_string(),
+            eng: Some("try to archive a higher position in career".to_string()),
+            alts: vec![(AltLang::Fra, "briguer une promotion".to_string())],
+            egs: vec![],
+        },
+    );
+
+    assert_succeed(
+        parse_simple_def(),
+        "yue:東亞民間慶祝#新春 嘅畫種（量詞：幅）
+eng:new year picture in East Asia
+jpn:年画；ねんが
+kor:세화
+vie:Tranh tết",
+        Def {
+            yue: "東亞民間慶祝#新春 嘅畫種（量詞：幅）".to_string(),
+            eng: Some("new year picture in East Asia".to_string()),
+            alts: vec![
+                (AltLang::Jpn, "年画；ねんが".to_string()),
+                (AltLang::Kor, "세화".to_string()),
+                (AltLang::Vie, "Tranh tết".to_string()),
+            ],
+            egs: vec![],
+        },
+    )
+}
+
+#[test]
 fn test_parse_rich_def() {
     assert_succeed(
         parse_rich_def(),
