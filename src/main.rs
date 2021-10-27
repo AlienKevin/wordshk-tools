@@ -41,6 +41,7 @@ enum AltLang {
     Kor,
     Vie,
     Lat,
+    Fra,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -188,6 +189,7 @@ fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
         "kor" => succeed!(|_| (AltLang::Kor, clause)).keep(token("")),
         "vie" => succeed!(|_| (AltLang::Vie, clause)).keep(token("")),
         "lat" => succeed!(|_| (AltLang::Lat, clause)).keep(token("")),
+        "fra" => succeed!(|_| (AltLang::Fra, clause)).keep(token("")),
         _ => {
             let from = alt_lang.from;
             let to = alt_lang.to;
