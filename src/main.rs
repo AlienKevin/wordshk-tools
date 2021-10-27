@@ -128,7 +128,7 @@ fn parse_tags<'a>(name: &'static str) -> lip::BoxedParser<'a, Vec<String>, ()> {
 }
 
 fn parse_br<'a>() -> lip::BoxedParser<'a, (), ()> {
-    newline1(indent(0))
+    chomp_if(|c| c == "\r\n" || c == "\n", "a newline")
 }
 
 fn parse_clause<'a, F: 'a>(name: &'static str, cont_parse: F) -> lip::BoxedParser<'a, String, ()>
