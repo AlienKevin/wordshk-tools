@@ -240,7 +240,7 @@ fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
         .skip(optional((), parse_br()))
 }
 
-fn parse_explanation<'a>() -> lip::BoxedParser<'a, Def, ()> {
+fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
     succeed!(|yue, eng, alts, egs| Def {
         yue,
         eng,
@@ -262,27 +262,31 @@ fn parse_explanation<'a>() -> lip::BoxedParser<'a, Def, ()> {
     .keep(one_or_more(parse_eg()))
 }
 
+fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
+    succeed!(|yue, eng, alts| Def {
+        yue,
+        eng,
+        egs: Vec::new(),
+        alts
+    })
+    .keep(parse_multiline_clause("yue"))
+    .keep(optional(
+        None,
+        succeed!(Some).keep(parse_multiline_clause("eng"))
+    ))
+    .keep(zero_or_more(
+        succeed!(|clause| clause)
+            .keep(parse_alt_clause())
+            .skip(optional((), parse_br()))
+    ))
+}
+
 fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
     succeed!(|defs| defs).keep(one_or_more(
         succeed!(|def| def)
             .keep(one_of!(
-                succeed!(|yue, eng, alts| Def {
-                    yue,
-                    eng,
-                    egs: Vec::new(),
-                    alts
-                })
-                .keep(parse_multiline_clause("yue"))
-                .keep(optional(
-                    None,
-                    succeed!(Some).keep(parse_multiline_clause("eng"))
-                ))
-                .keep(zero_or_more(
-                    succeed!(|clause| clause)
-                        .keep(parse_alt_clause())
-                        .skip(optional((), parse_br()))
-                )),
-                parse_explanation()
+                parse_simple_def(),
+                parse_rich_def()
             ))
             .skip(optional(
                 (),
@@ -379,9 +383,9 @@ yue:佢今日心神恍惚，時時做錯嘢，好似有心事喎。 (keoi5 gam1 
 }
 
 #[test]
-fn test_parse_explanation() {
+fn test_parse_rich_def() {
     assert_succeed(
-        parse_explanation(),
+        parse_rich_def(),
         "<explanation>
 yue:表現不屑而發出嘅聲音
 eng:tsk
@@ -404,7 +408,7 @@ eng:Stop tsking!",
     );
 
     assert_succeed(
-        parse_explanation(),
+        parse_rich_def(),
         "<explanation>
 yue:字面義指一個人做出啲好古怪嘅表情或者動作，或者大聲講嘢，令其他人感到困擾。引申出表達意見，尤其是過度表達意見嘅行為。
 eng:to clench one's teeth or show weird gesture, which implies speaking improperly or with exaggerating manner.
