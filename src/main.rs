@@ -66,7 +66,7 @@ struct Eg {
 
 type PrClause = (Clause, Option<String>);
 
-fn to_apple_dict() -> Result<Dict, Box<dyn Error>> {
+fn parse_dict() -> Result<Dict, Box<dyn Error>> {
     // Build the CSV reader and iterate over each record.
     let mut rdr = csv::Reader::from_reader(io::stdin());
     let mut dict: Dict = Vec::new();
@@ -384,7 +384,7 @@ fn is_punctuation(c: char) -> bool {
 }
 
 fn main() {
-    if let Err(err) = to_apple_dict() {
+    if let Err(err) = parse_dict() {
         println!("error reading csv file: {}", err);
         process::exit(1);
     }
