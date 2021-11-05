@@ -74,6 +74,7 @@ name = "rust"
 version = "0.1.0"
 dependencies = [
  "csv",
+ "lazy_static",
  "lip",
 ]
 

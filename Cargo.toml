@@ -6,4 +6,4 @@ edition = "2018"
 [dependencies]
 lip = "5.0.0"
 csv = "1.1"
-
+lazy_static = "1.4.0"
