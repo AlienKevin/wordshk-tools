@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["bstr","csv","csv_core","itoa","lazy_static","lip","memchr","regex_automata","rust","ryu","serde","unicode_segmentation","wordshk","wordshk_tools"];

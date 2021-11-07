@@ -1,0 +1,16 @@
+var N = null;var sourcesIndex = {};
+sourcesIndex["bstr"] = {"name":"","dirs":[{"name":"byteset","files":["mod.rs","scalar.rs"]},{"name":"unicode","dirs":[{"name":"fsm","files":["grapheme_break_fwd.rs","grapheme_break_rev.rs","mod.rs","regional_indicator_rev.rs","sentence_break_fwd.rs","simple_word_fwd.rs","whitespace_anchored_fwd.rs","whitespace_anchored_rev.rs","word_break_fwd.rs"]}],"files":["grapheme.rs","mod.rs","sentence.rs","whitespace.rs","word.rs"]}],"files":["ascii.rs","bstr.rs","bstring.rs","ext_slice.rs","ext_vec.rs","impls.rs","io.rs","lib.rs","utf8.rs"]};
+sourcesIndex["csv"] = {"name":"","files":["byte_record.rs","cookbook.rs","deserializer.rs","error.rs","lib.rs","reader.rs","serializer.rs","string_record.rs","tutorial.rs","writer.rs"]};
+sourcesIndex["csv_core"] = {"name":"","files":["lib.rs","reader.rs","writer.rs"]};
+sourcesIndex["itoa"] = {"name":"","files":["lib.rs"]};
+sourcesIndex["lazy_static"] = {"name":"","files":["inline_lazy.rs","lib.rs"]};
+sourcesIndex["lip"] = {"name":"","files":["lib.rs","tests.rs"]};
+sourcesIndex["memchr"] = {"name":"","dirs":[{"name":"memchr","dirs":[{"name":"x86","files":["avx.rs","mod.rs","sse2.rs"]}],"files":["fallback.rs","iter.rs","mod.rs","naive.rs"]},{"name":"memmem","dirs":[{"name":"prefilter","dirs":[{"name":"x86","files":["avx.rs","mod.rs","sse.rs"]}],"files":["fallback.rs","genericsimd.rs","mod.rs"]},{"name":"x86","files":["avx.rs","mod.rs","sse.rs"]}],"files":["byte_frequencies.rs","genericsimd.rs","mod.rs","rabinkarp.rs","rarebytes.rs","twoway.rs","util.rs","vector.rs"]}],"files":["cow.rs","lib.rs"]};
+sourcesIndex["regex_automata"] = {"name":"","files":["byteorder.rs","classes.rs","dense.rs","dfa.rs","lib.rs","regex.rs","sparse.rs","state_id.rs"]};
+sourcesIndex["rust"] = {"name":"","files":["main.rs"]};
+sourcesIndex["ryu"] = {"name":"","dirs":[{"name":"buffer","files":["mod.rs"]},{"name":"pretty","files":["exponent.rs","mantissa.rs","mod.rs"]}],"files":["common.rs","d2s.rs","d2s_full_table.rs","d2s_intrinsics.rs","digit_table.rs","f2s.rs","f2s_intrinsics.rs","lib.rs"]};
+sourcesIndex["serde"] = {"name":"","dirs":[{"name":"de","files":["ignored_any.rs","impls.rs","mod.rs","seed.rs","utf8.rs","value.rs"]},{"name":"private","files":["de.rs","doc.rs","mod.rs","ser.rs","size_hint.rs"]},{"name":"ser","files":["fmt.rs","impls.rs","impossible.rs","mod.rs"]}],"files":["integer128.rs","lib.rs","macros.rs"]};
+sourcesIndex["unicode_segmentation"] = {"name":"","files":["grapheme.rs","lib.rs","sentence.rs","tables.rs","word.rs"]};
+sourcesIndex["wordshk"] = {"name":"","files":["main.rs"]};
+sourcesIndex["wordshk_tools"] = {"name":"","files":["main.rs"]};
+createSourceSidebar();
