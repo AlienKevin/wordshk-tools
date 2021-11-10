@@ -1,15 +1,15 @@
 //! A parser for [`words.hk`] (粵典)
-//! 
+//!
 //! Parses all entries marked with OK and store the results as a list of entries.
 //! This parser does not use any regular expressions, backtracking or other inefficient
 //! parsing techniques. It is powered by a library called [`lip`] that provides
 //! flexible parser combinators and supports friendly error messages.
-//! 
+//!
 //! A note on doc format: we generally put examples after a colon ':'.
-//! 
+//!
 //! [`words.hk`]: https://words.hk
 //! [`lip`]: https://github.com/AlienKevin/lip
-//! 
+//!
 
 use lazy_static::lazy_static;
 use lip::ParseResult;
@@ -23,25 +23,25 @@ use std::process;
 type Dict = Vec<Entry>;
 
 /// An entry contains some information about a word.
-/// 
+///
 /// \[id\] the word's unique identifier used by words.hk: 116878
-/// 
+///
 /// \[variants\] variants of the word: 㗎:gaa3,咖:gaa3,𡃉:gaa3
-/// 
+///
 /// \[pos\] grammaticall positions of the word: 動詞, 名詞, 形容詞
-/// 
+///
 /// \[labels\] labels on the word: 術語, 俚語, 專名
-/// 
+///
 /// \[sims\] synonyms of the word: 武士 is a synonym of 騎士
-/// 
+///
 /// \[ants\] antonyms of the word: 放電 is an antonym of 充電
-/// 
+///
 /// \[refs\] urls to references for this entry: <http://dictionary.reference.com/browse/tart?s=t>
-/// 
+///
 /// \[imgs\] urls to images for this entry: <https://upload.wikimedia.org/wikipedia/commons/7/79/Naihuangbao.jpg>
-/// 
+///
 /// \[defs\] a list of definitions for this word
-/// 
+///
 #[derive(Debug, PartialEq)]
 struct Entry {
     id: usize,
@@ -63,11 +63,11 @@ struct Variant {
 }
 
 /// Two types of segments: text or link. See [Segment]
-/// 
+///
 /// \[Text\] normal text
-/// 
+///
 /// \[Link\] a link to another entry
-/// 
+///
 #[derive(Debug, Clone, PartialEq)]
 enum SegmentType {
     Text,
@@ -75,43 +75,43 @@ enum SegmentType {
 }
 
 /// A segment can be a text or a link
-/// 
+///
 /// Text: 非常鬆軟。（量詞：件／籠）
-/// 
+///
 /// Link: A link to the entry 雞蛋 would be #雞蛋
-/// 
+///
 type Segment = (SegmentType, String);
 
 /// A line consists of one or more [Segment]s
-/// 
+///
 /// Empty line: `vec![(Text, "")]`
-/// 
+///
 /// Simple line: `vec![(Text, "用嚟圍喺BB牀邊嘅布（量詞：塊）")]`
-/// 
+///
 /// Mixed line: `vec![(Text, "一種加入"), (Link, "蝦籽"), (Text, "整嘅廣東麪")]`
-/// 
+///
 type Line = Vec<Segment>;
 
 /// A clause consists of one or more [Line]s. Appears in explanations and example sentences
-/// 
+///
 /// Single-line clause: `vec![vec![(Text, "一行白鷺上青天")]]`
-/// 
+///
 /// Multi-line clause: `vec![vec![(Text, "一行白鷺上青天")], vec![(Text, "兩個黃鸝鳴翠柳")]]`
-/// 
+///
 type Clause = Vec<Line>; // can be multiline
 
 /// A definition of a word
-/// 
+///
 /// Here's an example of the definition of the word 年畫
-/// 
+///
 /// \[yue\] Cantonese explanation of the word's meaning: 東亞民間慶祝#新春 嘅畫種（量詞：幅）
-/// 
+///
 /// \[eng\] English explanation of the word's meaning: new year picture in East Asia
-/// 
+///
 /// \[alts\] Word with similar meaning in other languages: jpn:年画；ねんが, kor:세화, vie:Tranh tết
-/// 
+///
 /// \[egs\] Example sentences usually with Jyutping pronunciations and English translations
-/// 
+///
 #[derive(Debug, PartialEq)]
 struct Def {
     yue: Clause,
@@ -121,19 +121,19 @@ struct Def {
 }
 
 /// A clause in an alternative language other than Cantonese and English
-/// 
+///
 /// \[[AltLang]\] language tag
-/// 
+///
 /// \[[Clause]\] A sequence of texts and links
-/// 
+///
 type AltClause = (AltLang, Clause);
 
 /// Language tags for alternative languages other than Cantonese and English
-/// 
+///
 /// From my observation, the tags seem to be alpha-3 codes in [ISO 639-2]
-/// 
+///
 /// [ISO 639-2]: https://www.loc.gov/standards/iso639-2/php/code_list.php
-/// 
+///
 #[derive(Debug, PartialEq)]
 enum AltLang {
     Jpn, // Japanese
@@ -145,13 +145,13 @@ enum AltLang {
 }
 
 /// An example sentence in Mandarin, Cantonese, and/or English
-/// 
+///
 /// \[zho\] Mandarin example with optional Jyutping pronunciation: 可否見面？ (ho2 fau2 gin3 min6?)
-/// 
+///
 /// \[yue\] Cantonese example with optional Jyutping pronunciation: 可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
-/// 
+///
 /// \[eng\] English example: Can we meet up?
-/// 
+///
 #[derive(Debug, Clone, PartialEq)]
 struct Eg {
     zho: Option<PrClause>,
@@ -160,9 +160,9 @@ struct Eg {
 }
 
 /// An example sentence with optional Jyutping pronunciation
-/// 
+///
 /// Eg: 可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
-/// 
+///
 type PrClause = (Clause, Option<String>);
 
 /// Parse the whole words.hk CSV database into a [Dict]
@@ -230,15 +230,15 @@ fn parse_dict() -> Result<Dict, Box<dyn Error>> {
 }
 
 /// Parse tags on a word like pos, label, and sim
-/// 
+///
 /// For example, here's the label tags of the word 佛系:
-/// 
+///
 /// (label:外來語)(label:潮語)
-/// 
+///
 /// which parses to:
-/// 
+///
 /// `vec!["外來語", "潮語"]`
-/// 
+///
 fn parse_tags<'a>(name: &'static str) -> lip::BoxedParser<'a, Vec<String>, ()> {
     return zero_or_more(
         succeed!(|tag| tag)
@@ -251,23 +251,22 @@ fn parse_tags<'a>(name: &'static str) -> lip::BoxedParser<'a, Vec<String>, ()> {
 }
 
 /// Parse a newline character
-/// 
+///
 /// Supports both Windows "\r\n" and Unix "\n"
 fn parse_br<'a>() -> lip::BoxedParser<'a, (), ()> {
     chomp_if(|c| c == "\r\n" || c == "\n", "a newline")
 }
 
 /// Parse a [Clause]
-/// 
+///
 /// For example, here's an English clause:
-/// 
+///
 /// My headphone cord was knotted.
-/// 
+///
 /// which parses to:
-/// 
+///
 /// `vec![vec![(Text, "My headphone cord was knotted.")]]`
-fn parse_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()>
-{
+fn parse_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| vec!(clause)).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
             succeed!(|string| (SegmentType::Link, string))
                 .skip(token("#"))
@@ -284,17 +283,16 @@ fn parse_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()>
 }
 
 /// Parse a [Clause] tagged in front by its name/category
-/// 
+///
 /// For example, here's an English clause:
-/// 
+///
 /// eng:My headphone cord was knotted.
-/// 
+///
 /// which parses to:
-/// 
+///
 /// `vec![vec![(Text, "My headphone cord was knotted.")]]`
-/// 
-fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()>
-{
+///
+fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| clause)
         .skip(token(name))
         .skip(token(":"))
@@ -302,21 +300,20 @@ fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()
 }
 
 /// Parse a partial pronunciation [Clause], until the opening paren of Jyutping pronunciations
-/// 
+///
 /// For the following pronunciation clause:
-/// 
+///
 /// 可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
-/// 
+///
 /// This function will parse everything up until the '(':
-/// 
+///
 /// 可唔可以見面？
-/// 
+///
 /// which parses to:
-/// 
+///
 /// `vec![vec![(Text, "可唔可以見面？")]]`
-/// 
-fn parse_partial_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()>
-{
+///
+fn parse_partial_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| vec!(clause)).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
             succeed!(|string: String| (SegmentType::Link, string.trim_end().to_string()))
                 .skip(token("#"))
@@ -325,29 +322,30 @@ fn parse_partial_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Claus
                     name
                 )))
                 .skip(optional("", token(" "))),
-            succeed!(|string: String| (SegmentType::Text, string.trim_end().to_string())).keep(take_chomped(chomp_while1c(
-                &(|c: &char| *c != '#' && *c != '\n' && *c != '\r' && *c != '('),
-                name
-            )))
+            succeed!(|string: String| (SegmentType::Text, string.trim_end().to_string())).keep(
+                take_chomped(chomp_while1c(
+                    &(|c: &char| *c != '#' && *c != '\n' && *c != '\r' && *c != '('),
+                    name
+                ))
+            )
         ))))
 }
 
 /// Parse a partial *named* pronunciation [Clause], until the opening paren of Jyutping pronunciations
-/// 
+///
 /// For the following *named* pronunciation clause:
-/// 
+///
 /// yue:可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
-/// 
+///
 /// This function will parse everything up until the '(':
-/// 
+///
 /// yue:可唔可以見面？
-/// 
+///
 /// which parses to:
-/// 
+///
 /// `vec![vec![(Text, "可唔可以見面？")]]`
-/// 
-fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()>
-{
+///
+fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| clause)
         .skip(token(name))
         .skip(token(":"))
@@ -355,31 +353,31 @@ fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a,
 }
 
 /// Parse an English [Clause]
-/// 
+///
 /// For example, here's an English clause:
-/// 
+///
 /// eng:My headphone cord was knotted.
-/// 
+///
 /// which parses to:
-/// 
+///
 /// `vec![vec![(Text, "My headphone cord was knotted.")]]`
-/// 
+///
 fn parse_eng_clause<'a>() -> lip::BoxedParser<'a, Clause, ()> {
     parse_named_clause("eng")
 }
 
 /// Parse a multiline clause
-/// 
+///
 /// For example, here's a multiline clause:
-/// 
+///
 /// 一行白鷺上青天
-/// 
+///
 /// 兩個黃鸝鳴翠柳
-/// 
+///
 /// which parses to:
-/// 
+///
 /// `vec![vec![(Text, "一行白鷺上青天")], vec![(Text, "兩個黃鸝鳴翠柳")]]`
-/// 
+///
 fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|first_line: Clause, lines: Clause| {
         let mut all_lines = first_line;
@@ -647,9 +645,12 @@ yue:#難民營 (naan6 man4 jing4)
 eng:refugee camp",
         Eg {
             zho: None,
-            yue: Some((vec!(vec!(link("難民營"))), Some("naan6 man4 jing4".to_string()))),
+            yue: Some((
+                vec![vec![link("難民營")]],
+                Some("naan6 man4 jing4".to_string()),
+            )),
             eng: Some(simple_clause("refugee camp")),
-        }
+        },
     )
 }
 
@@ -689,7 +690,11 @@ jpn:年画；ねんが
 kor:세화
 vie:Tranh tết",
         Def {
-            yue: vec!(vec!(text("東亞民間慶祝"), link("新春"), text("嘅畫種（量詞：幅）"))),
+            yue: vec![vec![
+                text("東亞民間慶祝"),
+                link("新春"),
+                text("嘅畫種（量詞：幅）"),
+            ]],
             eng: Some(simple_clause("new year picture in East Asia")),
             alts: vec![
                 (AltLang::Jpn, simple_clause("年画；ねんが")),
@@ -822,7 +827,7 @@ eng:Stop tsking!",
         parse_defs(),
         "yue:「#仆街」嘅代名詞",
         vec![Def {
-            yue: vec!(vec!(text("「"), link("仆街"), text("」嘅代名詞"))),
+            yue: vec![vec![text("「"), link("仆街"), text("」嘅代名詞")]],
             eng: None,
             alts: vec![],
             egs: vec![],
@@ -842,8 +847,12 @@ Earthly Branches
 yue:乙等 / 乙級 (jyut6 dang2 / jyut6 kap1)
 eng:B grade"#,
         vec![Def {
-            yue: vec!(vec!(link("天干")), vec!(text("")), vec!(link("地支"))),
-            eng: Some(vec!(vec!(text("Heavenly Stems")), vec!(text("")), vec!(text("Earthly Branches")))),
+            yue: vec![vec![link("天干")], vec![text("")], vec![link("地支")]],
+            eng: Some(vec![
+                vec![text("Heavenly Stems")],
+                vec![text("")],
+                vec![text("Earthly Branches")],
+            ]),
             alts: vec![],
             egs: vec![Eg {
                 zho: None,
