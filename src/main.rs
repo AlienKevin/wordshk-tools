@@ -381,27 +381,33 @@ fn parse_eng_clause<'a>() -> lip::BoxedParser<'a, Clause, ()> {
 /// `vec![vec![(Text, "一行白鷺上青天")], vec![(Text, "兩個黃鸝鳴翠柳")]]`
 /// 
 fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
-    succeed!(|lines: Clause| lines)
-        .skip(token(name))
-        .skip(token(":"))
-        .keep(one_or_more_until(
-            succeed!(|line| line).keep(one_of!(
-                // empty line
-                succeed!(|_| vec!((SegmentType::Text, "".to_string()))).keep(parse_br()),
-                // non-empty line
-                succeed!(|line: Clause| line[0].clone())
-                    .keep(parse_clause("a line"))
-                    .skip(optional((), parse_br()))
-            )),
-            succeed!(|_| ()).keep(one_of!(
-                succeed!(|_| ()).keep(token("<eg>")),
-                succeed!(|_| ())
-                    .keep(chomp_ifc(|_| true, "any char"))
-                    .skip(chomp_ifc(|_| true, "any char"))
-                    .skip(chomp_ifc(|_| true, "any char"))
-                    .skip(chomp_ifc(|c| *c == ':', "colon `:`"))
-            )),
-        ))
+    succeed!(|first_line: Clause, lines: Clause| {
+        let mut all_lines = first_line;
+        all_lines.extend(lines);
+        all_lines
+    })
+    .skip(token(name))
+    .skip(token(":"))
+    .keep(succeed!(|line: Clause| line).keep(
+        succeed!(|single_line_clause: Clause| single_line_clause).keep(parse_clause("a line")),
+    ))
+    .keep(zero_or_more_until(
+        succeed!(|line| line).skip(parse_br()).keep(one_of!(
+            // non-empty line
+            succeed!(|line: Clause| line[0].clone()).keep(parse_clause("a nonempty line")),
+            // empty line
+            succeed!(|_| vec!((SegmentType::Text, "".to_string()))).keep(token(""))
+        )),
+        succeed!(|_| ()).skip(parse_br()).keep(one_of!(
+            succeed!(|_| ()).keep(token("<eg>")),
+            succeed!(|_| ())
+                .keep(chomp_ifc(|c| *c != '\r' && *c != '\n', "any char"))
+                .skip(chomp_ifc(|c| *c != '\r' && *c != '\n', "any char"))
+                .skip(chomp_ifc(|c| *c != '\r' && *c != '\n', "any char"))
+                .skip(chomp_ifc(|c| *c == ':', "colon `:`"))
+        )),
+    ))
+    .skip(optional((), parse_br()))
 }
 
 fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
@@ -692,7 +698,54 @@ vie:Tranh tết",
             ],
             egs: vec![],
         },
-    )
+    );
+
+    // string like "ccc:", where c stands for any character, appearing in clause
+    assert_succeed(
+        parse_simple_def(),
+        "yue:abc
+
+def",
+        Def {
+            yue: vec![vec![text("abc")], vec![text("")], vec![text("def")]],
+            eng: None,
+            alts: vec![],
+            egs: vec![],
+        },
+    );
+
+    // a concrete example of "ccc:" used in the dataset
+    assert_succeed(
+        parse_simple_def(),
+        "yue:第二人稱代詞；用嚟稱呼身處喺自己面前又或者同自己講緊嘢嘅眾數對象
+eng:you: second person plural",
+        Def {
+            yue: simple_clause("第二人稱代詞；用嚟稱呼身處喺自己面前又或者同自己講緊嘢嘅眾數對象"),
+            eng: Some(simple_clause("you: second person plural")),
+            alts: vec![],
+            egs: vec![],
+        },
+    );
+    // more complicated "ccc:" style clause with multiple consecutive empty lines
+    assert_succeed(
+        parse_simple_def(),
+        "yue:abc:def:ghi
+
+
+eng:opq:rst:
+
+uvw",
+        Def {
+            yue: vec![vec![text("abc:def:ghi")], vec![text("")], vec![text("")]],
+            eng: Some(vec![
+                vec![text("opq:rst:")],
+                vec![text("")],
+                vec![text("uvw")],
+            ]),
+            alts: vec![],
+            egs: vec![],
+        },
+    );
 }
 
 #[test]
