@@ -408,6 +408,16 @@ fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause
     .skip(optional((), parse_br()))
 }
 
+/// Parse a clause in an alternative language
+///
+/// For example, here's a Japanese clause:
+///
+/// jpn:年画；ねんが
+///
+/// which parses to:
+///
+/// `(AltLang::Jpn, vec![vec![(Text, "年画；ねんが")]])`
+///
 fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
     (succeed!(|alt_lang: Located<String>, clause: Clause| (alt_lang, clause))
         .keep(located(take_chomped(chomp_while1c(
@@ -435,6 +445,16 @@ fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
     })
 }
 
+/// Parse a Jyutping pronunciation clause, for Cantonese (yue) and Mandarin (zho)
+///
+/// For example, here's a Cantonese pronunciation clause:
+///
+/// yue:我個耳筒繑埋咗一嚿。 (ngo5 go3 ji5 tung2 kiu5 maai4 zo2 jat1 gau6.)
+///
+/// which parses to:
+///
+/// `(vec![vec![(Text, 我個耳筒繑埋咗一嚿。)]], Some("ngo5 go3 ji5 tung2 kiu5 maai4 zo2 jat1 gau6."))`
+///
 fn parse_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, PrClause, ()> {
     succeed!(|clause, pr| (clause, pr))
         .keep(parse_partial_pr_named_clause(name))
@@ -450,6 +470,24 @@ fn parse_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, PrClause, ()>
         ))
 }
 
+/// Parse an example for a word
+///
+/// For example, here's an example for the word 便:
+///
+/// zho:後邊 (hau6 bin6)
+/// yue:#後便 (hau6 bin6)
+/// eng:back side
+///
+/// which parses to:
+///
+/// ```
+/// Eg {
+///     zho: (vec![vec![(Text, "後邊")]], Some("hau6 bin6")),
+///     yue: (vec![vec![(Link, "後便")]], Some("hau6 bin6")),
+///     end: vec![vec![(Text, "back side")]],
+/// }
+/// ```
+///
 fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
     succeed!(|zho, yue, eng| Eg { zho, yue, eng })
         .skip(token("<eg>"))
@@ -470,6 +508,44 @@ fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
         .skip(optional((), parse_br()))
 }
 
+/// Parse a rich definition
+///
+/// Rich definitions start with an <explanation> tag and
+/// contains one or more <eg> tags.
+///
+/// For example, here's part of the rich definition for the word 便:
+///
+/// <explanation>
+/// yue:用於方位詞之後。書寫時，亦會用#邊 代替本字
+/// eng:suffix for directional/positional noun
+/// <eg>
+/// yue:#開便 (hoi1 bin6)
+/// eng:outside
+/// <eg>
+/// yue:#呢便 (nei1 bin6)
+/// eng:this side
+///
+/// which parses to:
+///
+/// ```
+/// Def {
+///     yue: vec![vec![(Text, "用於方位詞之後。書寫時，亦會用"), (Link, "邊"), (Text, "代替本字")]],
+///     eng: Some(vec![vec![(Text, "suffix for directional/positional noun")]]),
+///     alts: vec![],
+///     egs: vec![ Eg {
+///          zho: None,
+///          yue: Some((vec![vec![(Link, "開便")]], Some("hoi1 bin6"))),
+///          eng: Some(vec![vec!["outside"]]),
+///     },
+///     Eg {
+///          zho: None,
+///          yue: Some((vec![vec![(Link, "呢便")]], Some("nei1 bin6"))),
+///          eng: Some(vec![vec!["this side"]]),
+///     },
+///     ],
+/// }
+/// ```
+///
 fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
     succeed!(|yue, eng, alts, egs| Def {
         yue,
@@ -492,6 +568,25 @@ fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
     .keep(one_or_more(parse_eg()))
 }
 
+/// Parse a simple definition
+///
+/// For example, here's a simple definition for the word 奸爸爹
+///
+/// yue:#加油
+/// eng:cheer up
+/// jpn:頑張って（がんばって）
+///
+/// which parses to:
+///
+/// ```
+/// Def {
+///     yue: vec![vec![(Link, "加油")]],
+///     eng: Some(vec![vec![(Text, "cheer up")]]),
+///     alts: vec![(AltLang::Jpn, vec![vec![(Text, "頑張って（がんばって）")]])],
+///     egs: vec![],
+/// }
+/// ```
+///
 fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
     succeed!(|yue, eng, alts| Def {
         yue,
@@ -511,6 +606,44 @@ fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
     ))
 }
 
+/// Parse a series of definitions for a word, separated by "----"
+///
+/// For example, here's a series of definitions for the word 兄
+///
+/// <explanation>
+/// yue:同父母或者同監護人，年紀比你大嘅男性
+/// eng:elder brother
+/// <eg>
+/// yue:#兄弟 (hing1 dai6)
+/// eng:brothers
+/// ----
+/// <explanation>
+/// yue:對男性朋友嘅尊稱
+/// eng:politely addressing a male friend
+///
+/// which parses to:
+///
+/// ```
+/// vec![
+///     Def {
+///         yue: vec![vec![(Text, "同父母或者同監護人，年紀比你大嘅男性")]],
+///         eng: Some(vec![vec![(Text, "elder brother")]]),
+///         alts: vec![],
+///         egs: vec![
+///             zho: None,
+///             yue: Some((vec![vec![(Link, "兄弟")]], Some("hing1 dai6"))),
+///             eng: Some(vec![vec![(Text, "brothers")]]),
+///         ],
+///     },
+///     Def {
+///         yue: vec![vec![(Text, "對男性朋友嘅尊稱")]],
+///         eng: Some(vec![vec![(Text, "politely addressing a male friend")]]),
+///         alts: vec![],
+///         egs: vec![],
+///     },
+/// ]
+/// ```
+///
 fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
     succeed!(|defs| defs).keep(one_or_more(
         succeed!(|def| def)
@@ -525,6 +658,36 @@ fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
     ))
 }
 
+/// Parse the content of an [Entry]
+///
+/// id and variants are parsed by [parse_dict] and passed in to this function.
+///
+/// For example, here's the content of the Entry for 奸爸爹
+///
+/// (pos:語句)(label:外來語)(label:潮語)(label:香港)
+/// yue:#加油
+/// eng:cheer up
+/// jpn:頑張って（がんばって）
+///
+/// ```
+/// Some(Entry {
+/// id: 98634,
+/// variants: vec![("奸爸爹", vec!["gaan1 baa1 de1"])],
+/// poses: vec!["語句"],
+/// labels: vec!["外來語", "潮語", "香港"],
+/// sims: vec![],
+/// ants: vec![],
+/// refs: vec![],
+/// imgs: vec![],
+/// defs: vec![Def {
+///     yue: vec![vec![(Link, "加油")]],
+///     eng: Some(vec![vec![(Text, "cheer up")]]),
+///     alts: vec![(AltLang::Jpn, vec![vec![(Text, "頑張って（がんばって）")]])],
+///     egs: vec![],
+/// }]
+/// })
+/// ```
+///
 fn parse_content<'a>(id: usize, variants: Vec<Variant>) -> lip::BoxedParser<'a, Option<Entry>, ()> {
     one_of!(
         succeed!(|poses, labels, sims, ants, refs, imgs, defs| Some(Entry {
