@@ -629,7 +629,7 @@ pub fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
     ))
 }
 
-/// Parse a series of definitions for a word, separated by "----"
+/// Parse a series of definitions for a word, separated by "\-\-\-\-"
 ///
 /// For example, here's a series of definitions for the word 兄
 /// 
