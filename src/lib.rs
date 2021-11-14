@@ -478,18 +478,25 @@ pub fn parse_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, PrClause,
 ///
 /// For example, here's an example for the word 便:
 ///
+/// ```
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # let source = indoc::indoc! {"
+/// <eg>
 /// zho:後邊 (hau6 bin6)
 /// yue:#後便 (hau6 bin6)
 /// eng:back side
+/// # "};
 ///
-/// which parses to:
+/// // which parses to:
 ///
-/// ```
+/// # lip::assert_succeed(parse_eg(), source,
 /// Eg {
-///     zho: (vec![vec![(Text, "後邊")]], Some("hau6 bin6")),
-///     yue: (vec![vec![(Link, "後便")]], Some("hau6 bin6")),
-///     end: vec![vec![(Text, "back side")]],
+///     zho: Some((vec![vec![(Text, "後邊".into())]], Some("hau6 bin6".into()))),
+///     yue: Some((vec![vec![(Link, "後便".into())]], Some("hau6 bin6".into()))),
+///     eng: Some(vec![vec![(Text, "back side".into())]]),
 /// }
+/// # );
 /// ```
 ///
 pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
@@ -519,6 +526,10 @@ pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
 ///
 /// For example, here's part of the rich definition for the word 便:
 ///
+/// ```
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # let source = indoc::indoc! {"
 /// <explanation>
 /// yue:用於方位詞之後。書寫時，亦會用#邊 代替本字
 /// eng:suffix for directional/positional noun
@@ -528,26 +539,28 @@ pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
 /// <eg>
 /// yue:#呢便 (nei1 bin6)
 /// eng:this side
+/// # "};
 ///
-/// which parses to:
+/// // which parses to:
 ///
-/// ```
+/// # lip::assert_succeed(parse_rich_def(), source,
 /// Def {
-///     yue: vec![vec![(Text, "用於方位詞之後。書寫時，亦會用"), (Link, "邊"), (Text, "代替本字")]],
-///     eng: Some(vec![vec![(Text, "suffix for directional/positional noun")]]),
+///     yue: vec![vec![(Text, "用於方位詞之後。書寫時，亦會用".into()), (Link, "邊".into()), (Text, "代替本字".into())]],
+///     eng: Some(vec![vec![(Text, "suffix for directional/positional noun".into())]]),
 ///     alts: vec![],
 ///     egs: vec![ Eg {
-///          zho: None,
-///          yue: Some((vec![vec![(Link, "開便")]], Some("hoi1 bin6"))),
-///          eng: Some(vec![vec!["outside"]]),
-///     },
-///     Eg {
-///          zho: None,
-///          yue: Some((vec![vec![(Link, "呢便")]], Some("nei1 bin6"))),
-///          eng: Some(vec![vec!["this side"]]),
-///     },
+///             zho: None,
+///             yue: Some((vec![vec![(Link, "開便".into())]], Some("hoi1 bin6".into()))),
+///             eng: Some(vec![vec![(Text, "outside".into())]]),
+///         },
+///         Eg {
+///             zho: None,
+///             yue: Some((vec![vec![(Link, "呢便".into())]], Some("nei1 bin6".into()))),
+///             eng: Some(vec![vec![(Text, "this side".into())]]),
+///         },
 ///     ],
 /// }
+/// # );
 /// ```
 ///
 pub fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
@@ -576,19 +589,25 @@ pub fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
 ///
 /// For example, here's a simple definition for the word 奸爸爹
 ///
+/// ```
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # let source = indoc::indoc! {"
 /// yue:#加油
 /// eng:cheer up
 /// jpn:頑張って（がんばって）
+/// # "};
 ///
-/// which parses to:
+/// // which parses to:
 ///
-/// ```
+/// # lip::assert_succeed(parse_simple_def(), source,
 /// Def {
-///     yue: vec![vec![(Link, "加油")]],
-///     eng: Some(vec![vec![(Text, "cheer up")]]),
-///     alts: vec![(AltLang::Jpn, vec![vec![(Text, "頑張って（がんばって）")]])],
+///     yue: vec![vec![(Link, "加油".into())]],
+///     eng: Some(vec![vec![(Text, "cheer up".into())]]),
+///     alts: vec![(AltLang::Jpn, vec![vec![(Text, "頑張って（がんばって）".into())]])],
 ///     egs: vec![],
 /// }
+/// # );
 /// ```
 ///
 pub fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
@@ -613,7 +632,11 @@ pub fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
 /// Parse a series of definitions for a word, separated by "----"
 ///
 /// For example, here's a series of definitions for the word 兄
-///
+/// 
+/// ```
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # let source = indoc::indoc! {"
 /// <explanation>
 /// yue:同父母或者同監護人，年紀比你大嘅男性
 /// eng:elder brother
@@ -621,31 +644,34 @@ pub fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
 /// yue:#兄弟 (hing1 dai6)
 /// eng:brothers
 /// ----
-/// <explanation>
 /// yue:對男性朋友嘅尊稱
 /// eng:politely addressing a male friend
+/// # "};
 ///
-/// which parses to:
+/// // which parses to:
 ///
-/// ```
+/// # lip::assert_succeed(parse_defs(), source,
 /// vec![
 ///     Def {
-///         yue: vec![vec![(Text, "同父母或者同監護人，年紀比你大嘅男性")]],
-///         eng: Some(vec![vec![(Text, "elder brother")]]),
+///         yue: vec![vec![(Text, "同父母或者同監護人，年紀比你大嘅男性".into())]],
+///         eng: Some(vec![vec![(Text, "elder brother".into())]]),
 ///         alts: vec![],
 ///         egs: vec![
-///             zho: None,
-///             yue: Some((vec![vec![(Link, "兄弟")]], Some("hing1 dai6"))),
-///             eng: Some(vec![vec![(Text, "brothers")]]),
+///             Eg {
+///                 zho: None,
+///                 yue: Some((vec![vec![(Link, "兄弟".into())]], Some("hing1 dai6".into()))),
+///                 eng: Some(vec![vec![(Text, "brothers".into())]]),
+///             }
 ///         ],
 ///     },
 ///     Def {
-///         yue: vec![vec![(Text, "對男性朋友嘅尊稱")]],
-///         eng: Some(vec![vec![(Text, "politely addressing a male friend")]]),
+///         yue: vec![vec![(Text, "對男性朋友嘅尊稱".into())]],
+///         eng: Some(vec![vec![(Text, "politely addressing a male friend".into())]]),
 ///         alts: vec![],
 ///         egs: vec![],
 ///     },
 /// ]
+/// # );
 /// ```
 ///
 pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
@@ -667,28 +693,40 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 ///
 /// For example, here's the content of the Entry for 奸爸爹
 ///
+/// ```
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # use wordshk_tools::AltLang;
+/// # let source = indoc::indoc! {"
 /// (pos:語句)(label:外來語)(label:潮語)(label:香港)
 /// yue:#加油
 /// eng:cheer up
 /// jpn:頑張って（がんばって）
-///
-/// ```
+/// # "};
+/// 
+/// let id = 98634;
+/// let variants = vec![(Variant {word: "奸爸爹".into(), prs: vec!["gaan1 baa1 de1".into()]})];
+/// 
+/// // which parses to:
+/// 
+/// # lip::assert_succeed(parse_content(id, variants.clone()), source,
 /// Some(Entry {
-/// id: 98634,
-/// variants: vec![("奸爸爹", vec!["gaan1 baa1 de1"])],
-/// poses: vec!["語句"],
-/// labels: vec!["外來語", "潮語", "香港"],
+/// id: id,
+/// variants: variants,
+/// poses: vec!["語句".into()],
+/// labels: vec!["外來語".into(), "潮語".into(), "香港".into()],
 /// sims: vec![],
 /// ants: vec![],
 /// refs: vec![],
 /// imgs: vec![],
 /// defs: vec![Def {
-///     yue: vec![vec![(Link, "加油")]],
-///     eng: Some(vec![vec![(Text, "cheer up")]]),
-///     alts: vec![(AltLang::Jpn, vec![vec![(Text, "頑張って（がんばって）")]])],
+///     yue: vec![vec![(Link, "加油".into())]],
+///     eng: Some(vec![vec![(Text, "cheer up".into())]]),
+///     alts: vec![(AltLang::Jpn, vec![vec![(Text, "頑張って（がんばって）".into())]])],
 ///     egs: vec![],
-/// }]
+///     }]
 /// })
+/// # );
 /// ```
 ///
 pub fn parse_content<'a>(id: usize, variants: Vec<Variant>) -> lip::BoxedParser<'a, Option<Entry>, ()> {

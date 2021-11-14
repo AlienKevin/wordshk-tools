@@ -37,6 +37,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "indoc"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5a75aeaaef0ce18b58056d306c27b07436fbb34b8816c53094b76dd81803136"
+dependencies = [
+ "unindent",
+]
+
+[[package]]
 name = "itoa"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -88,10 +97,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8895849a949e7845e06bd6dc1aa51731a103c42707010a5b591c0038fb73385b"
 
 [[package]]
+name = "unindent"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f14ee04d9415b52b3aeab06258a3f07093182b88ba0f9b8d203f211a7a7d41c7"
+
+[[package]]
 name = "wordshk_tools"
 version = "0.1.0"
 dependencies = [
  "csv",
+ "indoc",
  "lazy_static",
  "lip",
 ]
