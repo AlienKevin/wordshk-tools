@@ -227,6 +227,27 @@ eng: Some(simple_clause("Gentlemen observe chess match with respectful silence. 
 fn test_parse_defs() {
     assert_succeed(
         parse_defs(),
+        "yue:a
+eng:a
+----
+yue:b
+eng:b",
+        vec![Def {
+            yue: simple_clause("a"),
+            eng: Some(simple_clause("a")),
+            alts: vec![],
+            egs: vec![],
+        },
+        Def {
+            yue: simple_clause("b"),
+            eng: Some(simple_clause("b")),
+            alts: vec![],
+            egs: vec![],
+        }]
+    );
+
+    assert_succeed(
+        parse_defs(),
         "<explanation>
 yue:表現不屑而發出嘅聲音
 eng:tsk

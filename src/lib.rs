@@ -401,6 +401,7 @@ pub fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Cl
         )),
         succeed!(|_| ()).skip(parse_br()).keep(one_of!(
             succeed!(|_| ()).keep(token("<eg>")),
+            succeed!(|_| ()).keep(token("----")),
             succeed!(|_| ())
                 .keep(chomp_ifc(|c| *c != '\r' && *c != '\n', "any char"))
                 .skip(chomp_ifc(|c| *c != '\r' && *c != '\n', "any char"))
@@ -654,7 +655,6 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
             .skip(optional(
                 (),
                 succeed!(|_| ())
-                    .skip(parse_br())
                     .keep(token("----"))
                     .skip(parse_br()),
             )),
