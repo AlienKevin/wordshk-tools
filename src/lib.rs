@@ -23,7 +23,7 @@ use std::io;
 use std::process;
 
 /// A dictionary is a list of entries
-type Dict = Vec<Entry>;
+pub type Dict = Vec<Entry>;
 
 /// An entry contains some information about a word.
 ///
@@ -46,7 +46,7 @@ type Dict = Vec<Entry>;
 /// \[defs\] a list of definitions for this word
 ///
 #[derive(Debug, PartialEq)]
-struct Entry {
+pub struct Entry {
     id: usize,
     variants: Vec<Variant>,
     poses: Vec<String>,
@@ -60,7 +60,7 @@ struct Entry {
 
 /// A variant of a \[word\] with \[prs\] (pronounciations)
 #[derive(Debug, Clone, PartialEq)]
-struct Variant {
+pub struct Variant {
     word: String,
     prs: Vec<String>,
 }
@@ -72,7 +72,7 @@ struct Variant {
 /// \[Link\] a link to another entry
 ///
 #[derive(Debug, Clone, PartialEq)]
-enum SegmentType {
+pub enum SegmentType {
     Text,
     Link,
 }
@@ -83,7 +83,7 @@ enum SegmentType {
 ///
 /// Link: A link to the entry 雞蛋 would be #雞蛋
 ///
-type Segment = (SegmentType, String);
+pub type Segment = (SegmentType, String);
 
 /// A line consists of one or more [Segment]s
 ///
@@ -93,7 +93,7 @@ type Segment = (SegmentType, String);
 ///
 /// Mixed line: `vec![(Text, "一種加入"), (Link, "蝦籽"), (Text, "整嘅廣東麪")]`
 ///
-type Line = Vec<Segment>;
+pub type Line = Vec<Segment>;
 
 /// A clause consists of one or more [Line]s. Appears in explanations and example sentences
 ///
@@ -101,7 +101,7 @@ type Line = Vec<Segment>;
 ///
 /// Multi-line clause: `vec![vec![(Text, "一行白鷺上青天")], vec![(Text, "兩個黃鸝鳴翠柳")]]`
 ///
-type Clause = Vec<Line>; // can be multiline
+pub type Clause = Vec<Line>; // can be multiline
 
 /// A definition of a word
 ///
@@ -116,7 +116,7 @@ type Clause = Vec<Line>; // can be multiline
 /// \[egs\] Example sentences usually with Jyutping pronunciations and English translations
 ///
 #[derive(Debug, PartialEq)]
-struct Def {
+pub struct Def {
     yue: Clause,
     eng: Option<Clause>,
     alts: Vec<AltClause>,
@@ -129,7 +129,7 @@ struct Def {
 ///
 /// \[[Clause]\] A sequence of texts and links
 ///
-type AltClause = (AltLang, Clause);
+pub type AltClause = (AltLang, Clause);
 
 /// Language tags for alternative languages other than Cantonese and English
 ///
@@ -138,7 +138,7 @@ type AltClause = (AltLang, Clause);
 /// [ISO 639-2]: https://www.loc.gov/standards/iso639-2/php/code_list.php
 ///
 #[derive(Debug, PartialEq)]
-enum AltLang {
+pub enum AltLang {
     Jpn, // Japanese
     Kor, // Korean
     Por, // Portuguese
@@ -156,7 +156,7 @@ enum AltLang {
 /// \[eng\] English example: Can we meet up?
 ///
 #[derive(Debug, Clone, PartialEq)]
-struct Eg {
+pub struct Eg {
     zho: Option<PrClause>,
     yue: Option<PrClause>,
     eng: Option<Clause>,
@@ -166,10 +166,10 @@ struct Eg {
 ///
 /// Eg: 可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
 ///
-type PrClause = (Clause, Option<String>);
+pub type PrClause = (Clause, Option<String>);
 
 /// Parse the whole words.hk CSV database into a [Dict]
-fn parse_dict() -> Result<Dict, Box<dyn Error>> {
+pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
     // Build the CSV reader and iterate over each record.
     let mut rdr = csv::Reader::from_reader(io::stdin());
     let mut dict: Dict = Vec::new();
@@ -242,7 +242,7 @@ fn parse_dict() -> Result<Dict, Box<dyn Error>> {
 ///
 /// `vec!["外來語", "潮語"]`
 ///
-fn parse_tags<'a>(name: &'static str) -> lip::BoxedParser<'a, Vec<String>, ()> {
+pub fn parse_tags<'a>(name: &'static str) -> lip::BoxedParser<'a, Vec<String>, ()> {
     return zero_or_more(
         succeed!(|tag| tag)
             .skip(token("("))
@@ -269,7 +269,7 @@ fn parse_br<'a>() -> lip::BoxedParser<'a, (), ()> {
 /// which parses to:
 ///
 /// `vec![vec![(Text, "My headphone cord was knotted.")]]`
-fn parse_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
+pub fn parse_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| vec!(clause)).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
             succeed!(|string| (SegmentType::Link, string))
                 .skip(token("#"))
@@ -295,7 +295,7 @@ fn parse_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
 ///
 /// `vec![vec![(Text, "My headphone cord was knotted.")]]`
 ///
-fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
+pub fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| clause)
         .skip(token(name))
         .skip(token(":"))
@@ -316,7 +316,7 @@ fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()
 ///
 /// `vec![vec![(Text, "可唔可以見面？")]]`
 ///
-fn parse_partial_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
+pub fn parse_partial_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| vec!(clause)).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
             succeed!(|string: String| (SegmentType::Link, string.trim_end().to_string()))
                 .skip(token("#"))
@@ -348,7 +348,7 @@ fn parse_partial_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Claus
 ///
 /// `vec![vec![(Text, "可唔可以見面？")]]`
 ///
-fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
+pub fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| clause)
         .skip(token(name))
         .skip(token(":"))
@@ -365,7 +365,7 @@ fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a,
 ///
 /// `vec![vec![(Text, "My headphone cord was knotted.")]]`
 ///
-fn parse_eng_clause<'a>() -> lip::BoxedParser<'a, Clause, ()> {
+pub fn parse_eng_clause<'a>() -> lip::BoxedParser<'a, Clause, ()> {
     parse_named_clause("eng")
 }
 
@@ -381,7 +381,7 @@ fn parse_eng_clause<'a>() -> lip::BoxedParser<'a, Clause, ()> {
 ///
 /// `vec![vec![(Text, "一行白鷺上青天")], vec![(Text, "兩個黃鸝鳴翠柳")]]`
 ///
-fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
+pub fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|first_line: Clause, lines: Clause| {
         let mut all_lines = first_line;
         all_lines.extend(lines);
@@ -421,7 +421,7 @@ fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause
 ///
 /// `(AltLang::Jpn, vec![vec![(Text, "年画；ねんが")]])`
 ///
-fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
+pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
     (succeed!(|alt_lang: Located<String>, clause: Clause| (alt_lang, clause))
         .keep(located(take_chomped(chomp_while1c(
             |c: &char| *c != ':',
@@ -458,7 +458,7 @@ fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
 ///
 /// `(vec![vec![(Text, 我個耳筒繑埋咗一嚿。)]], Some("ngo5 go3 ji5 tung2 kiu5 maai4 zo2 jat1 gau6."))`
 ///
-fn parse_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, PrClause, ()> {
+pub fn parse_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, PrClause, ()> {
     succeed!(|clause, pr| (clause, pr))
         .keep(parse_partial_pr_named_clause(name))
         .keep(optional(
@@ -491,7 +491,7 @@ fn parse_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, PrClause, ()>
 /// }
 /// ```
 ///
-fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
+pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
     succeed!(|zho, yue, eng| Eg { zho, yue, eng })
         .skip(token("<eg>"))
         .skip(parse_br())
@@ -549,7 +549,7 @@ fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
 /// }
 /// ```
 ///
-fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
+pub fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
     succeed!(|yue, eng, alts, egs| Def {
         yue,
         eng,
@@ -590,7 +590,7 @@ fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
 /// }
 /// ```
 ///
-fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
+pub fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
     succeed!(|yue, eng, alts| Def {
         yue,
         eng,
@@ -647,7 +647,7 @@ fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
 /// ]
 /// ```
 ///
-fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
+pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
     succeed!(|defs| defs).keep(one_or_more(
         succeed!(|def| def)
             .keep(one_of!(parse_simple_def(), parse_rich_def()))
@@ -691,7 +691,7 @@ fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 /// })
 /// ```
 ///
-fn parse_content<'a>(id: usize, variants: Vec<Variant>) -> lip::BoxedParser<'a, Option<Entry>, ()> {
+pub fn parse_content<'a>(id: usize, variants: Vec<Variant>) -> lip::BoxedParser<'a, Option<Entry>, ()> {
     one_of!(
         succeed!(|poses, labels, sims, ants, refs, imgs, defs| Some(Entry {
             id,
