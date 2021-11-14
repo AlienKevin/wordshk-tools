@@ -47,22 +47,22 @@ pub type Dict = Vec<Entry>;
 ///
 #[derive(Debug, PartialEq)]
 pub struct Entry {
-    id: usize,
-    variants: Vec<Variant>,
-    poses: Vec<String>,
-    labels: Vec<String>,
-    sims: Vec<String>,
-    ants: Vec<String>,
-    refs: Vec<String>,
-    imgs: Vec<String>,
-    defs: Vec<Def>,
+    pub id: usize,
+    pub variants: Vec<Variant>,
+    pub poses: Vec<String>,
+    pub labels: Vec<String>,
+    pub sims: Vec<String>,
+    pub ants: Vec<String>,
+    pub refs: Vec<String>,
+    pub imgs: Vec<String>,
+    pub defs: Vec<Def>,
 }
 
 /// A variant of a \[word\] with \[prs\] (pronounciations)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variant {
-    word: String,
-    prs: Vec<String>,
+    pub word: String,
+    pub prs: Vec<String>,
 }
 
 /// Two types of segments: text or link. See [Segment]
@@ -117,10 +117,10 @@ pub type Clause = Vec<Line>; // can be multiline
 ///
 #[derive(Debug, PartialEq)]
 pub struct Def {
-    yue: Clause,
-    eng: Option<Clause>,
-    alts: Vec<AltClause>,
-    egs: Vec<Eg>,
+    pub yue: Clause,
+    pub eng: Option<Clause>,
+    pub alts: Vec<AltClause>,
+    pub egs: Vec<Eg>,
 }
 
 /// A clause in an alternative language other than Cantonese and English
@@ -157,9 +157,9 @@ pub enum AltLang {
 ///
 #[derive(Debug, Clone, PartialEq)]
 pub struct Eg {
-    zho: Option<PrClause>,
-    yue: Option<PrClause>,
-    eng: Option<Clause>,
+    pub zho: Option<PrClause>,
+    pub yue: Option<PrClause>,
+    pub eng: Option<Clause>,
 }
 
 /// An example sentence with optional Jyutping pronunciation
