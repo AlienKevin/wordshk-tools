@@ -355,20 +355,6 @@ pub fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser
         .keep(parse_partial_pr_clause(name))
 }
 
-/// Parse an English [Clause]
-///
-/// For example, here's an English clause:
-///
-/// eng:My headphone cord was knotted.
-///
-/// which parses to:
-///
-/// `vec![vec![(Text, "My headphone cord was knotted.")]]`
-///
-pub fn parse_eng_clause<'a>() -> lip::BoxedParser<'a, Clause, ()> {
-    parse_named_clause("eng")
-}
-
 /// Parse a multiline clause
 ///
 /// For example, here's a multiline clause:
@@ -515,7 +501,7 @@ pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
                 .keep(parse_pr_clause("yue"))
                 .skip(optional((), parse_br())),
         ))
-        .keep(optional(None, succeed!(Some).keep(parse_eng_clause())))
+        .keep(optional(None, succeed!(Some).keep(parse_named_clause("eng"))))
         .skip(optional((), parse_br()))
 }
 
