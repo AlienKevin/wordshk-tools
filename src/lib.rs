@@ -236,11 +236,18 @@ pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
 ///
 /// For example, here's the label tags of the word 佛系:
 ///
+/// ```
+/// # use wordshk_tools::*;
+/// # let source = indoc::indoc! {"
 /// (label:外來語)(label:潮語)
+/// # "};
 ///
-/// which parses to:
-///
-/// `vec!["外來語", "潮語"]`
+/// // which parses to:
+/// 
+/// # lip::assert_succeed(parse_tags("label"), source,
+/// vec!["外來語".into(), "潮語".into()]
+/// # );
+/// ```
 ///
 pub fn parse_tags<'a>(name: &'static str) -> lip::BoxedParser<'a, Vec<String>, ()> {
     return zero_or_more(
@@ -264,11 +271,19 @@ fn parse_br<'a>() -> lip::BoxedParser<'a, (), ()> {
 ///
 /// For example, here's an English clause:
 ///
+/// ```
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # let source = indoc::indoc! {"
 /// My headphone cord was knotted.
+/// # "};
 ///
-/// which parses to:
+/// // which parses to:
 ///
-/// `vec![vec![(Text, "My headphone cord was knotted.")]]`
+/// # lip::assert_succeed(parse_clause("eng"), source,
+/// vec![vec![(Text, "My headphone cord was knotted.".into())]]
+/// # );
+/// ```
 pub fn parse_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| vec!(clause)).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
             succeed!(|string| (SegmentType::Link, string))
@@ -289,11 +304,19 @@ pub fn parse_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> 
 ///
 /// For example, here's an English clause:
 ///
+/// ```
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # let source = indoc::indoc! {"
 /// eng:My headphone cord was knotted.
+/// # "};
 ///
-/// which parses to:
+/// // which parses to:
 ///
-/// `vec![vec![(Text, "My headphone cord was knotted.")]]`
+/// # lip::assert_succeed(parse_named_clause("eng"), source,
+/// vec![vec![(Text, "My headphone cord was knotted.".into())]]
+/// # );
+/// ```
 ///
 pub fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| clause)
@@ -310,11 +333,19 @@ pub fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause
 ///
 /// This function will parse everything up until the '(':
 ///
+/// ```
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # let source = indoc::indoc! {"
 /// 可唔可以見面？
+/// # "};
 ///
-/// which parses to:
+/// // which parses to:
 ///
-/// `vec![vec![(Text, "可唔可以見面？")]]`
+/// # lip::assert_succeed(parse_partial_pr_clause("yue"), source,
+/// vec![vec![(Text, "可唔可以見面？".into())]]
+/// # );
+/// ```
 ///
 pub fn parse_partial_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| vec!(clause)).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
@@ -342,11 +373,18 @@ pub fn parse_partial_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, C
 ///
 /// This function will parse everything up until the '(':
 ///
+/// ```
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # let source = indoc::indoc! {"
 /// yue:可唔可以見面？
+/// # "};
 ///
-/// which parses to:
+/// // which parses to:
 ///
-/// `vec![vec![(Text, "可唔可以見面？")]]`
+/// # lip::assert_succeed(parse_partial_pr_named_clause("yue"), source,
+/// vec![vec![(Text, "可唔可以見面？".into())]]
+/// # );
 ///
 pub fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| clause)
@@ -359,13 +397,19 @@ pub fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser
 ///
 /// For example, here's a multiline clause:
 ///
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # let source = indoc::indoc! {"
 /// 一行白鷺上青天
 ///
 /// 兩個黃鸝鳴翠柳
+/// # "};
 ///
-/// which parses to:
+/// // which parses to:
 ///
-/// `vec![vec![(Text, "一行白鷺上青天")], vec![(Text, "兩個黃鸝鳴翠柳")]]`
+/// # lip::assert_succeed(parse_eg(), source,
+/// vec![vec![(Text, "一行白鷺上青天".into())], vec![(Text, "兩個黃鸝鳴翠柳".into())]]
+/// # );
 ///
 pub fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|first_line: Clause, lines: Clause| {
@@ -402,11 +446,19 @@ pub fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Cl
 ///
 /// For example, here's a Japanese clause:
 ///
+/// ```
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # use wordshk_tools::AltLang;
+/// # let source = indoc::indoc! {"
 /// jpn:年画；ねんが
+/// # "};
 ///
-/// which parses to:
+/// // which parses to:
 ///
-/// `(AltLang::Jpn, vec![vec![(Text, "年画；ねんが")]])`
+/// # lip::assert_succeed(parse_alt_clause(), source,
+/// (AltLang::Jpn, vec![vec![(Text, "年画；ねんが".into())]])
+/// # );
 ///
 pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
     (succeed!(|alt_lang: Located<String>, clause: Clause| (alt_lang, clause))
@@ -439,11 +491,17 @@ pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
 ///
 /// For example, here's a Cantonese pronunciation clause:
 ///
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # let source = indoc::indoc! {"
 /// yue:我個耳筒繑埋咗一嚿。 (ngo5 go3 ji5 tung2 kiu5 maai4 zo2 jat1 gau6.)
+/// # "};
 ///
-/// which parses to:
+/// // which parses to:
 ///
-/// `(vec![vec![(Text, 我個耳筒繑埋咗一嚿。)]], Some("ngo5 go3 ji5 tung2 kiu5 maai4 zo2 jat1 gau6."))`
+/// # lip::assert_succeed(parse_pr_clause(), source,
+/// (vec![vec![(Text, "我個耳筒繑埋咗一嚿。".into())]], Some("ngo5 go3 ji5 tung2 kiu5 maai4 zo2 jat1 gau6.".into()))
+/// # );
 ///
 pub fn parse_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, PrClause, ()> {
     succeed!(|clause, pr| (clause, pr))
