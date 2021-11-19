@@ -211,18 +211,18 @@ pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
                         ..
                     } => content_result,
                     ParseResult::Err { message, .. } => {
-                        println!("Error in #{}: {:?}", id, message);
+                        // println!("Error in #{}: {:?}", id, message);
                         None
                     }
                 },
                 ParseResult::Err { message, .. } => {
-                    println!("Error in #{}: {:?}", id, message);
+                    // println!("Error in #{}: {:?}", id, message);
                     None
                 }
             };
             match entry {
                 Some(e) => {
-                    println!("{:?}", e);
+                    // println!("{:?}", e);
                     dict.push(e);
                 }
                 None => {}
