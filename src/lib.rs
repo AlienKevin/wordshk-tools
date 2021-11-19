@@ -243,7 +243,7 @@ pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
 /// # "};
 ///
 /// // which parses to:
-/// 
+///
 /// # lip::assert_succeed(parse_tags("label"), source,
 /// vec!["外來語".into(), "潮語".into()]
 /// # );
@@ -559,7 +559,10 @@ pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
                 .keep(parse_pr_clause("yue"))
                 .skip(optional((), parse_br())),
         ))
-        .keep(optional(None, succeed!(Some).keep(parse_named_clause("eng"))))
+        .keep(optional(
+            None,
+            succeed!(Some).keep(parse_named_clause("eng")),
+        ))
         .skip(optional((), parse_br()))
 }
 
@@ -676,7 +679,7 @@ pub fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
 /// Parse a series of definitions for a word, separated by "\-\-\-\-"
 ///
 /// For example, here's a series of definitions for the word 兄
-/// 
+///
 /// ```
 /// # use wordshk_tools::*;
 /// # use wordshk_tools::SegmentType::*;
@@ -724,9 +727,7 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
             .keep(one_of!(parse_simple_def(), parse_rich_def()))
             .skip(optional(
                 (),
-                succeed!(|_| ())
-                    .keep(token("----"))
-                    .skip(parse_br()),
+                succeed!(|_| ()).keep(token("----")).skip(parse_br()),
             )),
     ))
 }
@@ -747,12 +748,12 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 /// eng:cheer up
 /// jpn:頑張って（がんばって）
 /// # "};
-/// 
+///
 /// let id = 98634;
 /// let variants = vec![(Variant {word: "奸爸爹".into(), prs: vec!["gaan1 baa1 de1".into()]})];
-/// 
+///
 /// // which parses to:
-/// 
+///
 /// # lip::assert_succeed(parse_content(id, variants.clone()), source,
 /// Some(Entry {
 /// id: id,
@@ -773,7 +774,10 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 /// # );
 /// ```
 ///
-pub fn parse_content<'a>(id: usize, variants: Vec<Variant>) -> lip::BoxedParser<'a, Option<Entry>, ()> {
+pub fn parse_content<'a>(
+    id: usize,
+    variants: Vec<Variant>,
+) -> lip::BoxedParser<'a, Option<Entry>, ()> {
     one_of!(
         succeed!(|poses, labels, sims, ants, refs, imgs, defs| Some(Entry {
             id,
