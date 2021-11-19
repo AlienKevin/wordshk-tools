@@ -14,6 +14,7 @@
 #[macro_use]
 mod tests;
 
+use indoc::indoc;
 use lazy_static::lazy_static;
 use lip::ParseResult;
 use lip::*;
@@ -137,7 +138,7 @@ pub type AltClause = (AltLang, Clause);
 ///
 /// [ISO 639-2]: https://www.loc.gov/standards/iso639-2/php/code_list.php
 ///
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum AltLang {
     Jpn, // Japanese
     Kor, // Korean
@@ -821,9 +822,176 @@ fn is_punctuation(c: char) -> bool {
     PUNCTUATIONS.contains(&c)
 }
 
-fn main() {
-    if let Err(err) = parse_dict() {
-        println!("error reading csv file: {}", err);
-        process::exit(1);
+fn xml_escape(s: &String) -> String {
+    s.replace("<", "&lt;").replace("&", "&amp;")
+}
+
+fn to_apple_clause(clause: &Clause) -> String {
+    let dict_bundle_id = "wordshk";
+    clause
+        .iter()
+        .map(|line| {
+            line.iter()
+                .map(|(seg_type, seg)| match seg_type {
+                    SegmentType::Text => xml_escape(seg),
+                    SegmentType::Link => format!(
+                        r#"<a href="x-dictionary:d:{word}:{dict_id}">{word}</a>"#,
+                        word = xml_escape(seg),
+                        dict_id = dict_bundle_id
+                    ),
+                })
+                .collect::<Vec<String>>()
+                .join("")
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
+fn to_apple_pr_clause((clause, pr): &PrClause) -> String {
+    to_apple_clause(clause) + "\n" + &pr.clone().unwrap_or("".to_string())
+}
+
+fn to_yue_lang_name(lang: AltLang) -> String {
+    match lang {
+        AltLang::Jpn => "日文",
+        AltLang::Kor => "韓文",
+        AltLang::Por => "葡萄牙文",
+        AltLang::Vie => "越南文",
+        AltLang::Lat => "拉丁文",
+        AltLang::Fra => "法文",
     }
+    .to_string()
+}
+
+pub fn to_apple_dict(dict: Dict) -> String {
+    let header = r#"<?xml version="1.0" encoding="UTF-8"?>
+<d:dictionary xmlns="http://www.w3.org/1999/xhtml" xmlns:d="http://www.apple.com/DTDs/DictionaryService-1.0.rng">
+<d:entry id="front_back_matter" d:title="Front/Back Matter">
+	<h1><b>words.hk 粵典</b></h1>
+	<h2>Front/Back Matter</h2>
+	<div>
+		This is a front matter page of the words.hk dictionary.<br/><br/>
+	</div>
+	<div>
+		<b>To see</b> this page,
+		<ol>
+			<li>Open "Go" menu.</li>
+			<li>Choose "Front/Back Matter" menu item. 
+			If it has sub-menu items, choose one of them.</li>
+		</ol>
+	</div>
+	<div>
+        <span>© 2021 香港辭書有限公司</span>
+        <span>《粵典》部份內容會用以下嘅授權協議開放俾公眾使用。呢啲內容嘅版權持有人係《香港辭書有限公司》。</span>
+        <span>https://words.hk/base/hoifong/</span>
+	</div>
+	<br/>
+</d:entry>
+"#;
+
+    let entries = dict
+        .iter()
+        .map(|entry| {
+            let entry_str = format!(
+                indoc! {r#"
+                <d:entry id="{id}" d:title="{variant_0_word}">
+                {variants_index}
+                {variants_word_pr}
+                {tags}
+                <div>
+                {defs}
+                </div>
+                </d:entry>"#},
+                id = entry.id,
+                variant_0_word = entry.variants[0].word,
+                variants_index = entry
+                    .variants
+                    .iter()
+                    .map(|variant| {
+                        format!(
+                            r#"<d:index d:value="{}" d:pr="{}"/>"#,
+                            variant.word,
+                            variant.prs.join(", ")
+                        )
+                    })
+                    .collect::<Vec<String>>()
+                    .join("\n"),
+                variants_word_pr = entry
+                    .variants
+                    .iter()
+                    .map(|variant| {
+                        format!(
+                            indoc! {r#"<div>
+                            <span d:priority="2"><b>{}</b></span>
+                            <span class="syntax"><span d:pr="JYUTPING">{}</span></span>
+                            </div>"#},
+                            variant.word,
+                            variant.prs.join(", ")
+                        )
+                    })
+                    .collect::<Vec<String>>()
+                    .join("\n"),
+                tags = "<div>\n".to_string()
+            + &format!("<span>詞性：{}</span>\n", entry.poses.join(", "))
+            + &format!("<span>標籤：{}</span>\n", entry.labels.join(", "))
+            + &format!("<span>近義：{}</span>\n", entry.sims.join(", "))
+            + &format!("<span>反義：{}</span>\n", entry.ants.join(", "))
+            // TODO: add refs
+            // TODO: add imgs
+            + "</div>",
+                defs = "<ol>\n".to_string()
+                    + &entry
+                        .defs
+                        .iter()
+                        .map(|def| {
+                            "<li>\n".to_string()
+                                + &format!("<div>（粵）{}</div>\n", to_apple_clause(&def.yue))
+                                + &def.eng.clone().map_or("".to_string(), |eng| {
+                                    format!("<div>（英）{}</div>\n", to_apple_clause(&eng))
+                                })
+                                + &def
+                                    .alts
+                                    .iter()
+                                    .map(|(lang, clause)| {
+                                        format!(
+                                            "<div>（{lang_name}）{clause}</div>\n",
+                                            lang_name = to_yue_lang_name(*lang),
+                                            clause = to_apple_clause(clause)
+                                        )
+                                    })
+                                    .collect::<Vec<String>>()
+                                    .join("")
+                                + if def.egs.len() > 0 { "例子：\n" } else { "" }
+                                + &def
+                                    .egs
+                                    .iter()
+                                    .map(|eg| {
+                                        eg.zho.clone().map_or("".to_string(), |zho| {
+                                            format!(
+                                                "<div>（中）{}</div>\n",
+                                                to_apple_pr_clause(&zho)
+                                            )
+                                        }) + &eg.yue.clone().map_or("".to_string(), |yue| {
+                                            format!(
+                                                "<div>（粵）{}</div>\n",
+                                                to_apple_pr_clause(&yue)
+                                            )
+                                        }) + &eg.eng.clone().map_or("".to_string(), |eng| {
+                                            format!("<div>（英）{}</div>\n", to_apple_clause(&eng))
+                                        })
+                                    })
+                                    .collect::<Vec<String>>()
+                                    .join("\n")
+                                + "</li>\n"
+                        })
+                        .collect::<Vec<String>>()
+                        .join("\n")
+                    + "</ol>"
+            );
+
+            entry_str
+        })
+        .collect::<Vec<String>>()
+        .join("\n\n");
+    header.to_string() + &entries + "\n</d:dictionary>\n"
 }
