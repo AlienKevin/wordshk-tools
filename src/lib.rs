@@ -387,6 +387,7 @@ pub fn parse_partial_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, C
 /// # lip::assert_succeed(parse_partial_pr_named_clause("yue"), source,
 /// vec![vec![(Text, "可唔可以見面？".into())]]
 /// # );
+/// ```
 ///
 pub fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|clause| clause)
@@ -399,6 +400,7 @@ pub fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser
 ///
 /// For example, here's a multiline clause:
 ///
+/// ```
 /// # use wordshk_tools::*;
 /// # use wordshk_tools::SegmentType::*;
 /// # let source = indoc::indoc! {"
@@ -412,6 +414,7 @@ pub fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser
 /// # lip::assert_succeed(parse_eg(), source,
 /// vec![vec![(Text, "一行白鷺上青天".into())], vec![(Text, "兩個黃鸝鳴翠柳".into())]]
 /// # );
+/// ```
 ///
 pub fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(|first_line: Clause, lines: Clause| {
@@ -461,6 +464,7 @@ pub fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Cl
 /// # lip::assert_succeed(parse_alt_clause(), source,
 /// (AltLang::Jpn, vec![vec![(Text, "年画；ねんが".into())]])
 /// # );
+/// ```
 ///
 pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
     (succeed!(|alt_lang: Located<String>, clause: Clause| (alt_lang, clause))
@@ -493,6 +497,7 @@ pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
 ///
 /// For example, here's a Cantonese pronunciation clause:
 ///
+/// ```
 /// # use wordshk_tools::*;
 /// # use wordshk_tools::SegmentType::*;
 /// # let source = indoc::indoc! {"
@@ -504,6 +509,7 @@ pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
 /// # lip::assert_succeed(parse_pr_clause(), source,
 /// (vec![vec![(Text, "我個耳筒繑埋咗一嚿。".into())]], Some("ngo5 go3 ji5 tung2 kiu5 maai4 zo2 jat1 gau6.".into()))
 /// # );
+/// ```
 ///
 pub fn parse_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, PrClause, ()> {
     succeed!(|clause, pr| (clause, pr))
