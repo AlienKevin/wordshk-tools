@@ -22,6 +22,7 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::io;
 use std::process;
+use std::fs;
 
 /// A dictionary is a list of entries
 pub type Dict = Vec<Entry>;
@@ -867,30 +868,16 @@ fn to_yue_lang_name(lang: AltLang) -> String {
 }
 
 pub fn to_apple_dict(dict: Dict) -> String {
-    let header = r#"<?xml version="1.0" encoding="UTF-8"?>
+    let front_back_matter_filename = "wordshk_apple/front_back_matter.html";
+    let front_back_matter = fs::read_to_string(front_back_matter_filename)
+        .expect(&format!("Something went wrong when I tried to read {}", front_back_matter_filename));
+    
+    let header = format!(r#"<?xml version="1.0" encoding="UTF-8"?>
 <d:dictionary xmlns="http://www.w3.org/1999/xhtml" xmlns:d="http://www.apple.com/DTDs/DictionaryService-1.0.rng">
 <d:entry id="front_back_matter" d:title="Front/Back Matter">
-	<h1><b>words.hk 粵典</b></h1>
-	<h2>Front/Back Matter</h2>
-	<div>
-		This is a front matter page of the words.hk dictionary.<br/><br/>
-	</div>
-	<div>
-		<b>To see</b> this page,
-		<ol>
-			<li>Open "Go" menu.</li>
-			<li>Choose "Front/Back Matter" menu item. 
-			If it has sub-menu items, choose one of them.</li>
-		</ol>
-	</div>
-	<div>
-        <span>© 2021 香港辭書有限公司</span>
-        <span>《粵典》部份內容會用以下嘅授權協議開放俾公眾使用。呢啲內容嘅版權持有人係《香港辭書有限公司》。</span>
-        <span>https://words.hk/base/hoifong/</span>
-	</div>
-	<br/>
+{}
 </d:entry>
-"#;
+"#, front_back_matter);
 
     let entries = dict
         .iter()
