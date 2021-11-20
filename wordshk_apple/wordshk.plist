@@ -3,11 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>English</string>
+	<string>Cantonese</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.hkll.dictionary.wordshk</string>
 	<key>CFBundleName</key>
-	<string>wordshk</string>
+	<string>粵典</string>
+	<key>CFBundleDisplayName</key>
+	<string>粵典 words.hk</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>DCSDictionaryCopyright</key>

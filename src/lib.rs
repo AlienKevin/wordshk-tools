@@ -848,7 +848,10 @@ fn to_apple_clause(clause: &Clause) -> String {
 }
 
 fn to_apple_pr_clause((clause, pr): &PrClause) -> String {
-    to_apple_clause(clause) + "\n" + &pr.clone().unwrap_or("".to_string())
+    to_apple_clause(clause)
+        + &pr.clone().map_or("".to_string(), |pr| {
+            "\n<div class=\"jyutping\">　┣　".to_string() + &pr + "</div>"
+        })
 }
 
 fn to_yue_lang_name(lang: AltLang) -> String {
@@ -922,8 +925,8 @@ pub fn to_apple_dict(dict: Dict) -> String {
                     .map(|variant| {
                         format!(
                             indoc! {r#"<div>
-                            <span d:priority="2"><b>{}</b></span>
-                            <span class="syntax"><span d:pr="JYUTPING">{}</span></span>
+                            <span d:priority="2"><h1>{}</h1></span>
+                            <span class="prs"><span d:pr="JYUTPING">{}</span></span>
                             </div>"#},
                             variant.word,
                             variant.prs.join(", ")
@@ -931,12 +934,12 @@ pub fn to_apple_dict(dict: Dict) -> String {
                     })
                     .collect::<Vec<String>>()
                     .join("\n"),
-                tags = "<div>\n".to_string()
-            + &format!("<span>詞性：{}</span>\n", entry.poses.join(", "))
-            + &format!("<span>標籤：{}</span>\n", entry.labels.join(", "))
-            + &format!("<span>近義：{}</span>\n", entry.sims.join(", "))
-            + &format!("<span>反義：{}</span>\n", entry.ants.join(", "))
-            // TODO: add refs
+                tags = "<div class=\"tags\">\n".to_string()
+            + &(if entry.poses.len() > 0 { format!("<span>詞性:{}</span>\n", entry.poses.join(", ")) } else { "".to_string() })
+            + &(if entry.labels.len() > 0 { format!("<span> | 標籤:{}</span>\n", entry.labels.join(", ")) } else { "".to_string() })
+            + &(if entry.sims.len() > 0 { format!("<span> | 近義:{}</span>\n", entry.sims.join(", ")) } else { "".to_string() })
+            + &(if entry.ants.len() > 0 { format!("<span> | 反義:{}</span>\n", entry.ants.join(", ")) } else { "".to_string() })
+            // TODO: add refs 
             // TODO: add imgs
             + "</div>",
                 defs = "<ol>\n".to_string()
@@ -945,10 +948,12 @@ pub fn to_apple_dict(dict: Dict) -> String {
                         .iter()
                         .map(|def| {
                             "<li>\n".to_string()
-                                + &format!("<div>（粵）{}</div>\n", to_apple_clause(&def.yue))
+                                + "<div class=\"def-head\">\n"
+                                + &format!("<div><b>【粵】{}</b></div>\n", to_apple_clause(&def.yue))
                                 + &def.eng.clone().map_or("".to_string(), |eng| {
-                                    format!("<div>（英）{}</div>\n", to_apple_clause(&eng))
+                                    format!("<div><b>【英】{}</b></div>\n", to_apple_clause(&eng))
                                 })
+                                + "</div>\n"
                                 + &def
                                     .alts
                                     .iter()
@@ -961,12 +966,12 @@ pub fn to_apple_dict(dict: Dict) -> String {
                                     })
                                     .collect::<Vec<String>>()
                                     .join("")
-                                + if def.egs.len() > 0 { "例子：\n" } else { "" }
                                 + &def
                                     .egs
                                     .iter()
                                     .map(|eg| {
-                                        eg.zho.clone().map_or("".to_string(), |zho| {
+                                        "<div class=\"eg\">\n".to_string()
+                                        + &eg.zho.clone().map_or("".to_string(), |zho| {
                                             format!(
                                                 "<div>（中）{}</div>\n",
                                                 to_apple_pr_clause(&zho)
@@ -979,6 +984,7 @@ pub fn to_apple_dict(dict: Dict) -> String {
                                         }) + &eg.eng.clone().map_or("".to_string(), |eng| {
                                             format!("<div>（英）{}</div>\n", to_apple_clause(&eng))
                                         })
+                                        + "</div>"
                                     })
                                     .collect::<Vec<String>>()
                                     .join("\n")
