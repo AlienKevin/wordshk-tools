@@ -14,6 +14,15 @@ fn simple_clause(string: &'static str) -> Clause {
 
 #[cfg(test)]
 #[test]
+fn test_parse_clause() {
+    assert_succeed(
+        parse_clause("yue"),
+        "《#ABC》入面有#一個、#兩個 同埋#三個：字母",
+        vec![vec![text("《"), link("ABC"), text("》入面有"), link("一個"), text("、"), link("兩個"), text("同埋"), link("三個"), text("：字母")]]
+    );
+}
+
+#[test]
 fn test_parse_pr() {
     assert_succeed(
         parse_pr_clause("yue"),
