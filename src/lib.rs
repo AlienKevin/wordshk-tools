@@ -935,10 +935,10 @@ pub fn to_apple_dict(dict: Dict) -> String {
                     .collect::<Vec<String>>()
                     .join("\n"),
                 tags = "<div class=\"tags\">\n".to_string()
-            + &(if entry.poses.len() > 0 { format!("<span>詞性:{}</span>\n", entry.poses.join(", ")) } else { "".to_string() })
-            + &(if entry.labels.len() > 0 { format!("<span> | 標籤:{}</span>\n", entry.labels.join(", ")) } else { "".to_string() })
-            + &(if entry.sims.len() > 0 { format!("<span> | 近義:{}</span>\n", entry.sims.join(", ")) } else { "".to_string() })
-            + &(if entry.ants.len() > 0 { format!("<span> | 反義:{}</span>\n", entry.ants.join(", ")) } else { "".to_string() })
+            + &(if entry.poses.len() > 0 { format!("<span>詞性：{}</span>\n", entry.poses.join("，")) } else { "".to_string() })
+            + &(if entry.labels.len() > 0 { format!("<span> ｜ 標籤：{}</span>\n", entry.labels.join("，")) } else { "".to_string() })
+            + &(if entry.sims.len() > 0 { format!("<span> ｜ 近義：{}</span>\n", entry.sims.join("，")) } else { "".to_string() })
+            + &(if entry.ants.len() > 0 { format!("<span> ｜ 反義：{}</span>\n", entry.ants.join("，")) } else { "".to_string() })
             // TODO: add refs 
             // TODO: add imgs
             + "</div>",
@@ -953,19 +953,19 @@ pub fn to_apple_dict(dict: Dict) -> String {
                                 + &def.eng.clone().map_or("".to_string(), |eng| {
                                     format!("<div><b>【英】{}</b></div>\n", to_apple_clause(&eng))
                                 })
-                                + "</div>\n"
                                 + &def
                                     .alts
                                     .iter()
                                     .map(|(lang, clause)| {
                                         format!(
-                                            "<div>（{lang_name}）{clause}</div>\n",
+                                            "<div>【{lang_name}】{clause}</div>\n",
                                             lang_name = to_yue_lang_name(*lang),
                                             clause = to_apple_clause(clause)
                                         )
                                     })
                                     .collect::<Vec<String>>()
                                     .join("")
+                                + "</div>\n"
                                 + &def
                                     .egs
                                     .iter()
