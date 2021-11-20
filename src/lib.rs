@@ -819,14 +819,17 @@ lazy_static! {
     };
 }
 
+/// Test whether a character is a Chinese/English punctuation
 fn is_punctuation(c: char) -> bool {
     PUNCTUATIONS.contains(&c)
 }
 
+/// Escape '<' and '&' in an XML string
 fn xml_escape(s: &String) -> String {
     s.replace("<", "&lt;").replace("&", "&amp;")
 }
 
+/// Convert a [Clause] to an Apple Dictionary XML string
 fn to_apple_clause(clause: &Clause) -> String {
     let dict_bundle_id = "wordshk";
     clause
@@ -848,6 +851,7 @@ fn to_apple_clause(clause: &Clause) -> String {
         .join("\n")
 }
 
+/// Convert a [PrClause] to an Apple Dictionary XML string
 fn to_apple_pr_clause((clause, pr): &PrClause) -> String {
     to_apple_clause(clause)
         + &pr.clone().map_or("".to_string(), |pr| {
@@ -855,6 +859,7 @@ fn to_apple_pr_clause((clause, pr): &PrClause) -> String {
         })
 }
 
+/// Convert [AltLang] to a language name in Cantonese
 fn to_yue_lang_name(lang: AltLang) -> String {
     match lang {
         AltLang::Jpn => "日文",
@@ -867,6 +872,7 @@ fn to_yue_lang_name(lang: AltLang) -> String {
     .to_string()
 }
 
+/// Convert a [Dict] to Apple Dictionary XML format
 pub fn to_apple_dict(dict: Dict) -> String {
     let front_back_matter_filename = "wordshk_apple/front_back_matter.html";
     let front_back_matter = fs::read_to_string(front_back_matter_filename)
