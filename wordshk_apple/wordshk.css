@@ -23,7 +23,7 @@ div.tags {
 }
 
 div.jyutping {
-    color :#c0c0c0;
+    color :#959595;
 }
 
 div.def-head {
@@ -48,5 +48,9 @@ span.column {
 {
 	body {
 		color: white;
+	}
+
+	div.jyutping {
+		color : #c0c0c0;
 	}
 }
