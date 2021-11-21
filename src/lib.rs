@@ -919,9 +919,35 @@ pub fn to_apple_dict(dict: Dict) -> String {
                     .map(|variant| {
                         let prs = variant.prs.join(", ");
                         format!(
-                            r#"<d:index d:value="{}" d:pr="{}"/>"#,
-                            variant.word.clone() + " " + &prs,
-                            prs
+                            indoc!{r#"<d:index d:value="{word}" d:pr="{prs}"/>
+                            {pr_indices}"#},
+                            word = variant.word,
+                            prs = prs,
+                            pr_indices = variant.prs.iter().map(|pr| {
+                                let word_and_pr = variant.word.clone() + " " + &pr;
+                                format!(r#"<d:index d:value="{pr}" d:title="{word_and_pr}" d:priority="2"/>{simple_pr}"#,
+                                    pr = pr,
+                                    word_and_pr = word_and_pr,
+                                    simple_pr = {
+                                        let simple_pr = pr.split_whitespace().map(|seg|
+                                            if seg.chars().last().unwrap().is_digit(10) {
+                                                let mut chars = seg.chars();
+                                                chars.next_back();
+                                                chars.as_str()
+                                            } else {
+                                                seg
+                                            }).collect::<Vec<&str>>().join(" ");
+                                        if simple_pr == *pr {
+                                            "".to_string()
+                                        } else {
+                                            format!(r#"<d:index d:value="{simple_pr}" d:title="{word_and_pr}" d:priority="2"/>"#,
+                                                simple_pr = simple_pr,
+                                                word_and_pr = word_and_pr
+                                            )
+                                        }
+                                    })
+                                }
+                            ).collect::<Vec<String>>().join("\n")
                         )
                     })
                     .collect::<Vec<String>>()
