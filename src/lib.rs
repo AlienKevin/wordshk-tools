@@ -20,9 +20,9 @@ use lip::ParseResult;
 use lip::*;
 use std::collections::HashSet;
 use std::error::Error;
+use std::fs;
 use std::io;
 use std::process;
-use std::fs;
 
 /// A dictionary is a list of entries
 pub type Dict = Vec<Entry>;
@@ -838,33 +838,38 @@ fn xml_escape(s: &String) -> String {
 /// Convert a [Clause] to an Apple Dictionary XML string
 fn to_apple_clause(clause: &Clause) -> String {
     let dict_bundle_id = "wordshk";
-    format!("<div class=\"clause\">{}</div>",
-    clause
-        .iter()
-        .map(|line| {
-            line.iter()
-                .map(|(seg_type, seg)| match seg_type {
-                    SegmentType::Text => xml_escape(seg),
-                    SegmentType::Link => format!(
-                        r#"<a href="x-dictionary:d:{word}:{dict_id}">{word}</a>"#,
-                        word = xml_escape(seg),
-                        dict_id = dict_bundle_id
-                    ),
-                })
-                .collect::<Vec<String>>()
-                .join("")
-        })
-        .collect::<Vec<String>>()
-        .join("\n")
+    format!(
+        "<div class=\"clause\">{}</div>",
+        clause
+            .iter()
+            .map(|line| {
+                line.iter()
+                    .map(|(seg_type, seg)| match seg_type {
+                        SegmentType::Text => xml_escape(seg),
+                        SegmentType::Link => format!(
+                            r#"<a href="x-dictionary:d:{word}:{dict_id}">{word}</a>"#,
+                            word = xml_escape(seg),
+                            dict_id = dict_bundle_id
+                        ),
+                    })
+                    .collect::<Vec<String>>()
+                    .join("")
+            })
+            .collect::<Vec<String>>()
+            .join("\n")
     )
 }
 
 /// Convert a [PrClause] to an Apple Dictionary XML string
 fn to_apple_pr_clause((clause, pr): &PrClause) -> (String, Option<String>) {
-    (to_apple_clause(clause)
-    , pr.clone().map(|pr| {
-            "\n<div class=\"pr-clause\"> <div class=\"lang-tag\">　┣　</div> <div class=\"clause\">".to_string() + &pr + "</div> </div>"
-        })
+    (
+        to_apple_clause(clause),
+        pr.clone().map(|pr| {
+            "\n<div class=\"pr-clause\"> <div class=\"lang-tag\">　┣　</div> <div class=\"clause\">"
+                .to_string()
+                + &pr
+                + "</div> </div>"
+        }),
     )
 }
 
@@ -884,15 +889,20 @@ fn to_yue_lang_name(lang: AltLang) -> String {
 /// Convert a [Dict] to Apple Dictionary XML format
 pub fn to_apple_dict(dict: Dict) -> String {
     let front_back_matter_filename = "front_back_matter.html";
-    let front_back_matter = fs::read_to_string(front_back_matter_filename)
-        .expect(&format!("Something went wrong when I tried to read {}", front_back_matter_filename));
-    
-    let header = format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let front_back_matter = fs::read_to_string(front_back_matter_filename).expect(&format!(
+        "Something went wrong when I tried to read {}",
+        front_back_matter_filename
+    ));
+
+    let header = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <d:dictionary xmlns="http://www.w3.org/1999/xhtml" xmlns:d="http://www.apple.com/DTDs/DictionaryService-1.0.rng">
 <d:entry id="front_back_matter" d:title="Front/Back Matter">
 {}
 </d:entry>
-"#, front_back_matter);
+"#,
+        front_back_matter
+    );
 
     let entries = dict
         .iter()
