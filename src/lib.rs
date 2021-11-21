@@ -404,15 +404,15 @@ pub fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser
 /// # use wordshk_tools::*;
 /// # use wordshk_tools::SegmentType::*;
 /// # let source = indoc::indoc! {"
-/// 一行白鷺上青天
+/// yue:一行白鷺上青天
 ///
 /// 兩個黃鸝鳴翠柳
 /// # "};
 ///
 /// // which parses to:
 ///
-/// # lip::assert_succeed(parse_eg(), source,
-/// vec![vec![(Text, "一行白鷺上青天".into())], vec![(Text, "兩個黃鸝鳴翠柳".into())]]
+/// # lip::assert_succeed(parse_multiline_clause("yue"), source,
+/// vec![vec![(Text, "一行白鷺上青天".into())], vec![(Text, "".into())], vec![(Text, "兩個黃鸝鳴翠柳".into())]]
 /// # );
 /// ```
 ///
@@ -506,7 +506,7 @@ pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
 ///
 /// // which parses to:
 ///
-/// # lip::assert_succeed(parse_pr_clause(), source,
+/// # lip::assert_succeed(parse_pr_clause("yue"), source,
 /// (vec![vec![(Text, "我個耳筒繑埋咗一嚿。".into())]], Some("ngo5 go3 ji5 tung2 kiu5 maai4 zo2 jat1 gau6.".into()))
 /// # );
 /// ```
