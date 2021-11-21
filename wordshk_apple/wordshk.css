@@ -7,7 +7,6 @@ d|entry {
 h1	{
     display: inline;
 	font-size: 150%;
-    margin-top: 1.5em;
 }
 
 h2 {
@@ -22,16 +21,45 @@ div.tags {
     margin-top: 1em;
 }
 
-div.jyutping {
+div.pr-clause {
     color :#959595;
 }
 
+ol {
+	list-style-type: none;
+	margin-left: -0.5em;
+	padding-left: 0;
+	white-space: pre-wrap;
+}
+
+div.def-yue, div.def-eng, div.def-alt, div.pr-clause, div.eg-clause {
+	display: flex;
+}
+
+div.clause {
+	flex: 1;
+}
+
 div.def-head {
+	font-weight: 500;
     margin-bottom: 0.5em;
 }
 
+div.def-eng, div.def-alt {
+	margin-top: 0.25em;
+}
+
 div.eg {
+	font-size: 0.9em;
+	margin-left: 2.9em;
 	margin-bottom: 0.5em;
+}
+
+div.entry {
+	margin-top: 1.5em;
+	padding-bottom: 0.6em;
+	border-bottom: 2px solid #959595;
+	margin-bottom: 1.5em;
 }
 
 span.column {
@@ -50,7 +78,7 @@ span.column {
 		color: white;
 	}
 
-	div.jyutping {
+	div.pr-clause {
 		color : #c0c0c0;
 	}
 }

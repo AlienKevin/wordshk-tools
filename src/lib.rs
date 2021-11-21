@@ -838,6 +838,7 @@ fn xml_escape(s: &String) -> String {
 /// Convert a [Clause] to an Apple Dictionary XML string
 fn to_apple_clause(clause: &Clause) -> String {
     let dict_bundle_id = "wordshk";
+    format!("<div class=\"clause\">{}</div>",
     clause
         .iter()
         .map(|line| {
@@ -855,14 +856,16 @@ fn to_apple_clause(clause: &Clause) -> String {
         })
         .collect::<Vec<String>>()
         .join("\n")
+    )
 }
 
 /// Convert a [PrClause] to an Apple Dictionary XML string
-fn to_apple_pr_clause((clause, pr): &PrClause) -> String {
-    to_apple_clause(clause)
-        + &pr.clone().map_or("".to_string(), |pr| {
-            "\n<div class=\"jyutping\">　┣　".to_string() + &pr + "</div>"
+fn to_apple_pr_clause((clause, pr): &PrClause) -> (String, Option<String>) {
+    (to_apple_clause(clause)
+    , pr.clone().map(|pr| {
+            "\n<div class=\"pr-clause\"> <div class=\"lang-tag\">　┣　</div> <div class=\"clause\">".to_string() + &pr + "</div> </div>"
         })
+    )
 }
 
 /// Convert [AltLang] to a language name in Cantonese
@@ -880,7 +883,7 @@ fn to_yue_lang_name(lang: AltLang) -> String {
 
 /// Convert a [Dict] to Apple Dictionary XML format
 pub fn to_apple_dict(dict: Dict) -> String {
-    let front_back_matter_filename = "wordshk_apple/front_back_matter.html";
+    let front_back_matter_filename = "front_back_matter.html";
     let front_back_matter = fs::read_to_string(front_back_matter_filename)
         .expect(&format!("Something went wrong when I tried to read {}", front_back_matter_filename));
     
@@ -897,11 +900,13 @@ pub fn to_apple_dict(dict: Dict) -> String {
             let entry_str = format!(
                 indoc! {r#"
                 <d:entry id="{id}" d:title="{variant_0_word}">
+                <div class="entry">
                 {variants_index}
                 {variants_word_pr}
                 {tags}
                 <div>
                 {defs}
+                </div>
                 </div>
                 </d:entry>"#},
                 id = entry.id,
@@ -948,16 +953,16 @@ pub fn to_apple_dict(dict: Dict) -> String {
                         .map(|def| {
                             "<li>\n".to_string()
                                 + "<div class=\"def-head\">\n"
-                                + &format!("<div><b>【粵】{}</b></div>\n", to_apple_clause(&def.yue))
+                                + &format!("<div class=\"def-yue\"> <div class=\"lang-tag\">【粵】</div> {} </div>\n", to_apple_clause(&def.yue))
                                 + &def.eng.clone().map_or("".to_string(), |eng| {
-                                    format!("<div><b>【英】{}</b></div>\n", to_apple_clause(&eng))
+                                    format!("<div class=\"def-eng\"> <div class=\"lang-tag\">【英】</div> {} </div>\n", to_apple_clause(&eng))
                                 })
                                 + &def
                                     .alts
                                     .iter()
                                     .map(|(lang, clause)| {
                                         format!(
-                                            "<div>【{lang_name}】{clause}</div>\n",
+                                            "<div class=\"def-alt\"> <div class=\"lang-tag\">【{lang_name}】</div> {clause} </div>\n",
                                             lang_name = to_yue_lang_name(*lang),
                                             clause = to_apple_clause(clause)
                                         )
@@ -971,17 +976,21 @@ pub fn to_apple_dict(dict: Dict) -> String {
                                     .map(|eg| {
                                         "<div class=\"eg\">\n".to_string()
                                         + &eg.zho.clone().map_or("".to_string(), |zho| {
+                                            let (clause, pr) = to_apple_pr_clause(&zho);
                                             format!(
-                                                "<div>（中）{}</div>\n",
-                                                to_apple_pr_clause(&zho)
+                                                "<div class=\"eg-clause\"> <div class=\"lang-tag\">（中）</div> {clause} </div>{pr}\n",
+                                                clause = clause,
+                                                pr = pr.map_or("".to_string(), |pr| "\n".to_string() + &pr),
                                             )
                                         }) + &eg.yue.clone().map_or("".to_string(), |yue| {
+                                            let (clause, pr) = to_apple_pr_clause(&yue);
                                             format!(
-                                                "<div>（粵）{}</div>\n",
-                                                to_apple_pr_clause(&yue)
+                                                "<div class=\"eg-clause\"> <div class=\"lang-tag\">（粵）</div> {clause} </div>{pr}\n",
+                                                clause = clause,
+                                                pr = pr.map_or("".to_string(), |pr| "\n".to_string() + &pr),
                                             )
                                         }) + &eg.eng.clone().map_or("".to_string(), |eng| {
-                                            format!("<div>（英）{}</div>\n", to_apple_clause(&eng))
+                                            format!("<div class=\"eg-clause\"> <div class=\"lang-tag\">（英）</div> {} </div>\n", to_apple_clause(&eng))
                                         })
                                         + "</div>"
                                     })
