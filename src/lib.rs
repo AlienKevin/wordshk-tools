@@ -902,8 +902,10 @@ pub fn to_apple_dict(dict: Dict) -> String {
                 <d:entry id="{id}" d:title="{variant_0_word}">
                 <div class="entry">
                 {variants_index}
+                <div class ="entry-head">
                 {variants_word_pr}
                 {tags}
+                </div>
                 <div>
                 {defs}
                 </div>
