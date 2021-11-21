@@ -917,10 +917,11 @@ pub fn to_apple_dict(dict: Dict) -> String {
                     .variants
                     .iter()
                     .map(|variant| {
+                        let prs = variant.prs.join(", ");
                         format!(
                             r#"<d:index d:value="{}" d:pr="{}"/>"#,
-                            variant.word,
-                            variant.prs.join(", ")
+                            variant.word.clone() + " " + &prs,
+                            prs
                         )
                     })
                     .collect::<Vec<String>>()
