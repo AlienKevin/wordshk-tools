@@ -22,7 +22,7 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
 use std::io;
-use std::process;
+use std::convert::identity;
 
 /// A dictionary is a list of entries
 pub type Dict = Vec<Entry>;
@@ -159,16 +159,16 @@ pub enum AltLang {
 ///
 #[derive(Debug, Clone, PartialEq)]
 pub struct Eg {
-    pub zho: Option<PrClause>,
-    pub yue: Option<PrClause>,
-    pub eng: Option<Clause>,
+    pub zho: Option<PrLine>,
+    pub yue: Option<PrLine>,
+    pub eng: Option<Line>,
 }
 
 /// An example sentence with optional Jyutping pronunciation
 ///
 /// Eg: 可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
 ///
-pub type PrClause = (Clause, Option<String>);
+pub type PrLine = (Line, Option<String>);
 
 /// Parse the whole words.hk CSV database into a [Dict]
 pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
@@ -269,9 +269,9 @@ fn parse_br<'a>() -> lip::BoxedParser<'a, (), ()> {
     chomp_if(|c| c == "\r\n" || c == "\n", "a newline")
 }
 
-/// Parse a [Clause]
+/// Parse a [Line]
 ///
-/// For example, here's an English clause:
+/// For example, here's an English line:
 ///
 /// ```
 /// # use wordshk_tools::*;
@@ -282,12 +282,12 @@ fn parse_br<'a>() -> lip::BoxedParser<'a, (), ()> {
 ///
 /// // which parses to:
 ///
-/// # lip::assert_succeed(parse_clause("eng"), source,
-/// vec![vec![(Text, "My headphone cord was knotted.".into())]]
+/// # lip::assert_succeed(parse_line("eng"), source,
+/// vec![(Text, "My headphone cord was knotted.".into())]
 /// # );
 /// ```
-pub fn parse_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
-    succeed!(|clause| vec!(clause)).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
+pub fn parse_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
+    succeed!(identity).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
             succeed!(|string| (SegmentType::Link, string))
                 .skip(token("#"))
                 .keep(take_chomped(chomp_while1c(
@@ -302,9 +302,9 @@ pub fn parse_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> 
         ))))
 }
 
-/// Parse a [Clause] tagged in front by its name/category
+/// Parse a [Line] tagged in front by its name/category
 ///
-/// For example, here's an English clause:
+/// For example, here's an English line:
 ///
 /// ```
 /// # use wordshk_tools::*;
@@ -315,21 +315,21 @@ pub fn parse_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> 
 ///
 /// // which parses to:
 ///
-/// # lip::assert_succeed(parse_named_clause("eng"), source,
-/// vec![vec![(Text, "My headphone cord was knotted.".into())]]
+/// # lip::assert_succeed(parse_named_line("eng"), source,
+/// vec![(Text, "My headphone cord was knotted.".into())]
 /// # );
 /// ```
 ///
-pub fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
+pub fn parse_named_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
     succeed!(|clause| clause)
         .skip(token(name))
         .skip(token(":"))
-        .keep(parse_clause(name))
+        .keep(parse_line(name))
 }
 
-/// Parse a partial pronunciation [Clause], until the opening paren of Jyutping pronunciations
+/// Parse a partial pronunciation [Line], until the opening paren of Jyutping pronunciations
 ///
-/// For the following pronunciation clause:
+/// For the following pronunciation line:
 ///
 /// 可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
 ///
@@ -344,13 +344,13 @@ pub fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause
 ///
 /// // which parses to:
 ///
-/// # lip::assert_succeed(parse_partial_pr_clause("yue"), source,
-/// vec![vec![(Text, "可唔可以見面？".into())]]
+/// # lip::assert_succeed(parse_partial_pr_line("yue"), source,
+/// vec![(Text, "可唔可以見面？".into())]
 /// # );
 /// ```
 ///
-pub fn parse_partial_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
-    succeed!(|clause| vec!(clause)).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
+pub fn parse_partial_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
+    succeed!(identity).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
             succeed!(|string: String| (SegmentType::Link, string.trim_end().to_string()))
                 .skip(token("#"))
                 .keep(take_chomped(chomp_while1c(
@@ -367,9 +367,9 @@ pub fn parse_partial_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, C
         ))))
 }
 
-/// Parse a partial *named* pronunciation [Clause], until the opening paren of Jyutping pronunciations
+/// Parse a partial *named* pronunciation [Line], until the opening paren of Jyutping pronunciations
 ///
-/// For the following *named* pronunciation clause:
+/// For the following *named* pronunciation line:
 ///
 /// yue:可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
 ///
@@ -384,53 +384,49 @@ pub fn parse_partial_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, C
 ///
 /// // which parses to:
 ///
-/// # lip::assert_succeed(parse_partial_pr_named_clause("yue"), source,
-/// vec![vec![(Text, "可唔可以見面？".into())]]
+/// # lip::assert_succeed(parse_partial_pr_named_line("yue"), source,
+/// vec![(Text, "可唔可以見面？".into())]
 /// # );
 /// ```
 ///
-pub fn parse_partial_pr_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
-    succeed!(|clause| clause)
+pub fn parse_partial_pr_named_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
+    succeed!(identity)
         .skip(token(name))
         .skip(token(":"))
-        .keep(parse_partial_pr_clause(name))
+        .keep(parse_partial_pr_line(name))
 }
 
-/// Parse a multiline clause
+/// Parse a [Clause] (can be single or multiline)
 ///
-/// For example, here's a multiline clause:
+/// For example, here's a Cantonese clause:
 ///
 /// ```
 /// # use wordshk_tools::*;
 /// # use wordshk_tools::SegmentType::*;
 /// # let source = indoc::indoc! {"
-/// yue:一行白鷺上青天
+/// 一行白鷺上青天
 ///
 /// 兩個黃鸝鳴翠柳
 /// # "};
 ///
 /// // which parses to:
 ///
-/// # lip::assert_succeed(parse_multiline_clause("yue"), source,
+/// # lip::assert_succeed(parse_clause("yue"), source,
 /// vec![vec![(Text, "一行白鷺上青天".into())], vec![(Text, "".into())], vec![(Text, "兩個黃鸝鳴翠柳".into())]]
 /// # );
 /// ```
 ///
-pub fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
-    succeed!(|first_line: Clause, lines: Clause| {
-        let mut all_lines = first_line;
+pub fn parse_clause<'a>(expecting: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
+    succeed!(|first_line: Line, lines: Clause| {
+        let mut all_lines = vec![first_line];
         all_lines.extend(lines);
         all_lines
     })
-    .skip(token(name))
-    .skip(token(":"))
-    .keep(succeed!(|line: Clause| line).keep(
-        succeed!(|single_line_clause: Clause| single_line_clause).keep(parse_clause("a line")),
-    ))
+    .keep(parse_line(expecting))
     .keep(zero_or_more_until(
-        succeed!(|line| line).skip(parse_br()).keep(one_of!(
+        succeed!(identity).skip(parse_br()).keep(one_of!(
             // non-empty line
-            succeed!(|line: Clause| line[0].clone()).keep(parse_clause("a nonempty line")),
+            succeed!(identity).keep(parse_line(expecting)),
             // empty line
             succeed!(|_| vec!((SegmentType::Text, "".to_string()))).keep(token(""))
         )),
@@ -445,6 +441,33 @@ pub fn parse_multiline_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Cl
         )),
     ))
     .skip(optional((), parse_br()))
+}
+
+/// Parse a named [Clause] (can be single or multiline)
+///
+/// For example, here's a named Cantonese clause:
+///
+/// ```
+/// # use wordshk_tools::*;
+/// # use wordshk_tools::SegmentType::*;
+/// # let source = indoc::indoc! {"
+/// yue:一行白鷺上青天
+///
+/// 兩個黃鸝鳴翠柳
+/// # "};
+///
+/// // which parses to:
+///
+/// # lip::assert_succeed(parse_named_clause("yue"), source,
+/// vec![vec![(Text, "一行白鷺上青天".into())], vec![(Text, "".into())], vec![(Text, "兩個黃鸝鳴翠柳".into())]]
+/// # );
+/// ```
+///
+pub fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
+    succeed!(identity)
+    .skip(token(name))
+    .skip(token(":"))
+    .keep(parse_clause(name))
 }
 
 /// Parse a clause in an alternative language
@@ -493,9 +516,9 @@ pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
     })
 }
 
-/// Parse a Jyutping pronunciation clause, for Cantonese (yue) and Mandarin (zho)
+/// Parse a Jyutping pronunciation line, for Cantonese (yue) and Mandarin (zho)
 ///
-/// For example, here's a Cantonese pronunciation clause:
+/// For example, here's a Cantonese pronunciation line:
 ///
 /// ```
 /// # use wordshk_tools::*;
@@ -506,14 +529,14 @@ pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
 ///
 /// // which parses to:
 ///
-/// # lip::assert_succeed(parse_pr_clause("yue"), source,
-/// (vec![vec![(Text, "我個耳筒繑埋咗一嚿。".into())]], Some("ngo5 go3 ji5 tung2 kiu5 maai4 zo2 jat1 gau6.".into()))
+/// # lip::assert_succeed(parse_pr_line("yue"), source,
+/// (vec![(Text, "我個耳筒繑埋咗一嚿。".into())], Some("ngo5 go3 ji5 tung2 kiu5 maai4 zo2 jat1 gau6.".into()))
 /// # );
 /// ```
 ///
-pub fn parse_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, PrClause, ()> {
-    succeed!(|clause, pr| (clause, pr))
-        .keep(parse_partial_pr_named_clause(name))
+pub fn parse_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, PrLine, ()> {
+    succeed!(|line, pr| (line, pr))
+        .keep(parse_partial_pr_named_line(name))
         .keep(optional(
             None,
             succeed!(Some)
@@ -544,9 +567,9 @@ pub fn parse_pr_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, PrClause,
 ///
 /// # lip::assert_succeed(parse_eg(), source,
 /// Eg {
-///     zho: Some((vec![vec![(Text, "後邊".into())]], Some("hau6 bin6".into()))),
-///     yue: Some((vec![vec![(Link, "後便".into())]], Some("hau6 bin6".into()))),
-///     eng: Some(vec![vec![(Text, "back side".into())]]),
+///     zho: Some((vec![(Text, "後邊".into())], Some("hau6 bin6".into()))),
+///     yue: Some((vec![(Link, "後便".into())], Some("hau6 bin6".into()))),
+///     eng: Some(vec![(Text, "back side".into())]),
 /// }
 /// # );
 /// ```
@@ -558,18 +581,19 @@ pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
         .keep(optional(
             None,
             succeed!(Some)
-                .keep(parse_pr_clause("zho"))
+                .keep(parse_pr_line("zho"))
                 .skip(optional((), parse_br())),
         ))
         .keep(optional(
             None,
             succeed!(Some)
-                .keep(parse_pr_clause("yue"))
+                .keep(parse_pr_line("yue"))
                 .skip(optional((), parse_br())),
         ))
+        // only a single line is accepted in eg
         .keep(optional(
             None,
-            succeed!(Some).keep(parse_named_clause("eng")),
+            succeed!(Some).keep(parse_named_line("eng")),
         ))
         .skip(optional((), parse_br()))
 }
@@ -605,13 +629,13 @@ pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
 ///     alts: vec![],
 ///     egs: vec![ Eg {
 ///             zho: None,
-///             yue: Some((vec![vec![(Link, "開便".into())]], Some("hoi1 bin6".into()))),
-///             eng: Some(vec![vec![(Text, "outside".into())]]),
+///             yue: Some((vec![(Link, "開便".into())], Some("hoi1 bin6".into()))),
+///             eng: Some(vec![(Text, "outside".into())]),
 ///         },
 ///         Eg {
 ///             zho: None,
-///             yue: Some((vec![vec![(Link, "呢便".into())]], Some("nei1 bin6".into()))),
-///             eng: Some(vec![vec![(Text, "this side".into())]]),
+///             yue: Some((vec![(Link, "呢便".into())], Some("nei1 bin6".into()))),
+///             eng: Some(vec![(Text, "this side".into())]),
 ///         },
 ///     ],
 /// }
@@ -627,10 +651,10 @@ pub fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
     })
     .skip(token("<explanation>"))
     .skip(parse_br())
-    .keep(parse_multiline_clause("yue"))
+    .keep(parse_named_clause("yue"))
     .keep(optional(
         None,
-        succeed!(Some).keep(parse_multiline_clause("eng")),
+        succeed!(Some).keep(parse_named_clause("eng")),
     ))
     .keep(zero_or_more(
         succeed!(|clause| clause)
@@ -672,10 +696,10 @@ pub fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
         egs: Vec::new(),
         alts
     })
-    .keep(parse_multiline_clause("yue"))
+    .keep(parse_named_clause("yue"))
     .keep(optional(
         None,
-        succeed!(Some).keep(parse_multiline_clause("eng")),
+        succeed!(Some).keep(parse_named_clause("eng")),
     ))
     .keep(zero_or_more(
         succeed!(|clause| clause)
@@ -714,8 +738,8 @@ pub fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
 ///         egs: vec![
 ///             Eg {
 ///                 zho: None,
-///                 yue: Some((vec![vec![(Link, "兄弟".into())]], Some("hing1 dai6".into()))),
-///                 eng: Some(vec![vec![(Text, "brothers".into())]]),
+///                 yue: Some((vec![(Link, "兄弟".into())], Some("hing1 dai6".into()))),
+///                 eng: Some(vec![(Text, "brothers".into())]),
 ///             }
 ///         ],
 ///     },
@@ -860,10 +884,10 @@ fn to_apple_clause(clause: &Clause) -> String {
     )
 }
 
-/// Convert a [PrClause] to an Apple Dictionary XML string
-fn to_apple_pr_clause((clause, pr): &PrClause) -> (String, Option<String>) {
+/// Convert a [PrLine] to an Apple Dictionary XML string
+fn to_apple_pr_line((line, pr): &PrLine) -> (String, Option<String>) {
     (
-        to_apple_clause(clause),
+        to_apple_clause(&vec![line.clone()]),
         pr.clone().map(|pr| {
             "\n<div class=\"pr-clause\"> <div class=\"lang-tag\">　┣　</div> <div class=\"clause\">"
                 .to_string()
@@ -1015,21 +1039,21 @@ pub fn to_apple_dict(dict: Dict) -> String {
                                     .map(|eg| {
                                         "<div class=\"eg\">\n".to_string()
                                         + &eg.zho.clone().map_or("".to_string(), |zho| {
-                                            let (clause, pr) = to_apple_pr_clause(&zho);
+                                            let (clause, pr) = to_apple_pr_line(&zho);
                                             format!(
                                                 "<div class=\"eg-clause\"> <div class=\"lang-tag\">（中）</div> {clause} </div>{pr}\n",
                                                 clause = clause,
                                                 pr = pr.map_or("".to_string(), |pr| "\n".to_string() + &pr),
                                             )
                                         }) + &eg.yue.clone().map_or("".to_string(), |yue| {
-                                            let (clause, pr) = to_apple_pr_clause(&yue);
+                                            let (clause, pr) = to_apple_pr_line(&yue);
                                             format!(
                                                 "<div class=\"eg-clause\"> <div class=\"lang-tag\">（粵）</div> {clause} </div>{pr}\n",
                                                 clause = clause,
                                                 pr = pr.map_or("".to_string(), |pr| "\n".to_string() + &pr),
                                             )
                                         }) + &eg.eng.clone().map_or("".to_string(), |eng| {
-                                            format!("<div class=\"eg-clause\"> <div class=\"lang-tag\">（英）</div> {} </div>\n", to_apple_clause(&eng))
+                                            format!("<div class=\"eg-clause\"> <div class=\"lang-tag\">（英）</div> {} </div>\n", to_apple_clause(&vec![eng]))
                                         })
                                         + "</div>"
                                     })

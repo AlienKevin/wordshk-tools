@@ -8,8 +8,12 @@ fn link(string: &'static str) -> Segment {
     (SegmentType::Link, string.to_string())
 }
 
+fn simple_line(string: &'static str) -> Line {
+    vec![text(string)]
+}
+
 fn simple_clause(string: &'static str) -> Clause {
-    vec![vec![text(string)]]
+    vec![simple_line(string)]
 }
 
 #[cfg(test)]
@@ -25,24 +29,24 @@ fn test_parse_clause() {
 #[test]
 fn test_parse_pr() {
     assert_succeed(
-        parse_pr_clause("yue"),
+        parse_pr_line("yue"),
         "yue:《飛狐外傳》 (fei1 wu4 ngoi6 zyun2)",
         (
-            simple_clause("《飛狐外傳》"),
+            simple_line("《飛狐外傳》"),
             Some("fei1 wu4 ngoi6 zyun2".to_string()),
         ),
     );
-    assert_succeed(parse_pr_clause("yue"), "yue:《哈利波特》出外傳喎，你會唔會睇啊？ (\"haa1 lei6 bo1 dak6\" ceot1 ngoi6 zyun2 wo3, nei5 wui5 m4 wui5 tai2 aa3?)",
-    (simple_clause("《哈利波特》出外傳喎，你會唔會睇啊？"), Some("\"haa1 lei6 bo1 dak6\" ceot1 ngoi6 zyun2 wo3, nei5 wui5 m4 wui5 tai2 aa3?".to_string())));
+    assert_succeed(parse_pr_line("yue"), "yue:《哈利波特》出外傳喎，你會唔會睇啊？ (\"haa1 lei6 bo1 dak6\" ceot1 ngoi6 zyun2 wo3, nei5 wui5 m4 wui5 tai2 aa3?)",
+    (simple_line("《哈利波特》出外傳喎，你會唔會睇啊？"), Some("\"haa1 lei6 bo1 dak6\" ceot1 ngoi6 zyun2 wo3, nei5 wui5 m4 wui5 tai2 aa3?".to_string())));
     assert_succeed(
-        parse_pr_clause("yue"),
+        parse_pr_line("yue"),
         "yue:佢唔係真喊架，扮嘢㗎咋。 (keoi5 m4 hai6 zan1 haam3 gaa3, baan6 je5 gaa3 zaa3.)",
         (
-            simple_clause("佢唔係真喊架，扮嘢㗎咋。"),
+            simple_line("佢唔係真喊架，扮嘢㗎咋。"),
             Some("keoi5 m4 hai6 zan1 haam3 gaa3, baan6 je5 gaa3 zaa3.".to_string()),
         ),
     );
-    assert_succeed(parse_pr_clause("yue"), "yue:條八婆好扮嘢㗎，連嗌個叉飯都要講英文。 (tiu4 baat3 po4 hou2 baan6 je5 gaa3, lin4 aai3 go3 caa1 faan6 dou1 jiu3 gong2 jing1 man2.)", (simple_clause("條八婆好扮嘢㗎，連嗌個叉飯都要講英文。"), Some("tiu4 baat3 po4 hou2 baan6 je5 gaa3, lin4 aai3 go3 caa1 faan6 dou1 jiu3 gong2 jing1 man2.".to_string())));
+    assert_succeed(parse_pr_line("yue"), "yue:條八婆好扮嘢㗎，連嗌個叉飯都要講英文。 (tiu4 baat3 po4 hou2 baan6 je5 gaa3, lin4 aai3 go3 caa1 faan6 dou1 jiu3 gong2 jing1 man2.)", (simple_line("條八婆好扮嘢㗎，連嗌個叉飯都要講英文。"), Some("tiu4 baat3 po4 hou2 baan6 je5 gaa3, lin4 aai3 go3 caa1 faan6 dou1 jiu3 gong2 jing1 man2.".to_string())));
 }
 
 #[test]
@@ -55,10 +59,10 @@ eng:Stop tsking!",
         Eg {
             zho: None,
             yue: Some((
-                simple_clause("你可唔可以唔好成日zip呀，吓！"),
+                simple_line("你可唔可以唔好成日zip呀，吓！"),
                 Some("nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!".to_string()),
             )),
-            eng: Some(simple_clause("Stop tsking!")),
+            eng: Some(simple_line("Stop tsking!")),
         },
     );
     assert_succeed(
@@ -67,7 +71,7 @@ eng:Stop tsking!",
 yue:佢今日心神恍惚，時時做錯嘢，好似有心事喎。 (keoi5 gam1 jat6 sam1 san4 fong2 fat1, si4 si4 zou6 co3 je5, hou2 ci5 jau5 sam1 si6 wo3.)",
         Eg {
             zho: None,
-            yue: Some((simple_clause("佢今日心神恍惚，時時做錯嘢，好似有心事喎。"), Some("keoi5 gam1 jat6 sam1 san4 fong2 fat1, si4 si4 zou6 co3 je5, hou2 ci5 jau5 sam1 si6 wo3.".to_string()))),
+            yue: Some((simple_line("佢今日心神恍惚，時時做錯嘢，好似有心事喎。"), Some("keoi5 gam1 jat6 sam1 san4 fong2 fat1, si4 si4 zou6 co3 je5, hou2 ci5 jau5 sam1 si6 wo3.".to_string()))),
             eng: None,
         },
     );
@@ -79,10 +83,10 @@ eng:refugee camp",
         Eg {
             zho: None,
             yue: Some((
-                vec![vec![link("難民營")]],
+                vec![link("難民營")],
                 Some("naan6 man4 jing4".to_string()),
             )),
-            eng: Some(simple_clause("refugee camp")),
+            eng: Some(simple_line("refugee camp")),
         },
     )
 }
@@ -203,10 +207,10 @@ eng:Stop tsking!",
             egs: vec![Eg {
                 zho: None,
                 yue: Some((
-                    simple_clause("你可唔可以唔好成日zip呀，吓！"),
+                    simple_line("你可唔可以唔好成日zip呀，吓！"),
                     Some("nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!".to_string()),
                 )),
-                eng: Some(simple_clause("Stop tsking!")),
+                eng: Some(simple_line("Stop tsking!")),
             }],
         },
     );
@@ -225,8 +229,8 @@ eng:Gentlemen observe chess match with respectful silence. Spectators are not al
             alts: vec![],
             egs: vec![Eg {
                 zho: None,
-                yue: Some((simple_clause("觀棋不語真君子，旁觀者不得𪘲牙聳䚗（依牙鬆鋼）。"), Some("gun1 kei4 bat1 jyu5 zan1 gwan1 zi2，pong4 gun1 ze2 bat1 dak1 ji1 ngaa4 sung1 gong3.".to_string()))),
-eng: Some(simple_clause("Gentlemen observe chess match with respectful silence. Spectators are not allowed to disturb the competitors.")),
+                yue: Some((simple_line("觀棋不語真君子，旁觀者不得𪘲牙聳䚗（依牙鬆鋼）。"), Some("gun1 kei4 bat1 jyu5 zan1 gwan1 zi2，pong4 gun1 ze2 bat1 dak1 ji1 ngaa4 sung1 gong3.".to_string()))),
+eng: Some(simple_line("Gentlemen observe chess match with respectful silence. Spectators are not allowed to disturb the competitors.")),
             }],
         }
         )
@@ -270,10 +274,10 @@ eng:Stop tsking!",
             egs: vec![Eg {
                 zho: None,
                 yue: Some((
-                    simple_clause("你可唔可以唔好成日zip呀，吓！"),
+                    simple_line("你可唔可以唔好成日zip呀，吓！"),
                     Some("nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!".to_string()),
                 )),
-                eng: Some(simple_clause("Stop tsking!")),
+                eng: Some(simple_line("Stop tsking!")),
             }],
         }],
     );
@@ -311,10 +315,10 @@ eng:B grade"#,
             egs: vec![Eg {
                 zho: None,
                 yue: Some((
-                    simple_clause("乙等 / 乙級"),
+                    simple_line("乙等 / 乙級"),
                     Some("jyut6 dang2 / jyut6 kap1".to_string()),
                 )),
-                eng: Some(simple_clause("B grade")),
+                eng: Some(simple_line("B grade")),
             }],
         }],
     );
@@ -349,10 +353,10 @@ vec!(text(r#"The sexagenary cycle is often used for counting years in the Chines
     egs: vec![Eg {
         zho: None,
         yue: Some((
-            simple_clause("乙等 / 乙級"),
+            simple_line("乙等 / 乙級"),
             Some("jyut6 dang2 / jyut6 kap1".to_string()),
         )),
-        eng: Some(simple_clause("B grade")),
+        eng: Some(simple_line("B grade")),
     }],
 }]);
 }
@@ -396,13 +400,13 @@ eng:Stop tsking!",
                     egs: vec![Eg {
                         zho: None,
                         yue: Some((
-                            simple_clause("你可唔可以唔好成日zip呀，吓！"),
+                            simple_line("你可唔可以唔好成日zip呀，吓！"),
                             Some(
                                 "nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!"
                                     .to_string(),
                             ),
                         )),
-                        eng: Some(simple_clause("Stop tsking!")),
+                        eng: Some(simple_line("Stop tsking!")),
                     }],
                 }],
             }),
