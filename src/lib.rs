@@ -91,12 +91,19 @@ pub enum SegmentType {
 ///
 pub type Segment = (SegmentType, String);
 
-pub type RubySegment = (SegmentType, RubyBit);
+// type RubyFlatSegment = (SegmentType, RubyFlatBit);
+
+// #[derive(Debug, PartialEq, Clone)]
+// enum RubyFlatBit {
+//     Punc(String),
+//     Word(String, Vec<String>),
+// }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum RubyBit {
+pub enum RubySegment {
     Punc(String),
     Word(String, Vec<String>),
+    LinkedWord(String, Vec<String>),
 }
 
 /// A line consists of one or more [Segment]s
@@ -886,17 +893,24 @@ pub fn flatten_line(line: &Line) -> Line {
     bit_line
 }
 
-pub fn match_ruby(line: &Line, prs: &Vec<String>) -> RubyLine {
-    let pr_scores = match_ruby_construct_table(line, prs);
-    let pr_map = match_ruby_backtrack(line, prs, &pr_scores);
+pub fn match_ruby(line: &Line, prs: &Vec<&str>) -> RubyLine {
+    let line = flatten_line(line);
+    let pr_scores = match_ruby_construct_table(&line, prs);
+    let pr_map = match_ruby_backtrack(&line, prs, &pr_scores);
     // println!("{:?}", pr_map);
     let flattened_ruby_line = line.iter().enumerate().map(|(i, (seg_type, seg))| {
         match pr_map.get(&i) {
-            Some(j) =>
-                (seg_type.clone(), RubyBit::Word(seg.to_string(), prs[*j..j+1].to_vec())),
+            Some(j) => {
+                (if *seg_type == SegmentType::Link {
+                    RubySegment::LinkedWord
+                } else {
+                    RubySegment::Word
+                })
+                (seg.to_string(), prs[*j..j+1].iter().map(|x| x.to_string()).collect())
+            },
             None => {
                 if test_g(is_punctuation, seg) {
-                    (seg_type.clone(), RubyBit::Punc(seg.to_string()))
+                    RubySegment::Punc(seg.to_string())
                 } else {
                     let start =
                     {
@@ -922,7 +936,12 @@ pub fn match_ruby(line: &Line, prs: &Vec<String>) -> RubyLine {
                             None => prs.len(),
                         }
                     };
-                    (seg_type.clone(), RubyBit::Word(seg.to_string(), prs[start..end].to_vec()))
+                    (if *seg_type == SegmentType::Link {
+                        RubySegment::LinkedWord
+                    } else {
+                        RubySegment::Word
+                    })
+                    (seg.to_string(), prs[start..end].iter().map(|x| x.to_string()).collect())
                 }
             }
         }
@@ -934,16 +953,16 @@ fn unflatten_ruby_line(line: &RubyLine) -> RubyLine {
     let mut i = 0;
     let mut unflattened_line = vec![];
     while i < line.len() {
-        let mut unflattened_word = String::new();
-        let mut unflattened_prs = vec![];
-        while let (SegmentType::Link, RubyBit::Word(word, prs)) = &line[i] {
-            unflattened_word.extend(word.chars());
-            unflattened_prs.extend(prs.clone());
+        let mut link_word = String::new();
+        let mut link_prs = vec![];
+        while let RubySegment::LinkedWord(word, prs) = &line[i] {
+            link_word.extend(word.chars());
+            link_prs.extend(prs.clone());
             i += 1;
             if i >= line.len() { break; }
         }
-        if unflattened_word.len() > 0 {
-            unflattened_line.push((SegmentType::Link, RubyBit::Word(unflattened_word, unflattened_prs)));
+        if link_word.len() > 0 {
+            unflattened_line.push(RubySegment::LinkedWord(link_word, link_prs));
         } else {
             unflattened_line.push(line[i].clone());
             i += 1;
@@ -966,7 +985,7 @@ fn pr_match_to_score(m: PrMatch) -> usize {
     }
 }
 
-fn match_pr(seg: &String, pr: &String) -> PrMatch {
+fn match_pr(seg: &String, pr: &str) -> PrMatch {
     if seg.chars().count() > 1 {
         return PrMatch::Zero;
     }
@@ -991,7 +1010,7 @@ fn match_pr(seg: &String, pr: &String) -> PrMatch {
     }
 }
 
-fn match_ruby_construct_table(line: &Line, prs: &Vec<String>) -> Vec<Vec<usize>> {
+fn match_ruby_construct_table(line: &Line, prs: &Vec<&str>) -> Vec<Vec<usize>> {
     let m = line.len() + 1;
     let n = prs.len() + 1;
     let mut pr_scores = vec![vec![0; n]; m];
@@ -1000,7 +1019,7 @@ fn match_ruby_construct_table(line: &Line, prs: &Vec<String>) -> Vec<Vec<usize>>
         for j in 1..n {
             // println!("i: {}, j: {}", i, j);
             let (_, seg) = &line[i-1];
-            let cell_pr_match = match_pr(seg, &prs[j-1]);
+            let cell_pr_match = match_pr(seg, prs[j-1]);
             match cell_pr_match {
                 PrMatch::Full | PrMatch::Half => {
                     pr_scores[i][j] = pr_scores[i-1][j-1] + pr_match_to_score(cell_pr_match);
@@ -1016,7 +1035,7 @@ fn match_ruby_construct_table(line: &Line, prs: &Vec<String>) -> Vec<Vec<usize>>
     pr_scores
 }
 
-fn match_ruby_backtrack(line: &Line, prs: &Vec<String>, pr_scores: &Vec<Vec<usize>>) -> HashMap<usize, usize> {
+fn match_ruby_backtrack(line: &Line, prs: &Vec<&str>, pr_scores: &Vec<Vec<usize>>) -> HashMap<usize, usize> {
     let mut pr_map = HashMap::new();
     let mut i = pr_scores.len()-1;
     let mut j = pr_scores[0].len()-1;
@@ -1109,23 +1128,30 @@ fn xml_escape(s: &String) -> String {
     s.replace("<", "&lt;").replace("&", "&amp;")
 }
 
-/// Convert a [Clause] to an Apple Dictionary XML string
-fn to_apple_clause(clause: &Clause) -> String {
-    let dict_bundle_id = "wordshk";
+fn segment_to_xml((seg_type, seg): &Segment) -> String {
+    match seg_type {
+        SegmentType::Text => xml_escape(seg),
+        SegmentType::Link => link_to_xml(seg),
+    }
+}
+
+fn link_to_xml(link: &String) -> String {
     format!(
-        "<div class=\"clause\">{}</div>",
+        r#"<a href="x-dictionary:d:{word}:{dict_id}">{word}</a>"#,
+        word = xml_escape(link),
+        dict_id = "wordshk"
+    )
+}
+
+fn clause_to_xml_with_class_name(class_name: &str, clause: &Clause) -> String {
+    format!(
+        "<div class=\"{}\">{}</div>",
+        class_name,
         clause
             .iter()
             .map(|line| {
                 line.iter()
-                    .map(|(seg_type, seg)| match seg_type {
-                        SegmentType::Text => xml_escape(seg),
-                        SegmentType::Link => format!(
-                            r#"<a href="x-dictionary:d:{word}:{dict_id}">{word}</a>"#,
-                            word = xml_escape(seg),
-                            dict_id = dict_bundle_id
-                        ),
-                    })
+                    .map(segment_to_xml)
                     .collect::<Vec<String>>()
                     .join("")
             })
@@ -1134,17 +1160,37 @@ fn to_apple_clause(clause: &Clause) -> String {
     )
 }
 
+/// Convert a [Clause] to an Apple Dictionary XML string
+fn clause_to_xml(clause: &Clause) -> String {
+    clause_to_xml_with_class_name("clause", clause)
+}
+
 /// Convert a [PrLine] to an Apple Dictionary XML string
-fn to_apple_pr_line((line, pr): &PrLine) -> (String, Option<String>) {
-    (
-        to_apple_clause(&vec![line.clone()]),
-        pr.clone().map(|pr| {
-            "\n<div class=\"pr-clause\"> <div class=\"lang-tag\">　┣　</div> <div class=\"clause\">"
-                .to_string()
-                + &pr
-                + "</div> </div>"
-        }),
-    )
+fn pr_line_to_xml((line, pr): &PrLine) -> String {
+    match pr {
+        Some(pr) => {
+            let prs = pr.unicode_words().collect::<Vec<&str>>();
+            let ruby_line = match_ruby(line, &prs);
+            
+            let mut output = "<ruby class=\"pr-clause\">".to_string();
+            ruby_line.iter().for_each(|seg| {
+                match seg {
+                    RubySegment::LinkedWord(word, prs) => {
+                        output += &format!("\n<rb>{}</rb>\n<rt>{}</rt>", link_to_xml(word), prs.join(" "));
+                    },
+                    RubySegment::Word(word, prs) => {
+                        output += &format!("\n<rb>{}</rb>\n<rt>{}</rt>", word, prs.join(" "));
+                    },
+                    RubySegment::Punc(punc) => {
+                        output += &format!("\n<rb>{}</rb>\n<rt></rt>", punc);
+                    },
+                }
+            });
+            output += "\n</ruby>";
+            output
+        }
+        None => clause_to_xml_with_class_name("pr-clause", &vec![line.clone()])
+    }
 }
 
 /// Convert [AltLang] to a language name in Cantonese
@@ -1161,8 +1207,8 @@ fn to_yue_lang_name(lang: AltLang) -> String {
 }
 
 /// Convert a [Dict] to Apple Dictionary XML format
-pub fn to_apple_dict(dict: Dict) -> String {
-    let front_back_matter_filename = "front_back_matter.html";
+pub fn dict_to_xml(dict: Dict) -> String {
+    let front_back_matter_filename = "apple_dict/front_back_matter.html";
     let front_back_matter = fs::read_to_string(front_back_matter_filename).expect(&format!(
         "Something went wrong when I tried to read {}",
         front_back_matter_filename
@@ -1266,18 +1312,18 @@ pub fn to_apple_dict(dict: Dict) -> String {
                         .map(|def| {
                             "<li>\n".to_string()
                                 + "<div class=\"def-head\">\n"
-                                + &format!("<div class=\"def-yue\"> <div class=\"lang-tag\">【粵】</div> {} </div>\n", to_apple_clause(&def.yue))
+                                + &format!("<div class=\"def-yue\"> <div>【粵】</div> {} </div>\n", clause_to_xml(&def.yue))
                                 + &def.eng.clone().map_or("".to_string(), |eng| {
-                                    format!("<div class=\"def-eng\"> <div class=\"lang-tag\">【英】</div> {} </div>\n", to_apple_clause(&eng))
+                                    format!("<div class=\"def-eng\"> <div>【英】</div> {} </div>\n", clause_to_xml(&eng))
                                 })
                                 + &def
                                     .alts
                                     .iter()
                                     .map(|(lang, clause)| {
                                         format!(
-                                            "<div class=\"def-alt\"> <div class=\"lang-tag\">【{lang_name}】</div> {clause} </div>\n",
+                                            "<div class=\"def-alt\"> <div>【{lang_name}】</div> {clause} </div>\n",
                                             lang_name = to_yue_lang_name(*lang),
-                                            clause = to_apple_clause(clause)
+                                            clause = clause_to_xml(clause)
                                         )
                                     })
                                     .collect::<Vec<String>>()
@@ -1289,21 +1335,19 @@ pub fn to_apple_dict(dict: Dict) -> String {
                                     .map(|eg| {
                                         "<div class=\"eg\">\n".to_string()
                                         + &eg.zho.clone().map_or("".to_string(), |zho| {
-                                            let (clause, pr) = to_apple_pr_line(&zho);
+                                            let clause = pr_line_to_xml(&zho);
                                             format!(
-                                                "<div class=\"eg-clause\"> <div class=\"lang-tag\">（中）</div> {clause} </div>{pr}\n",
-                                                clause = clause,
-                                                pr = pr.map_or("".to_string(), |pr| "\n".to_string() + &pr),
+                                                "<div class=\"eg-clause\"> <div class=\"lang-tag-ch\">（中）</div> {} </div>\n",
+                                                clause
                                             )
                                         }) + &eg.yue.clone().map_or("".to_string(), |yue| {
-                                            let (clause, pr) = to_apple_pr_line(&yue);
+                                            let clause = pr_line_to_xml(&yue);
                                             format!(
-                                                "<div class=\"eg-clause\"> <div class=\"lang-tag\">（粵）</div> {clause} </div>{pr}\n",
-                                                clause = clause,
-                                                pr = pr.map_or("".to_string(), |pr| "\n".to_string() + &pr),
+                                                "<div class=\"eg-clause\"> <div class=\"lang-tag-ch\">（粵）</div> {} </div>\n",
+                                                clause
                                             )
                                         }) + &eg.eng.clone().map_or("".to_string(), |eng| {
-                                            format!("<div class=\"eg-clause\"> <div class=\"lang-tag\">（英）</div> {} </div>\n", to_apple_clause(&vec![eng]))
+                                            format!("<div class=\"eg-clause\"> <div>（英）</div> <div class=\"eng-eg\">{}</div> </div>\n", clause_to_xml(&vec![eng]))
                                         })
                                         + "</div>"
                                     })

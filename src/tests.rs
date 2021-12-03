@@ -1,6 +1,6 @@
 use super::*;
 use super::SegmentType::*;
-use super::RubyBit::*;
+use super::RubySegment::*;
 
 fn text(string: &'static str) -> Segment {
     (Text, string.to_string())
@@ -481,55 +481,138 @@ fn test_flatten_line() {
 
 #[test]
 fn test_match_ruby() {
-    assert_eq!(match_ruby(&flatten_line(&vec![text("I mean，廣東話。")]),
-        &vec!["aai6", "min1", "gwong2", "dung1", "waa2"].iter().map(|x| x.to_string()).collect::<Vec<String>>()),
-    vec![(Text, Word("I mean".into(), vec!["aai6".into(), "min1".into()])),
-    (Text, Punc("，".into())),
-    (Text, Word("廣".into(), vec!["gwong2".into()])),
-    (Text, Word("東".into(), vec!["dung1".into()])),
-    (Text, Word("話".into(), vec!["waa2".into()])),
-    (Text, Punc("。".into())),
+    assert_eq!(match_ruby(&vec![text("I mean，廣東話。")], &vec!["aai6", "min1", "gwong2", "dung1", "waa2"]),
+    vec![Word("I mean".into(), vec!["aai6".into(), "min1".into()]),
+    Punc("，".into()),
+    Word("廣".into(), vec!["gwong2".into()]),
+    Word("東".into(), vec!["dung1".into()]),
+    Word("話".into(), vec!["waa2".into()]),
+    Punc("。".into()),
     ]);
 
-    assert_eq!(match_ruby(&flatten_line(&vec![text("唔該，幫我13蚊沽200股。")]),
-        &"m4 goi1 bong1 ngo5 sap6 saam1 man1 gu1 ji6 baak3 gu2".split_whitespace().map(|x| x.to_string()).collect::<Vec<String>>()),
-    vec![(Text, Word("唔".into(), vec!["m4".into()])),
-    (Text, Word("該".into(), vec!["goi1".into()])),
-    (Text, Punc("，".into())),
-    (Text, Word("幫".into(), vec!["bong1".into()])),
-    (Text, Word("我".into(), vec!["ngo5".into()])),
-    (Text, Word("13".into(), vec!["sap6".into(), "saam1".into()])),
-    (Text, Word("蚊".into(), vec!["man1".into()])),
-    (Text, Word("沽".into(), vec!["gu1".into()])),
-    (Text, Word("200".into(), vec!["ji6".into(), "baak3".into()])),
-    (Text, Word("股".into(), vec!["gu2".into()])),
-    (Text, Punc("。".into())),
+    assert_eq!(match_ruby(&vec![text("唔該，幫我13蚊沽200股。")],
+        &"m4 goi1 bong1 ngo5 sap6 saam1 man1 gu1 ji6 baak3 gu2".split_whitespace().collect::<Vec<&str>>()),
+    vec![Word("唔".into(), vec!["m4".into()]),
+    Word("該".into(), vec!["goi1".into()]),
+    Punc("，".into()),
+    Word("幫".into(), vec!["bong1".into()]),
+    Word("我".into(), vec!["ngo5".into()]),
+    Word("13".into(), vec!["sap6".into(), "saam1".into()]),
+    Word("蚊".into(), vec!["man1".into()]),
+    Word("沽".into(), vec!["gu1".into()]),
+    Word("200".into(), vec!["ji6".into(), "baak3".into()]),
+    Word("股".into(), vec!["gu2".into()]),
+    Punc("。".into()),
     ]);
 
-    assert_eq!(match_ruby(&flatten_line(&vec![text("我 "), link("upgrade"), text(" 咗做 Win 10 之後。")]),
-        &"ngo5 ap1 gwei1 zo2 zou6 win1 sap6 zi1 hau6".split_whitespace().map(|x| x.to_string()).collect::<Vec<String>>()),
-    vec![(Text, Word("我".into(), vec!["ngo5".into()])),
-    (Link, Word("upgrade".into(), vec!["ap1".into(), "gwei1".into()])),
-    (Text, Word("咗".into(), vec!["zo2".into()])),
-    (Text, Word("做".into(), vec!["zou6".into()])),
-    (Text, Word("Win 10".into(), vec!["win1".into(), "sap6".into()])),
-    (Text, Word("之".into(), vec!["zi1".into()])),
-    (Text, Word("後".into(), vec!["hau6".into()])),
-    (Text, Punc("。".into())),
+    assert_eq!(match_ruby(&vec![text("我 "), link("upgrade"), text(" 咗做 Win 10 之後。")],
+        &"ngo5 ap1 gwei1 zo2 zou6 win1 sap6 zi1 hau6".split_whitespace().collect::<Vec<&str>>()),
+    vec![Word("我".into(), vec!["ngo5".into()]),
+    LinkedWord("upgrade".into(), vec!["ap1".into(), "gwei1".into()]),
+    Word("咗".into(), vec!["zo2".into()]),
+    Word("做".into(), vec!["zou6".into()]),
+    Word("Win 10".into(), vec!["win1".into(), "sap6".into()]),
+    Word("之".into(), vec!["zi1".into()]),
+    Word("後".into(), vec!["hau6".into()]),
+    Punc("。".into()),
     ]);
 
     // two full matches
-    assert_eq!(match_ruby(&flatten_line(&vec![link("經理")]), &vec!["ging1".into(), "lei5".into()]),
-    vec![(Link, Word("經理".into(), vec!["ging1".into(), "lei5".into()])),
-    ]);
+    assert_eq!(match_ruby(&vec![link("經理")], &vec!["ging1".into(), "lei5".into()]),
+    vec![LinkedWord("經理".into(), vec!["ging1".into(), "lei5".into()])]);
 
     // one half match
-    assert_eq!(match_ruby(&flatten_line(&vec![link("經理")]), &vec!["ging1".into(), "lei".into()]),
-    vec![(Link, Word("經理".into(), vec!["ging1".into(), "lei".into()])),
-    ]);
+    assert_eq!(match_ruby(&vec![link("經理")], &vec!["ging1".into(), "lei".into()]),
+    vec![LinkedWord("經理".into(), vec!["ging1".into(), "lei".into()])]);
 
     // two half matches
-    assert_eq!(match_ruby(&flatten_line(&vec![link("經理")]), &vec!["ging".into(), "lei".into()]),
-    vec![(Link, Word("經理".into(), vec!["ging".into(), "lei".into()])),
-    ]);
+    assert_eq!(match_ruby(&vec![link("經理")], &vec!["ging".into(), "lei".into()]),
+    vec![LinkedWord("經理".into(), vec!["ging".into(), "lei".into()])]);
 }
+
+/*#[test]
+fn test_pr_line_to_xml() {
+    assert_eq!(
+        pr_line_to_xml(&(vec![link("friend"), text("底")], Some("fen1 dai2".into()))),
+        indoc!{r#"<ruby class="pr-clause">
+        <rb><a href="x-dictionary:d:friend:wordshk">friend</a></rb>
+        <rt>fen1</rt>
+        <rb>底</rb>
+        <rt>dai2</rt>
+        </ruby>"#}
+    );
+    assert_eq!(
+        pr_line_to_xml(&(simple_line("「你好耐。」「55」"), Some(r#"""nei5 hou2 noi6."" ""m6 m6."""#.into()))),
+        indoc!{r#"<ruby class="pr-clause">
+        <rb>「</rb>
+        <rt></rt>
+        <rb>你</rb>
+        <rt>nei5</rt>
+        <rb>好</rb>
+        <rt>hou2</rt>
+        <rb>耐</rb>
+        <rt>noi6</rt>
+        <rb>。</rb>
+        <rt></rt>
+        <rb>」</rb>
+        <rt></rt>
+        <rb>「</rb>
+        <rt></rt>
+        <rb>55</rb>
+        <rt>m6 m6</rt>
+        <rb>」</rb>
+        <rt></rt>
+        </ruby>"#}
+    );
+    assert_eq!(
+        pr_line_to_xml(&(simple_line("「你好耐？」「55」"), Some(r#"nei5 hou2 noi6. m6 m6?"#.into()))),
+        indoc!{r#"<ruby class="pr-clause">
+        <rb>「</rb>
+        <rt></rt>
+        <rb>你</rb>
+        <rt>nei5</rt>
+        <rb>好</rb>
+        <rt>hou2</rt>
+        <rb>耐</rb>
+        <rt>noi6</rt>
+        <rb>？</rb>
+        <rt></rt>
+        <rb>」</rb>
+        <rt></rt>
+        <rb>「</rb>
+        <rt></rt>
+        <rb>55</rb>
+        <rt>m6 m6</rt>
+        <rb>」</rb>
+        <rt></rt>
+        </ruby>"#}
+    );
+    assert_eq!(
+        pr_line_to_xml(&(simple_line("每年2.4毫西弗。"), Some(r#"mui5 nin4 ji6 dim2 sei3 hou4 sai1 fat1."#.into()))),
+        indoc!{r#"<ruby class="pr-clause">
+        <rb>每</rb>
+        <rt>mui5</rt>
+        <rb>年</rb>
+        <rt>nin4</rt>
+        <rb>2.4</rb>
+        <rt>ji6 dim2 sei3</rt>
+        <rb>毫</rb>
+        <rt>hou4</rt>
+        <rb>西</rb>
+        <rt>sai1</rt>
+        <rb>弗</rb>
+        <rt>fat1</rt>
+        <rb>。</rb>
+        <rt></rt>
+        </ruby>"#}
+    );
+    assert_eq!(
+        pr_line_to_xml(&(simple_line("I mean"), Some("aai6 min1".into()))),
+        r#"<ruby class="pr-clause">
+        <rb>I</rb>
+        <rt>aai6</rt>
+        <rb>mean</rb>
+        <rt>min1</rt>
+        </ruby>"#
+    )
+}*/

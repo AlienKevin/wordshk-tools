@@ -25,8 +25,13 @@ div.tags {
 	--grey :#959595;
 }
 
-div.pr-clause {
+rb {
+	font-size: 260%;
+}
+
+rt {
 	color: var(--grey);
+	font-size: 90%;
 }
 
 ol {
@@ -44,9 +49,14 @@ div.clause {
 	flex: 1;
 }
 
+div.lang-tag-ch {
+	display: flex;
+	align-items: flex-end;
+}
+
 div.def-head {
 	font-weight: 500;
-    margin-bottom: 0.5em;
+    margin-bottom: 1em;
 }
 
 div.def-eng, div.def-alt {
@@ -54,9 +64,8 @@ div.def-eng, div.def-alt {
 }
 
 div.eg {
-	font-size: 0.9em;
-	margin-left: 2.9em;
-	margin-bottom: 0.5em;
+	margin-left: 2em;
+	margin-bottom: 1em;
 }
 
 div.entry-head {
