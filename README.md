@@ -15,7 +15,7 @@ flexible parser combinators and supports friendly error messages.
 
 ## Export to Apple Dictionary
 
-![Apple Dictionary screenshot](./wordshk_apple/apple_dict_screenshot.png)
+![Apple Dictionary screenshot](./apple_dict/apple_dict_screenshot.png)
 
 ```rust
 /// Convert a [Dict] to Apple Dictionary XML format
@@ -25,7 +25,7 @@ Located at `/src/lib.rs`
 
 Convert a `Dict` produced by `parse_dict()` to Apple Dictionary XML format. The main program at `/src/main.rs` combines these two steps to export an XML file, which you can run at the project root with:
 ```
-cargo run -- < path/to/wordshk.csv > ./wordshk_apple/wordshk.xml
+cargo run -- < path/to/wordshk.csv > ./apple_dict/wordshk.xml
 ```
 
 To build the dictionary and install it to Dictionary.app, you will need to install the **Dictionary Development Kit** [(reference)](https://apple.stackexchange.com/a/80110/398222):
@@ -33,7 +33,7 @@ To build the dictionary and install it to Dictionary.app, you will need to insta
 2. Download the **Additional Tool for Xcode** package (look for the latest version) from developer.apple.com/downloads
 3. Move the Dictionary Development Kit folder to `/Applications/Utilities/Dictionary Development Kit/`
 
-Then, cd into the `/wordshk_apple` folder and run `make && make install`. If everything is successful, you should see a bunch of messages printed to the console and the last line should be "To test the new dictionary, try Dictionary.app." If you have already opened Dictionary.app, close it and reopen it. Under Dictionary->Preferences, you should see a dictionary called 粵典 words.hk, check the box to the left to enable words.hk. Now, you should be able to search all entries in words.hk like any other native Apple dictionaries.
+Then, cd into the `/apple_dict` folder and run `make && make install`. If everything is successful, you should see a bunch of messages printed to the console and the last line should be "To test the new dictionary, try Dictionary.app." If you have already opened Dictionary.app, close it and reopen it. Under Dictionary->Preferences, you should see a dictionary called 粵典 words.hk, check the box to the left to enable words.hk. Now, you should be able to search all entries in words.hk like any other native Apple dictionaries.
 
 ## Doc
 https://alienkevin.github.io/wordshk-tools/
