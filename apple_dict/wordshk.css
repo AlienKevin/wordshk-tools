@@ -54,6 +54,22 @@ div.lang-tag-ch {
 	align-items: flex-end;
 }
 
+span[class|='badge'] {
+	border-radius: 0.25em;
+	font-size: 0.75em;
+}
+
+span.badge-em {
+	padding: 0.25em 0.5em;
+	color: white;
+	background-color: black;
+}
+
+span.badge-weak {
+	padding: 0.15em 0.4em;
+	border: 2px solid black;
+}
+
 div.def-head {
 	font-weight: 500;
     margin-bottom: 1em;

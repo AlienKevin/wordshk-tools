@@ -1206,6 +1206,18 @@ fn to_yue_lang_name(lang: AltLang) -> String {
     .to_string()
 }
 
+fn to_xml_badge_helper(is_emphasized: bool, tag: &String) -> String {
+    format!("<span class=\"badge{}\">{}</span>", if is_emphasized { "-em" } else { "-weak" }, tag)
+}
+
+fn to_xml_badge_em(tag: &String) -> String {
+    to_xml_badge_helper(true, tag)
+}
+
+fn to_xml_badge(tag: &String) -> String {
+    to_xml_badge_helper(false, tag)
+}
+
 /// Convert a [Dict] to Apple Dictionary XML format
 pub fn dict_to_xml(dict: Dict) -> String {
     let front_back_matter_filename = "apple_dict/front_back_matter.html";
@@ -1298,8 +1310,8 @@ pub fn dict_to_xml(dict: Dict) -> String {
                     .collect::<Vec<String>>()
                     .join("\n"),
                 tags = "<div class=\"tags\">\n".to_string()
-            + &(if entry.poses.len() > 0 { format!("<span>詞性：{}</span>\n", entry.poses.join("，")) } else { "".to_string() })
-            + &(if entry.labels.len() > 0 { format!("<span> ｜ 標籤：{}</span>\n", entry.labels.join("，")) } else { "".to_string() })
+            + &(if entry.poses.len() > 0 { format!("<span>詞性：{}</span>\n", entry.poses.iter().map(to_xml_badge_em).collect::<Vec<String>>().join("，")) } else { "".to_string() })
+            + &(if entry.labels.len() > 0 { format!("<span> ｜ 標籤：{}</span>\n", entry.labels.iter().map(to_xml_badge).collect::<Vec<String>>().join("，")) } else { "".to_string() })
             + &(if entry.sims.len() > 0 { format!("<span> ｜ 近義：{}</span>\n", entry.sims.join("，")) } else { "".to_string() })
             + &(if entry.ants.len() > 0 { format!("<span> ｜ 反義：{}</span>\n", entry.ants.join("，")) } else { "".to_string() })
             // TODO: add refs 
