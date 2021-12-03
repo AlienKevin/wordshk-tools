@@ -19,10 +19,14 @@ use lazy_static::lazy_static;
 use lip::ParseResult;
 use lip::*;
 use std::collections::HashSet;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::io;
 use std::convert::identity;
+use unicode_segmentation::UnicodeSegmentation;
+use unicode_names2;
+use std::cmp;
 
 /// A dictionary is a list of entries
 pub type Dict = Vec<Entry>;
@@ -87,6 +91,14 @@ pub enum SegmentType {
 ///
 pub type Segment = (SegmentType, String);
 
+pub type RubySegment = (SegmentType, RubyBit);
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum RubyBit {
+    Punc(String),
+    Word(String, Vec<String>),
+}
+
 /// A line consists of one or more [Segment]s
 ///
 /// Empty line: `vec![(Text, "")]`
@@ -96,6 +108,8 @@ pub type Segment = (SegmentType, String);
 /// Mixed line: `vec![(Text, "一種加入"), (Link, "蝦籽"), (Text, "整嘅廣東麪")]`
 ///
 pub type Line = Vec<Segment>;
+
+pub type RubyLine = Vec<RubySegment>;
 
 /// A clause consists of one or more [Line]s. Appears in explanations and example sentences
 ///
@@ -834,6 +848,208 @@ pub fn parse_content<'a>(
     )
 }
 
+type CharList = HashMap<char, HashMap<String, usize>>;
+
+// type WordList = HashMap<String, Vec<String>>;
+
+fn text_to_bits(text: &str) -> Vec<String> {
+    let mut i = 0;
+    let mut bits = vec![];
+    let gs = UnicodeSegmentation::graphemes(&text[..], true).collect::<Vec<&str>>();
+    while i < gs.len() {
+        let g = gs[i];
+        if test_g(is_cjk, g) {
+            bits.push(g.to_string());
+            i += 1;
+        } else if test_g(is_alphanumeric, g) {
+            let mut j = i + 1;
+            while j < gs.len() && (test_g(is_alphanumeric, gs[j]) || (test_g(char::is_whitespace, gs[j]))) {
+                j+=1;
+            }
+            bits.push(gs[i..j].join("").trim_end().into());
+            i = j;
+        } else { // a punctuation or space
+            if !test_g(char::is_whitespace, g) {
+                bits.push(g.to_string());
+            }
+            i += 1;
+        }
+    }
+    bits
+}
+
+pub fn flatten_line(line: &Line) -> Line {
+    let mut bit_line = vec![];
+    line.iter().for_each(|(seg_type, seg): &Segment| {
+        bit_line.extend::<Vec<Segment>>(text_to_bits(seg).iter().map(|bit| (seg_type.clone(), bit.to_string())).collect());
+    });
+    bit_line
+}
+
+pub fn match_ruby(line: &Line, prs: &Vec<String>) -> RubyLine {
+    let pr_scores = match_ruby_construct_table(line, prs);
+    let pr_map = match_ruby_backtrack(line, prs, &pr_scores);
+    // println!("{:?}", pr_map);
+    let flattened_ruby_line = line.iter().enumerate().map(|(i, (seg_type, seg))| {
+        match pr_map.get(&i) {
+            Some(j) =>
+                (seg_type.clone(), RubyBit::Word(seg.to_string(), prs[*j..j+1].to_vec())),
+            None => {
+                if test_g(is_punctuation, seg) {
+                    (seg_type.clone(), RubyBit::Punc(seg.to_string()))
+                } else {
+                    let start =
+                    {
+                        let mut j = i;
+                        while j >= 1 && pr_map.get(&j) == None {
+                            j -= 1;
+                        }
+                        match pr_map.get(&j) {
+                            Some(start) => *start + 1,
+                            None => 0,
+                        }
+                    };
+                    // println!("pr_map: {:?}", pr_map);
+                    // println!("i: {}", i);
+                    // println!("start: {}", start);
+                    let end = {
+                        let mut j = i + 1;
+                        while j < line.len() && pr_map.get(&j) == None {
+                            j += 1;
+                        }
+                        match pr_map.get(&j) {
+                            Some(end) => *end,
+                            None => prs.len(),
+                        }
+                    };
+                    (seg_type.clone(), RubyBit::Word(seg.to_string(), prs[start..end].to_vec()))
+                }
+            }
+        }
+    }).collect::<RubyLine>();
+    unflatten_ruby_line(&flattened_ruby_line)
+}
+
+fn unflatten_ruby_line(line: &RubyLine) -> RubyLine {
+    let mut i = 0;
+    let mut unflattened_line = vec![];
+    while i < line.len() {
+        let mut unflattened_word = String::new();
+        let mut unflattened_prs = vec![];
+        while let (SegmentType::Link, RubyBit::Word(word, prs)) = &line[i] {
+            unflattened_word.extend(word.chars());
+            unflattened_prs.extend(prs.clone());
+            i += 1;
+            if i >= line.len() { break; }
+        }
+        if unflattened_word.len() > 0 {
+            unflattened_line.push((SegmentType::Link, RubyBit::Word(unflattened_word, unflattened_prs)));
+        } else {
+            unflattened_line.push(line[i].clone());
+            i += 1;
+        }
+    }
+    unflattened_line
+}
+
+enum PrMatch {
+    Full,
+    Half,
+    Zero,
+}
+
+fn pr_match_to_score(m: PrMatch) -> usize {
+    match m {
+        PrMatch::Full => 2,
+        PrMatch::Half => 1,
+        PrMatch::Zero => 0,
+    }
+}
+
+fn match_pr(seg: &String, pr: &String) -> PrMatch {
+    if seg.chars().count() > 1 {
+        return PrMatch::Zero;
+    }
+    let c = seg.chars().next().unwrap();
+    match CHARLIST.get(&c) {
+        Some(c_prs) => {
+            match c_prs.get(pr) {
+                Some(_) => PrMatch::Full,
+                None => {
+                    // try half pr (without tones), to accomodate for tone changes
+                    let half_c_prs = c_prs.keys().map(|pr|
+                        if let Some(tail) = pr.chars().last() {
+                            if tail.is_digit(10) { &pr[0..pr.len()-1] } else { pr }
+                        } else { pr }
+                    ).collect::<Vec<&str>>();
+                    // found the half pr
+                    if half_c_prs.contains(&&pr[..]) { PrMatch::Half } else { PrMatch::Zero }
+                }
+            }
+        }
+        None => PrMatch::Zero
+    }
+}
+
+fn match_ruby_construct_table(line: &Line, prs: &Vec<String>) -> Vec<Vec<usize>> {
+    let m = line.len() + 1;
+    let n = prs.len() + 1;
+    let mut pr_scores = vec![vec![0; n]; m];
+    // println!("m: {}, n: {}", m, n);
+    for i in 1..m {
+        for j in 1..n {
+            // println!("i: {}, j: {}", i, j);
+            let (_, seg) = &line[i-1];
+            let cell_pr_match = match_pr(seg, &prs[j-1]);
+            match cell_pr_match {
+                PrMatch::Full | PrMatch::Half => {
+                    pr_scores[i][j] = pr_scores[i-1][j-1] + pr_match_to_score(cell_pr_match);
+                },
+                PrMatch::Zero => {
+                    let top_pr_score = pr_scores[i-1][j];
+                    let left_pr_score = pr_scores[i][j-1];
+                    pr_scores[i][j] = cmp::max(top_pr_score, left_pr_score);
+                }
+            }
+        }
+    }
+    pr_scores
+}
+
+fn match_ruby_backtrack(line: &Line, prs: &Vec<String>, pr_scores: &Vec<Vec<usize>>) -> HashMap<usize, usize> {
+    let mut pr_map = HashMap::new();
+    let mut i = pr_scores.len()-1;
+    let mut j = pr_scores[0].len()-1;
+
+    while i > 0 && j > 0 {
+        // println!("i: {}, j: {}", i, j);
+        let (_, seg) = &line[i-1];
+        match match_pr(&seg, &prs[j-1]) {
+            PrMatch::Full | PrMatch::Half => {
+                pr_map.insert(i-1, j-1);
+                // backtrack to the top left
+                i -= 1;
+                j -= 1;
+            },
+            PrMatch::Zero => {
+                let left_score = pr_scores[i-1][j];
+                let right_score = pr_scores[i][j-1];
+                if left_score > right_score {
+                    // backtrack to left
+                    i -= 1;
+                } else if left_score < right_score {
+                    // backtrack to top
+                    j -= 1;   
+                } else {
+                    // a tie, default to move left
+                    i -= 1;
+                }
+            }
+        }
+    }
+    pr_map
+}
+
 lazy_static! {
     static ref PUNCTUATIONS: HashSet<char> = {
         HashSet::from([
@@ -847,11 +1063,45 @@ lazy_static! {
             '「', '」', '《', '》', '？', '，', '。', '、', '／', '＋'
         ])
     };
+
+    static ref CHARLIST: CharList = {
+        let charlist_file = fs::File::open("charlist.json").unwrap();
+        let charlist_reader = io::BufReader::new(charlist_file);
+        serde_json::from_reader(charlist_reader).unwrap()
+    };
 }
 
 /// Test whether a character is a Chinese/English punctuation
 fn is_punctuation(c: char) -> bool {
     PUNCTUATIONS.contains(&c)
+}
+
+/// Test if a character is latin small or capital letter
+fn is_latin(c: char) -> bool {
+    if let Some(name) = unicode_names2::name(c) {
+        let name = format!("{}", name);
+        name.starts_with("LATIN SMALL LETTER") || name.starts_with("LATIN CAPITAL LETTER")
+    } else {
+        false
+    }
+}
+
+fn is_alphanumeric(c: char) -> bool {
+    let cp = c as i32;
+    (0x30 <= cp && cp < 0x40) || (0xFF10 <= cp && cp < 0xFF20) || is_latin(c)
+}
+
+fn is_cjk(c: char) -> bool {
+    let cp = c as i32;
+    (0x3400 <= cp && cp <= 0x4DBF) || (0x4E00 <= cp && cp <= 0x9FFF) || (0xF900 <= cp && cp <= 0xFAFF) || (0x20000 <= cp && cp <= 0x2FFFF)
+}
+
+fn test_g(f: fn(char) -> bool, g: &str) -> bool {
+    if let Some(c) = g.chars().next() {
+        g.chars().count() == 1 && f(c)
+    } else {
+        false
+    }
 }
 
 /// Escape '<' and '&' in an XML string

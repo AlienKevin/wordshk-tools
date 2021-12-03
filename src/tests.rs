@@ -1,11 +1,13 @@
 use super::*;
+use super::SegmentType::*;
+use super::RubyBit::*;
 
 fn text(string: &'static str) -> Segment {
-    (SegmentType::Text, string.to_string())
+    (Text, string.to_string())
 }
 
 fn link(string: &'static str) -> Segment {
-    (SegmentType::Link, string.to_string())
+    (Link, string.to_string())
 }
 
 fn simple_line(string: &'static str) -> Line {
@@ -440,4 +442,94 @@ yue:「#仆街」嘅代名詞",
                 })
             );
     }
+}
+
+#[test]
+fn test_is_latin() {
+    assert!(is_latin('a'));
+    assert!(is_latin('A'));
+    assert!(is_latin('Ä'));
+    assert!(is_latin('æ'));
+    assert!(is_latin('â'));
+    assert!(is_latin('b'));
+    assert!(is_latin('Ņ'));
+    assert!(is_latin('Ō'));
+    assert!(is_latin('Ƽ'));
+
+    assert!(!is_latin('ĳ')); // no ligatures
+    assert!(!is_latin('Ω')); // no greek
+    assert!(!is_latin('2')); // no digits
+    assert!(!is_latin('我')); // no CJK
+}
+
+#[test]
+fn test_text_to_bits() {
+    assert_eq!(text_to_bits("我 upgrade 咗做 Win 10 之後"), vec!["我", "upgrade", "咗", "做", "Win 10", "之", "後"]);
+    assert_eq!(text_to_bits("唔該幫我13蚊沽200股。"), vec!["唔", "該", "幫", "我", "13", "蚊", "沽", "200", "股", "。"]);
+    assert_eq!(text_to_bits("「你好耐。」「55」"), vec!["「", "你", "好", "耐", "。", "」", "「", "55", "」"]);
+    assert_eq!(text_to_bits("I mean，廣東話。"), vec!["I mean", "，", "廣", "東", "話", "。"]);
+}
+
+#[test]
+fn test_flatten_line() {
+    assert_eq!(flatten_line(&vec![text("我 "), link("upgrade"), text(" 咗做 Win 10 之後")]),
+        vec![text("我"), link("upgrade"), text("咗"), text("做"), text("Win 10"), text("之"), text("後")]
+    );
+    assert_eq!(flatten_line(&vec![text("I mean，廣東話。")]), vec!["I mean", "，", "廣", "東", "話", "。"].iter().map(|x| text(x)).collect::<Vec<Segment>>());
+    assert_eq!(flatten_line(&vec![text("I mean，"), link("廣東話"), text("。")]), vec![text("I mean"), text("，"), link("廣"), link("東"), link("話"), text("。")]);
+}
+
+#[test]
+fn test_match_ruby() {
+    assert_eq!(match_ruby(&flatten_line(&vec![text("I mean，廣東話。")]),
+        &vec!["aai6", "min1", "gwong2", "dung1", "waa2"].iter().map(|x| x.to_string()).collect::<Vec<String>>()),
+    vec![(Text, Word("I mean".into(), vec!["aai6".into(), "min1".into()])),
+    (Text, Punc("，".into())),
+    (Text, Word("廣".into(), vec!["gwong2".into()])),
+    (Text, Word("東".into(), vec!["dung1".into()])),
+    (Text, Word("話".into(), vec!["waa2".into()])),
+    (Text, Punc("。".into())),
+    ]);
+
+    assert_eq!(match_ruby(&flatten_line(&vec![text("唔該，幫我13蚊沽200股。")]),
+        &"m4 goi1 bong1 ngo5 sap6 saam1 man1 gu1 ji6 baak3 gu2".split_whitespace().map(|x| x.to_string()).collect::<Vec<String>>()),
+    vec![(Text, Word("唔".into(), vec!["m4".into()])),
+    (Text, Word("該".into(), vec!["goi1".into()])),
+    (Text, Punc("，".into())),
+    (Text, Word("幫".into(), vec!["bong1".into()])),
+    (Text, Word("我".into(), vec!["ngo5".into()])),
+    (Text, Word("13".into(), vec!["sap6".into(), "saam1".into()])),
+    (Text, Word("蚊".into(), vec!["man1".into()])),
+    (Text, Word("沽".into(), vec!["gu1".into()])),
+    (Text, Word("200".into(), vec!["ji6".into(), "baak3".into()])),
+    (Text, Word("股".into(), vec!["gu2".into()])),
+    (Text, Punc("。".into())),
+    ]);
+
+    assert_eq!(match_ruby(&flatten_line(&vec![text("我 "), link("upgrade"), text(" 咗做 Win 10 之後。")]),
+        &"ngo5 ap1 gwei1 zo2 zou6 win1 sap6 zi1 hau6".split_whitespace().map(|x| x.to_string()).collect::<Vec<String>>()),
+    vec![(Text, Word("我".into(), vec!["ngo5".into()])),
+    (Link, Word("upgrade".into(), vec!["ap1".into(), "gwei1".into()])),
+    (Text, Word("咗".into(), vec!["zo2".into()])),
+    (Text, Word("做".into(), vec!["zou6".into()])),
+    (Text, Word("Win 10".into(), vec!["win1".into(), "sap6".into()])),
+    (Text, Word("之".into(), vec!["zi1".into()])),
+    (Text, Word("後".into(), vec!["hau6".into()])),
+    (Text, Punc("。".into())),
+    ]);
+
+    // two full matches
+    assert_eq!(match_ruby(&flatten_line(&vec![link("經理")]), &vec!["ging1".into(), "lei5".into()]),
+    vec![(Link, Word("經理".into(), vec!["ging1".into(), "lei5".into()])),
+    ]);
+
+    // one half match
+    assert_eq!(match_ruby(&flatten_line(&vec![link("經理")]), &vec!["ging1".into(), "lei".into()]),
+    vec![(Link, Word("經理".into(), vec!["ging1".into(), "lei".into()])),
+    ]);
+
+    // two half matches
+    assert_eq!(match_ruby(&flatten_line(&vec![link("經理")]), &vec!["ging".into(), "lei".into()]),
+    vec![(Link, Word("經理".into(), vec!["ging".into(), "lei".into()])),
+    ]);
 }
