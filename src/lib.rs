@@ -103,7 +103,7 @@ pub type Segment = (SegmentType, String);
 pub enum RubySegment {
     Punc(String),
     Word(String, Vec<String>),
-    LinkedWord(String, Vec<String>),
+    LinkedWord(Vec<(String, Vec<String>)>),
 }
 
 /// A line consists of one or more [Segment]s
@@ -893,6 +893,15 @@ pub fn flatten_line(line: &Line) -> Line {
     bit_line
 }
 
+fn create_ruby_segment(seg_type: &SegmentType, seg: &str, prs: &[&str]) -> RubySegment {
+    let prs = prs.iter().map(|x| x.to_string()).collect();
+    if *seg_type == SegmentType::Link {
+        RubySegment::LinkedWord(vec![(seg.to_string(), prs)])
+    } else {
+        RubySegment::Word(seg.to_string(), prs)
+    }
+}
+
 pub fn match_ruby(line: &Line, prs: &Vec<&str>) -> RubyLine {
     let line = flatten_line(line);
     let pr_scores = match_ruby_construct_table(&line, prs);
@@ -901,12 +910,7 @@ pub fn match_ruby(line: &Line, prs: &Vec<&str>) -> RubyLine {
     let flattened_ruby_line = line.iter().enumerate().map(|(i, (seg_type, seg))| {
         match pr_map.get(&i) {
             Some(j) => {
-                (if *seg_type == SegmentType::Link {
-                    RubySegment::LinkedWord
-                } else {
-                    RubySegment::Word
-                })
-                (seg.to_string(), prs[*j..j+1].iter().map(|x| x.to_string()).collect())
+                create_ruby_segment(seg_type, seg, &prs[*j..j+1])
             },
             None => {
                 if test_g(is_punctuation, seg) {
@@ -936,12 +940,7 @@ pub fn match_ruby(line: &Line, prs: &Vec<&str>) -> RubyLine {
                             None => prs.len(),
                         }
                     };
-                    (if *seg_type == SegmentType::Link {
-                        RubySegment::LinkedWord
-                    } else {
-                        RubySegment::Word
-                    })
-                    (seg.to_string(), prs[start..end].iter().map(|x| x.to_string()).collect())
+                    create_ruby_segment(seg_type, seg, &prs[start..end])
                 }
             }
         }
@@ -953,16 +952,14 @@ fn unflatten_ruby_line(line: &RubyLine) -> RubyLine {
     let mut i = 0;
     let mut unflattened_line = vec![];
     while i < line.len() {
-        let mut link_word = String::new();
-        let mut link_prs = vec![];
-        while let RubySegment::LinkedWord(word, prs) = &line[i] {
-            link_word.extend(word.chars());
-            link_prs.extend(prs.clone());
+        let mut link_pairs = vec![];
+        while let RubySegment::LinkedWord(pairs) = &line[i] {
+            link_pairs.extend(pairs.clone());
             i += 1;
             if i >= line.len() { break; }
         }
-        if link_word.len() > 0 {
-            unflattened_line.push(RubySegment::LinkedWord(link_word, link_prs));
+        if link_pairs.len() > 0 {
+            unflattened_line.push(RubySegment::LinkedWord(link_pairs));
         } else {
             unflattened_line.push(line[i].clone());
             i += 1;
@@ -1131,14 +1128,15 @@ fn xml_escape(s: &String) -> String {
 fn segment_to_xml((seg_type, seg): &Segment) -> String {
     match seg_type {
         SegmentType::Text => xml_escape(seg),
-        SegmentType::Link => link_to_xml(seg),
+        SegmentType::Link => link_to_xml(&xml_escape(&seg), &xml_escape(&seg)),
     }
 }
 
-fn link_to_xml(link: &String) -> String {
+fn link_to_xml(link: &String, word: &String) -> String {
     format!(
-        r#"<a href="x-dictionary:d:{word}:{dict_id}">{word}</a>"#,
-        word = xml_escape(link),
+        r#"<a href="x-dictionary:d:{}:{dict_id}">{}</a>"#,
+        link,
+        word,
         dict_id = "wordshk"
     )
 }
@@ -1175,8 +1173,15 @@ fn pr_line_to_xml((line, pr): &PrLine) -> String {
             let mut output = "<ruby class=\"pr-clause\">".to_string();
             ruby_line.iter().for_each(|seg| {
                 match seg {
-                    RubySegment::LinkedWord(word, prs) => {
-                        output += &format!("\n<rb>{}</rb>\n<rt>{}</rt>", link_to_xml(word), prs.join(" "));
+                    RubySegment::LinkedWord(pairs) => {
+                        let mut ruby = "<ruby>".to_string();
+                        let mut word = String::new();
+                        pairs.iter().for_each(|(seg, prs)| {
+                            ruby += &format!("\n<rb>{}</rb>\n<rt>{}</rt>", xml_escape(seg), prs.join(" "));
+                            word += &seg;
+                        });
+                        ruby += "\n</ruby>";
+                        output += &link_to_xml(&word, &ruby);
                     },
                     RubySegment::Word(word, prs) => {
                         output += &format!("\n<rb>{}</rb>\n<rt>{}</rt>", word, prs.join(" "));

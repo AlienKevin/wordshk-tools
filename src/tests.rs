@@ -508,7 +508,7 @@ fn test_match_ruby() {
     assert_eq!(match_ruby(&vec![text("我 "), link("upgrade"), text(" 咗做 Win 10 之後。")],
         &"ngo5 ap1 gwei1 zo2 zou6 win1 sap6 zi1 hau6".split_whitespace().collect::<Vec<&str>>()),
     vec![Word("我".into(), vec!["ngo5".into()]),
-    LinkedWord("upgrade".into(), vec!["ap1".into(), "gwei1".into()]),
+    LinkedWord(vec![("upgrade".into(), vec!["ap1".into(), "gwei1".into()])]),
     Word("咗".into(), vec!["zo2".into()]),
     Word("做".into(), vec!["zou6".into()]),
     Word("Win 10".into(), vec!["win1".into(), "sap6".into()]),
@@ -519,15 +519,15 @@ fn test_match_ruby() {
 
     // two full matches
     assert_eq!(match_ruby(&vec![link("經理")], &vec!["ging1".into(), "lei5".into()]),
-    vec![LinkedWord("經理".into(), vec!["ging1".into(), "lei5".into()])]);
+    vec![LinkedWord(vec![("經".into(), vec!["ging1".into()]), ("理".into(), vec!["lei5".into()])])]);
 
     // one half match
     assert_eq!(match_ruby(&vec![link("經理")], &vec!["ging1".into(), "lei".into()]),
-    vec![LinkedWord("經理".into(), vec!["ging1".into(), "lei".into()])]);
+    vec![LinkedWord(vec![("經".into(), vec!["ging1".into()]), ("理".into(), vec!["lei".into()])])]);
 
     // two half matches
     assert_eq!(match_ruby(&vec![link("經理")], &vec!["ging".into(), "lei".into()]),
-    vec![LinkedWord("經理".into(), vec!["ging".into(), "lei".into()])]);
+    vec![LinkedWord(vec![("經".into(), vec!["ging".into()]), ("理".into(), vec!["lei".into()])])]);
 }
 
 /*#[test]
