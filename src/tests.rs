@@ -529,3 +529,36 @@ fn test_match_ruby() {
     assert_eq!(match_ruby(&vec![link("經理")], &vec!["ging".into(), "lei".into()]),
     vec![LinkedWord(vec![("經".into(), vec!["ging".into()]), ("理".into(), vec!["lei".into()])])]);
 }
+
+#[test]
+fn test_parse_jyutping() {
+    assert_eq!(
+        parse_jyutping(&"ging1".to_string()),
+        Some(JyutPing { initial: Some(JyutPingInitial::G), nucleus: JyutPingNucleus::I, coda: Some(JyutPingCoda::Ng), tone: Some(JyutPingTone::T1) })
+    );
+
+    assert_eq!(
+        parse_jyutping(&"gwok3".to_string()),
+        Some(JyutPing { initial: Some(JyutPingInitial::Gw), nucleus: JyutPingNucleus::O, coda: Some(JyutPingCoda::K), tone: Some(JyutPingTone::T3) })
+    );
+
+    assert_eq!(
+        parse_jyutping(&"aa".to_string()),
+        Some(JyutPing { initial: None, nucleus: JyutPingNucleus::Aa, coda: None, tone: None })
+    );
+
+    assert_eq!(
+        parse_jyutping(&"aa".to_string()),
+        Some(JyutPing { initial: None, nucleus: JyutPingNucleus::Aa, coda: None, tone: None })
+    );
+
+    assert_eq!(
+        parse_jyutping(&"a2".to_string()),
+        Some(JyutPing { initial: None, nucleus: JyutPingNucleus::A, coda: None, tone: Some(JyutPingTone::T2) })
+    );
+
+    assert_eq!(
+        parse_jyutping(&"seoi5".to_string()),
+        Some(JyutPing { initial: Some(JyutPingInitial::S), nucleus: JyutPingNucleus::Eo, coda: Some(JyutPingCoda::I), tone: Some(JyutPingTone::T5) })
+    );
+}

@@ -27,6 +27,9 @@ use std::convert::identity;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_names2;
 use std::cmp;
+use strum::EnumString;
+use std::str::FromStr;
+use std::ops::Range;
 
 /// A dictionary is a list of entries
 pub type Dict = HashMap<usize, Entry>;
@@ -1382,4 +1385,163 @@ pub fn dict_to_xml(dict: Dict) -> String {
         .collect::<Vec<String>>()
         .join("\n\n");
     header.to_string() + &entries + "\n</d:dictionary>\n"
+}
+
+// fn tokenize(text: &str) -> Vec<&str> {
+//     let mut i = 0;
+//     let mut tokens = vec![];
+//     let gs = UnicodeSegmentation::graphemes(&text[..], true).collect::<Vec<&str>>();
+//     while i < gs.len() {
+//         let g = gs[i];
+//         let mut token = String::new();
+//         while i < gs.len() && test_g(is_cjk, g) {
+//             token += g;
+//             i += 1;
+//         }
+//         if token.len() > 0 {
+//             tokens.push(token.as_str());
+//             token = String::new();
+//         }
+//         while i < gs.len() && test_g(is_alphanumeric, g) {
+//             let mut j = i + 1;
+//             while j < gs.len() && (test_g(is_alphanumeric, gs[j]) || (test_g(char::is_whitespace, gs[j]))) {
+//                 j+=1;
+//             }
+//             tokens.push(gs[i..j].join("").trim_end());
+//             i = j;
+//         }
+//         if token.len() > 0 {
+//             tokens.push(token.as_str());
+//         }
+//         while i < gs.len() && !test_g(is_cjk, g) && !test_g(is_alphanumeric, g) { // a punctuation or space
+//             if !test_g(char::is_whitespace, g) {
+//                 tokens.push(g);
+//             }
+//             i += 1;
+//         }
+//     }
+//     tokens
+// }
+
+// Phonetics info based on: https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf
+#[derive(Debug, PartialEq)]
+pub struct JyutPing {
+    pub initial: Option<JyutPingInitial>,
+    pub nucleus: JyutPingNucleus,
+    pub coda: Option<JyutPingCoda>,
+    pub tone: Option<JyutPingTone>
+}
+
+#[derive(EnumString, Debug, PartialEq)]
+#[strum(ascii_case_insensitive)]
+pub enum JyutPingInitial {
+    B,P,M,F,D,T,N,L,G,K,Ng,H,Gw,Kw,W,Z,C,S,J
+}
+
+#[derive(EnumString, Debug, PartialEq)]
+#[strum(ascii_case_insensitive)]
+pub enum JyutPingNucleus {
+    Aa,I,U,E,O,
+    Yu,Oe,
+    A,Eo
+}
+
+#[derive(EnumString, Debug, PartialEq)]
+#[strum(ascii_case_insensitive)]
+pub enum JyutPingCoda {
+    P,T,K, // stop
+    M,N,Ng, // nasal
+    I,U // vowel
+}
+
+#[derive(EnumString, Debug, PartialEq)]
+pub enum JyutPingTone {
+    #[strum(serialize = "1")]
+    T1,
+    #[strum(serialize = "2")]
+    T2,
+    #[strum(serialize = "3")]
+    T3,
+    #[strum(serialize = "4")]
+    T4,
+    #[strum(serialize = "5")]
+    T5,
+    #[strum(serialize = "6")]
+    T6
+}
+
+pub fn parse_jyutping(str: &String) -> Option<JyutPing> {
+    let mut start = 0;
+
+    let initial: Option<JyutPingInitial> = parse_jyutping_initial(str)
+        .map(|(_initial, _start)| {
+            start = _start;
+            _initial
+        });
+
+    let nucleus: JyutPingNucleus;
+    match parse_jyutping_nucleus(start, str) {
+        Some((_nucleus, _start)) => {
+            nucleus = _nucleus;
+            start = _start;
+        },
+        None => {
+            return None;
+        }
+    };
+    
+    let coda: Option<JyutPingCoda> = parse_jyutping_coda(start, str)
+        .map(|(_coda, _start)| {
+            start = _start;
+            _coda
+        });
+
+    let tone: Option<JyutPingTone> = parse_jyutping_tone(start, str);
+
+    Some(JyutPing {initial, nucleus, coda, tone})
+}
+
+fn parse_jyutping_component<T: FromStr>(start: usize, str: &String) -> Option<(T, usize)> {
+    get_slice(str, start..start+2).and_then(|first_two|
+        match T::from_str(first_two) {
+            Ok(component) => Some((component, start+2)),
+            Err(_) =>
+                get_slice(str, start..start+1).and_then(|first_one|
+                    match T::from_str(first_one) {
+                        Ok(component) => Some((component, start+1)),
+                        Err(_) => None
+                    }
+                )
+        }
+    )
+}
+
+fn parse_jyutping_initial(str: &String) -> Option<(JyutPingInitial, usize)> {
+    parse_jyutping_component::<JyutPingInitial>(0, str)
+}
+
+fn parse_jyutping_nucleus(start: usize, str: &String) -> Option<(JyutPingNucleus, usize)> {
+    parse_jyutping_component::<JyutPingNucleus>(start, str)
+}
+
+fn parse_jyutping_coda(start: usize, str: &String) -> Option<(JyutPingCoda, usize)> {
+    parse_jyutping_component::<JyutPingCoda>(start, str)
+}
+
+fn parse_jyutping_tone(start: usize, str: &String) -> Option<JyutPingTone> {
+    // println!("{} {} {}", str, start, str.len());
+    get_slice(str, start..str.len()).and_then(|substr|
+        match JyutPingTone::from_str(substr) {
+            Ok(tone) => Some(tone),
+            Err(_) => None,
+        }
+    )
+}
+
+fn get_slice(s: &str, range: Range<usize>) -> Option<&str> {
+    if s.len() > range.start && s.len() >= range.end {
+        Some(&s[range])
+    } else {
+        None
+    }
 }
