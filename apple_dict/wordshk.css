@@ -29,13 +29,13 @@ div.tags {
 	--dark: black;
 }
 
-rb {
+.pr-clause {
 	font-size: 200%;
 }
 
 rt {
 	color: var(--mid);
-	font-size: 80%;
+	font-size: 40%;
 }
 
 ol {
