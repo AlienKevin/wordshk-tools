@@ -1,7 +1,8 @@
 @charset "UTF-8";
 @namespace d url(http://www.apple.com/DTDs/DictionaryService-1.0.rng);
 
-d|entry {
+body {
+	color: var(--dark);
 }
 
 h1	{
@@ -22,7 +23,9 @@ div.tags {
 }
 
 :root {
-	--grey :#959595;
+	--light: white;
+	--mid: #959595;
+	--dark: black;
 }
 
 rb {
@@ -30,7 +33,7 @@ rb {
 }
 
 rt {
-	color: var(--grey);
+	color: var(--mid);
 	font-size: 90%;
 }
 
@@ -61,13 +64,13 @@ span[class|='badge'] {
 
 span.badge-em {
 	padding: 0.25em 0.5em;
-	color: white;
-	background-color: black;
+	color: var(--light);
+	background-color: var(--dark);
 }
 
 span.badge-weak {
 	padding: 0.15em 0.4em;
-	border: 2px solid black;
+	border: 2px solid var(--dark);
 }
 
 div.def-head {
@@ -86,7 +89,7 @@ div.eg {
 
 div.entry-head {
 	padding: 0.7em;
-	border: 2px solid var(--grey);
+	border: 2px solid var(--mid);
 	border-radius: 0.5em;
 }
 
@@ -97,11 +100,9 @@ div.entry {
 
 @media (prefers-color-scheme: dark)
 {
-	body {
-		color: white;
-	}
-
 	:root {
-		--grey: #c0c0c0;
+		--light: black;
+		--mid: #c0c0c0;
+		--dark: white;
 	}
 }
