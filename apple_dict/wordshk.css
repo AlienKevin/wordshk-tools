@@ -29,12 +29,12 @@ div.tags {
 }
 
 rb {
-	font-size: 260%;
+	font-size: 200%;
 }
 
 rt {
 	color: var(--mid);
-	font-size: 90%;
+	font-size: 80%;
 }
 
 ol {
