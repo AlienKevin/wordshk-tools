@@ -16,6 +16,7 @@ h2 {
 
 span.prs {
     margin-left: 0.5em;
+	color: var(--mid);
 }
 
 div.tags {
