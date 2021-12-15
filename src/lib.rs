@@ -29,7 +29,7 @@ use unicode_names2;
 use std::cmp;
 
 /// A dictionary is a list of entries
-pub type Dict = Vec<Entry>;
+pub type Dict = HashMap<usize, Entry>;
 
 /// An entry contains some information about a word.
 ///
@@ -195,7 +195,7 @@ pub type PrLine = (Line, Option<String>);
 pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
     // Build the CSV reader and iterate over each record.
     let mut rdr = csv::Reader::from_reader(io::stdin());
-    let mut dict: Dict = Vec::new();
+    let mut dict: Dict = HashMap::new();
     for result in rdr.records() {
         let entry = result?;
         if &entry[4] == "OK" {
@@ -246,7 +246,7 @@ pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
             match entry {
                 Some(e) => {
                     // println!("{:?}", e);
-                    dict.push(e);
+                    dict.insert(id, e);
                 }
                 None => {}
             };
@@ -1243,7 +1243,7 @@ pub fn dict_to_xml(dict: Dict) -> String {
 
     let entries = dict
         .iter()
-        .map(|entry| {
+        .map(|(_id, entry)| {
             let entry_str = format!(
                 indoc! {r#"
                 <d:entry id="{id}" d:title="{variant_0_word}">
