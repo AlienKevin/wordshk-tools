@@ -895,11 +895,6 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
     let gs = UnicodeSegmentation::graphemes(&text[..], true).collect::<Vec<&str>>();
     let mut start_end_pairs: Vec<(usize, usize)> = vec![];
     variants.iter().for_each(|variant| {
-        // currently excludes variants containing latin characters
-        // difficult to highlight a specific word in a segment
-        if variant.chars().any(is_latin) {
-            return;
-        }
         let variant = UnicodeSegmentation::graphemes(&variant[..], true).collect::<Vec<&str>>();
         find_subsequences(&gs, &variant).iter().for_each(|(start_index, end_index)| {
             // filter out short variants
@@ -914,6 +909,9 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
             }
         });
     });
+    // if variants.contains(&"camp camp 哋".to_string()) {
+    //     println!("{:?}", start_end_pairs);
+    // }
     let mut is_bolded = false;
     while i < gs.len() {
         let g = gs[i];
@@ -927,15 +925,47 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
             }
             i += 1;
         } else if test_g(is_alphanumeric, g) {
-            let mut j = i + 1;
+            let mut j = i;
+            let mut prev_bold_end_index: Option<usize> = None;
+            let mut bold_start_index = None;
+            let mut bold_end_index = None;
+            let mut word: Word = vec![];
             while j < gs.len() && (test_g(is_alphanumeric, gs[j]) || (test_g(char::is_whitespace, gs[j]))) {
+                if start_end_pairs.iter().any(|(start, _)| start == &j) {
+                    bold_start_index = Some(j);
+                    is_bolded = true;
+                }
+                if start_end_pairs.iter().any(|(_, end)| end == &j) {
+                    bold_end_index = Some(j);
+                    is_bolded = false;
+                }
+                match (bold_start_index, bold_end_index) {
+                    (Some(start), Some(end)) => {
+                        let prev_end = prev_bold_end_index.map(|x| x + 1).unwrap_or(i);
+                        word.push((TextStyle::Normal, gs[prev_end..start].join("").into()));
+                        word.push((TextStyle::Bold, gs[start..end+1].join("").into()));
+                        prev_bold_end_index = bold_end_index;
+                        bold_start_index = None;
+                        bold_end_index = None;
+                    },
+                    (_, _) => {}
+                }
                 j+=1;
             }
-            words.push(vec![(TextStyle::Normal, gs[i..j].join("").trim_end().into())]);
+            if let Some(bold_end) = prev_bold_end_index {
+                if bold_end+1 < j {
+                    word.push((TextStyle::Normal, gs[bold_end+1..j].join("").trim_end().into()));
+                }
+            } else if let Some(bold_start) = bold_start_index {
+                word.push((TextStyle::Bold, gs[bold_start..j].join("").trim_end().into()));
+            } else {
+                word.push((TextStyle::Normal, gs[i..j].join("").trim_end().into()));
+            }
+            words.push(word);
             i = j;
         } else { // a punctuation or space
             if !test_g(char::is_whitespace, g) {
-                words.push(vec![(TextStyle::Normal, g.to_string())]);
+                words.push(vec![(if is_bolded { TextStyle::Bold } else { TextStyle::Normal },g.to_string())]);
             }
             i += 1;
         }
