@@ -1,5 +1,5 @@
-use wordshk_tools::{parse_dict, dict_to_xml};
 use std::process;
+use wordshk_tools::{dict_to_xml, parse_dict};
 
 fn main() {
     match parse_dict() {

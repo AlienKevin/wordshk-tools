@@ -18,18 +18,18 @@ use indoc::indoc;
 use lazy_static::lazy_static;
 use lip::ParseResult;
 use lip::*;
-use std::collections::HashSet;
+use std::cmp;
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::convert::identity;
 use std::error::Error;
 use std::fs;
 use std::io;
-use std::convert::identity;
-use unicode_segmentation::UnicodeSegmentation;
-use unicode_names2;
-use std::cmp;
-use strum::EnumString;
-use std::str::FromStr;
 use std::ops::Range;
+use std::str::FromStr;
+use strum::EnumString;
+use unicode_names2;
+use unicode_segmentation::UnicodeSegmentation;
 
 /// A dictionary is a list of entries
 pub type Dict = HashMap<usize, Entry>;
@@ -503,9 +503,9 @@ pub fn parse_clause<'a>(expecting: &'static str) -> lip::BoxedParser<'a, Clause,
 ///
 pub fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
     succeed!(identity)
-    .skip(token(name))
-    .skip(token(":"))
-    .keep(parse_clause(name))
+        .skip(token(name))
+        .skip(token(":"))
+        .keep(parse_clause(name))
 }
 
 /// Parse a clause in an alternative language
@@ -629,10 +629,7 @@ pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
                 .skip(optional((), parse_br())),
         ))
         // only a single line is accepted in eg
-        .keep(optional(
-            None,
-            succeed!(Some).keep(parse_named_line("eng")),
-        ))
+        .keep(optional(None, succeed!(Some).keep(parse_named_line("eng"))))
         .skip(optional((), parse_br()))
 }
 
@@ -878,15 +875,20 @@ type CharList = HashMap<char, HashMap<String, usize>>;
 
 // source: https://stackoverflow.com/a/35907071/6798201
 fn find_subsequences<T>(haystack: &[T], needle: &[T]) -> Vec<(usize, usize)>
-    where for<'a> &'a [T]: PartialEq
+where
+    for<'a> &'a [T]: PartialEq,
 {
-    haystack.windows(needle.len()).enumerate().filter_map(|(i, window)| {
-        if window == needle {
-            Some((i, i + needle.len() - 1))
-        } else {
-            None
-        }
-    }).collect()
+    haystack
+        .windows(needle.len())
+        .enumerate()
+        .filter_map(|(i, window)| {
+            if window == needle {
+                Some((i, i + needle.len() - 1))
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
@@ -896,18 +898,23 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
     let mut start_end_pairs: Vec<(usize, usize)> = vec![];
     variants.iter().for_each(|variant| {
         let variant = UnicodeSegmentation::graphemes(&variant[..], true).collect::<Vec<&str>>();
-        find_subsequences(&gs, &variant).iter().for_each(|(start_index, end_index)| {
-            // filter out short variants
-            start_end_pairs = start_end_pairs.iter().filter(|(start, end)|
-                !(*start_index <= *start && *end <= *end_index)
-            ).cloned().collect();
-            // add variant indices if a longer variant does not already exist
-            if !start_end_pairs.iter().any(|(start, end)|
-                *start <= *start_index && *end_index <= *end
-            ) {
-                start_end_pairs.push((*start_index, *end_index));
-            }
-        });
+        find_subsequences(&gs, &variant)
+            .iter()
+            .for_each(|(start_index, end_index)| {
+                // filter out short variants
+                start_end_pairs = start_end_pairs
+                    .iter()
+                    .filter(|(start, end)| !(*start_index <= *start && *end <= *end_index))
+                    .cloned()
+                    .collect();
+                // add variant indices if a longer variant does not already exist
+                if !start_end_pairs
+                    .iter()
+                    .any(|(start, end)| *start <= *start_index && *end_index <= *end)
+                {
+                    start_end_pairs.push((*start_index, *end_index));
+                }
+            });
     });
     // if variants.contains(&"camp camp 哋".to_string()) {
     //     println!("{:?}", start_end_pairs);
@@ -919,7 +926,14 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
             if start_end_pairs.iter().any(|(start, _)| start == &i) {
                 is_bolded = true;
             }
-            words.push(vec![(if is_bolded { TextStyle::Bold } else { TextStyle::Normal },g.to_string())]);
+            words.push(vec![(
+                if is_bolded {
+                    TextStyle::Bold
+                } else {
+                    TextStyle::Normal
+                },
+                g.to_string(),
+            )]);
             if start_end_pairs.iter().any(|(_, end)| end == &i) {
                 is_bolded = false;
             }
@@ -930,7 +944,9 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
             let mut bold_start_index = None;
             let mut bold_end_index = None;
             let mut word: Word = vec![];
-            while j < gs.len() && (test_g(is_alphanumeric, gs[j]) || (test_g(char::is_whitespace, gs[j]))) {
+            while j < gs.len()
+                && (test_g(is_alphanumeric, gs[j]) || (test_g(char::is_whitespace, gs[j])))
+            {
                 if start_end_pairs.iter().any(|(start, _)| start == &j) {
                     bold_start_index = Some(j);
                     is_bolded = true;
@@ -945,32 +961,43 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
                         if prev_end < start {
                             word.push((TextStyle::Normal, gs[prev_end..start].join("").into()));
                         }
-                        word.push((TextStyle::Bold, gs[start..end+1].join("").into()));
+                        word.push((TextStyle::Bold, gs[start..end + 1].join("").into()));
                         prev_bold_end_index = bold_end_index;
                         bold_start_index = None;
                         bold_end_index = None;
-                    },
+                    }
                     (_, _) => {}
                 }
-                j+=1;
+                j += 1;
             }
             if let Some(bold_end) = prev_bold_end_index {
-                if bold_end+1 < j {
-                    let rest = gs[bold_end+1..j].join("").trim_end().to_string();
+                if bold_end + 1 < j {
+                    let rest = gs[bold_end + 1..j].join("").trim_end().to_string();
                     if rest.len() > 0 {
                         word.push((TextStyle::Normal, rest));
                     }
                 }
             } else if let Some(bold_start) = bold_start_index {
-                word.push((TextStyle::Bold, gs[bold_start..j].join("").trim_end().into()));
+                word.push((
+                    TextStyle::Bold,
+                    gs[bold_start..j].join("").trim_end().into(),
+                ));
             } else {
                 word.push((TextStyle::Normal, gs[i..j].join("").trim_end().into()));
             }
             words.push(word);
             i = j;
-        } else { // a punctuation or space
+        } else {
+            // a punctuation or space
             if !test_g(char::is_whitespace, g) {
-                words.push(vec![(if is_bolded { TextStyle::Bold } else { TextStyle::Normal },g.to_string())]);
+                words.push(vec![(
+                    if is_bolded {
+                        TextStyle::Bold
+                    } else {
+                        TextStyle::Normal
+                    },
+                    g.to_string(),
+                )]);
             }
             i += 1;
         }
@@ -981,15 +1008,21 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
 pub fn flatten_line(variants: &Vec<String>, line: &Line) -> WordLine {
     let mut bit_line: WordLine = vec![];
     line.iter().for_each(|(seg_type, seg): &Segment| {
-        bit_line.extend::<WordLine>(tokenize(variants, seg).iter().map(|text|
-            (seg_type.clone(), text.clone())
-        ).collect());
+        bit_line.extend::<WordLine>(
+            tokenize(variants, seg)
+                .iter()
+                .map(|text| (seg_type.clone(), text.clone()))
+                .collect(),
+        );
     });
     bit_line
 }
 
 fn word_to_string(word: &Word) -> String {
-    word.iter().map(|(_, seg)| seg.clone()).collect::<Vec<String>>().join("")
+    word.iter()
+        .map(|(_, seg)| seg.clone())
+        .collect::<Vec<String>>()
+        .join("")
 }
 
 fn get_xml_start_tag(style: &TextStyle) -> &'static str {
@@ -1007,13 +1040,17 @@ fn get_xml_end_tag(style: &TextStyle) -> &'static str {
 }
 
 fn word_to_xml(word: &Word) -> String {
-    word.iter().map(|(style, seg)|
-        format!("{start_tag}{content}{end_tag}",
-            start_tag = get_xml_start_tag(style),
-            content = xml_escape(seg),
-            end_tag = get_xml_end_tag(style),
-        )
-    ).collect::<Vec<String>>().join("")
+    word.iter()
+        .map(|(style, seg)| {
+            format!(
+                "{start_tag}{content}{end_tag}",
+                start_tag = get_xml_start_tag(style),
+                content = xml_escape(seg),
+                end_tag = get_xml_end_tag(style),
+            )
+        })
+        .collect::<Vec<String>>()
+        .join("")
 }
 
 fn create_ruby_segment(seg_type: &SegmentType, word: &Word, prs: &[&str]) -> RubySegment {
@@ -1030,45 +1067,46 @@ pub fn match_ruby(variants: &Vec<String>, line: &Line, prs: &Vec<&str>) -> RubyL
     let pr_scores = match_ruby_construct_table(&line, prs);
     let pr_map = match_ruby_backtrack(&line, prs, &pr_scores);
     // println!("{:?}", pr_map);
-    let flattened_ruby_line = line.iter().enumerate().map(|(i, (seg_type, word))| {
-        match pr_map.get(&i) {
-            Some(j) => {
-                create_ruby_segment(seg_type, word, &prs[*j..j+1])
-            },
-            None => {
-                let word_str = word_to_string(word);
-                if test_g(is_punctuation, &word_str) {
-                    RubySegment::Punc(word_str)
-                } else {
-                    let start =
-                    {
-                        let mut j = i;
-                        while j >= 1 && pr_map.get(&j) == None {
-                            j -= 1;
-                        }
-                        match pr_map.get(&j) {
-                            Some(start) => *start + 1,
-                            None => 0,
-                        }
-                    };
-                    // println!("pr_map: {:?}", pr_map);
-                    // println!("i: {}", i);
-                    // println!("start: {}", start);
-                    let end = {
-                        let mut j = i + 1;
-                        while j < line.len() && pr_map.get(&j) == None {
-                            j += 1;
-                        }
-                        match pr_map.get(&j) {
-                            Some(end) => *end,
-                            None => prs.len(),
-                        }
-                    };
-                    create_ruby_segment(seg_type, word, &prs[start..end])
+    let flattened_ruby_line = line
+        .iter()
+        .enumerate()
+        .map(|(i, (seg_type, word))| {
+            match pr_map.get(&i) {
+                Some(j) => create_ruby_segment(seg_type, word, &prs[*j..j + 1]),
+                None => {
+                    let word_str = word_to_string(word);
+                    if test_g(is_punctuation, &word_str) {
+                        RubySegment::Punc(word_str)
+                    } else {
+                        let start = {
+                            let mut j = i;
+                            while j >= 1 && pr_map.get(&j) == None {
+                                j -= 1;
+                            }
+                            match pr_map.get(&j) {
+                                Some(start) => *start + 1,
+                                None => 0,
+                            }
+                        };
+                        // println!("pr_map: {:?}", pr_map);
+                        // println!("i: {}", i);
+                        // println!("start: {}", start);
+                        let end = {
+                            let mut j = i + 1;
+                            while j < line.len() && pr_map.get(&j) == None {
+                                j += 1;
+                            }
+                            match pr_map.get(&j) {
+                                Some(end) => *end,
+                                None => prs.len(),
+                            }
+                        };
+                        create_ruby_segment(seg_type, word, &prs[start..end])
+                    }
                 }
             }
-        }
-    }).collect::<RubyLine>();
+        })
+        .collect::<RubyLine>();
     unflatten_ruby_line(&flattened_ruby_line)
 }
 
@@ -1080,7 +1118,9 @@ fn unflatten_ruby_line(line: &RubyLine) -> RubyLine {
         while let RubySegment::LinkedWord(pairs) = &line[i] {
             link_pairs.extend(pairs.clone());
             i += 1;
-            if i >= line.len() { break; }
+            if i >= line.len() {
+                break;
+            }
         }
         if link_pairs.len() > 0 {
             unflattened_line.push(RubySegment::LinkedWord(link_pairs));
@@ -1117,17 +1157,30 @@ fn match_pr(seg: &String, pr: &str) -> PrMatch {
                 Some(_) => PrMatch::Full,
                 None => {
                     // try half pr (without tones), to accomodate for tone changes
-                    let half_c_prs = c_prs.keys().map(|pr|
-                        if let Some(tail) = pr.chars().last() {
-                            if tail.is_digit(10) { &pr[0..pr.len()-1] } else { pr }
-                        } else { pr }
-                    ).collect::<Vec<&str>>();
+                    let half_c_prs = c_prs
+                        .keys()
+                        .map(|pr| {
+                            if let Some(tail) = pr.chars().last() {
+                                if tail.is_digit(10) {
+                                    &pr[0..pr.len() - 1]
+                                } else {
+                                    pr
+                                }
+                            } else {
+                                pr
+                            }
+                        })
+                        .collect::<Vec<&str>>();
                     // found the half pr
-                    if half_c_prs.contains(&&pr[..]) { PrMatch::Half } else { PrMatch::Zero }
+                    if half_c_prs.contains(&&pr[..]) {
+                        PrMatch::Half
+                    } else {
+                        PrMatch::Zero
+                    }
                 }
             }
         }
-        None => PrMatch::Zero
+        None => PrMatch::Zero,
     }
 }
 
@@ -1139,15 +1192,15 @@ fn match_ruby_construct_table(line: &WordLine, prs: &Vec<&str>) -> Vec<Vec<usize
     for i in 1..m {
         for j in 1..n {
             // println!("i: {}, j: {}", i, j);
-            let (_, word) = &line[i-1];
-            let cell_pr_match = match_pr(&word_to_string(&word), prs[j-1]);
+            let (_, word) = &line[i - 1];
+            let cell_pr_match = match_pr(&word_to_string(&word), prs[j - 1]);
             match cell_pr_match {
                 PrMatch::Full | PrMatch::Half => {
-                    pr_scores[i][j] = pr_scores[i-1][j-1] + pr_match_to_score(cell_pr_match);
-                },
+                    pr_scores[i][j] = pr_scores[i - 1][j - 1] + pr_match_to_score(cell_pr_match);
+                }
                 PrMatch::Zero => {
-                    let top_pr_score = pr_scores[i-1][j];
-                    let left_pr_score = pr_scores[i][j-1];
+                    let top_pr_score = pr_scores[i - 1][j];
+                    let left_pr_score = pr_scores[i][j - 1];
                     pr_scores[i][j] = cmp::max(top_pr_score, left_pr_score);
                 }
             }
@@ -1156,30 +1209,34 @@ fn match_ruby_construct_table(line: &WordLine, prs: &Vec<&str>) -> Vec<Vec<usize
     pr_scores
 }
 
-fn match_ruby_backtrack(line: &WordLine, prs: &Vec<&str>, pr_scores: &Vec<Vec<usize>>) -> HashMap<usize, usize> {
+fn match_ruby_backtrack(
+    line: &WordLine,
+    prs: &Vec<&str>,
+    pr_scores: &Vec<Vec<usize>>,
+) -> HashMap<usize, usize> {
     let mut pr_map = HashMap::new();
-    let mut i = pr_scores.len()-1;
-    let mut j = pr_scores[0].len()-1;
+    let mut i = pr_scores.len() - 1;
+    let mut j = pr_scores[0].len() - 1;
 
     while i > 0 && j > 0 {
         // println!("i: {}, j: {}", i, j);
-        let (_, word) = &line[i-1];
-        match match_pr(&word_to_string(&word), &prs[j-1]) {
+        let (_, word) = &line[i - 1];
+        match match_pr(&word_to_string(&word), &prs[j - 1]) {
             PrMatch::Full | PrMatch::Half => {
-                pr_map.insert(i-1, j-1);
+                pr_map.insert(i - 1, j - 1);
                 // backtrack to the top left
                 i -= 1;
                 j -= 1;
-            },
+            }
             PrMatch::Zero => {
-                let left_score = pr_scores[i-1][j];
-                let right_score = pr_scores[i][j-1];
+                let left_score = pr_scores[i - 1][j];
+                let right_score = pr_scores[i][j - 1];
                 if left_score > right_score {
                     // backtrack to left
                     i -= 1;
                 } else if left_score < right_score {
                     // backtrack to top
-                    j -= 1;   
+                    j -= 1;
                 } else {
                     // a tie, default to move left
                     i -= 1;
@@ -1233,7 +1290,10 @@ fn is_alphanumeric(c: char) -> bool {
 
 fn is_cjk(c: char) -> bool {
     let cp = c as i32;
-    (0x3400 <= cp && cp <= 0x4DBF) || (0x4E00 <= cp && cp <= 0x9FFF) || (0xF900 <= cp && cp <= 0xFAFF) || (0x20000 <= cp && cp <= 0x2FFFF)
+    (0x3400 <= cp && cp <= 0x4DBF)
+        || (0x4E00 <= cp && cp <= 0x9FFF)
+        || (0xF900 <= cp && cp <= 0xFAFF)
+        || (0x20000 <= cp && cp <= 0x2FFFF)
 }
 
 fn test_g(f: fn(char) -> bool, g: &str) -> bool {
@@ -1280,7 +1340,7 @@ fn clause_to_xml_with_class_name(class_name: &str, clause: &Clause) -> String {
             .iter()
             .map(|line| {
                 line.iter()
-                .map(segment_to_xml)
+                    .map(segment_to_xml)
                     .collect::<Vec<String>>()
                     .join("")
             })
@@ -1297,7 +1357,8 @@ fn simple_pr_clause_to_xml(variants: &Vec<String>, clause: &Clause) -> String {
         clause
             .iter()
             .map(|line| {
-                flatten_line(variants, line).iter()
+                flatten_line(variants, line)
+                    .iter()
                     .map(word_segment_to_xml)
                     .collect::<Vec<String>>()
                     .join("")
@@ -1318,38 +1379,37 @@ fn pr_line_to_xml(variants: &Vec<String>, (line, pr): &PrLine) -> String {
         Some(pr) => {
             let prs = pr.unicode_words().collect::<Vec<&str>>();
             let ruby_line = match_ruby(variants, line, &prs);
-            
             let mut output = "<ruby class=\"pr-clause\">".to_string();
-            ruby_line.iter().for_each(|seg| {
-                match seg {
-                    RubySegment::LinkedWord(pairs) => {
-                        let mut ruby = "<ruby>".to_string();
-                        let mut word_str = String::new();
-                        pairs.iter().for_each(|(word, prs)| {
-                            ruby += &format!("\n<rb>{}</rb>\n<rt>{}</rt>",
-                                word_to_xml(word),
-                                prs.join(" ")
-                            );
-                            word_str += &word_to_string(word);
-                        });
-                        ruby += "\n</ruby>";
-                        output += &format!("<rb>{}</rb><rt></rt>", &link_to_xml(&word_str, &ruby));
-                    },
-                    RubySegment::Word(word, prs) => {
-                        output += &format!("\n<rb>{}</rb>\n<rt>{}</rt>",
+            ruby_line.iter().for_each(|seg| match seg {
+                RubySegment::LinkedWord(pairs) => {
+                    let mut ruby = "<ruby>".to_string();
+                    let mut word_str = String::new();
+                    pairs.iter().for_each(|(word, prs)| {
+                        ruby += &format!(
+                            "\n<rb>{}</rb>\n<rt>{}</rt>",
                             word_to_xml(word),
                             prs.join(" ")
                         );
-                    },
-                    RubySegment::Punc(punc) => {
-                        output += &format!("\n<rb>{}</rb>\n<rt></rt>", punc);
-                    },
+                        word_str += &word_to_string(word);
+                    });
+                    ruby += "\n</ruby>";
+                    output += &format!("<rb>{}</rb><rt></rt>", &link_to_xml(&word_str, &ruby));
+                }
+                RubySegment::Word(word, prs) => {
+                    output += &format!(
+                        "\n<rb>{}</rb>\n<rt>{}</rt>",
+                        word_to_xml(word),
+                        prs.join(" ")
+                    );
+                }
+                RubySegment::Punc(punc) => {
+                    output += &format!("\n<rb>{}</rb>\n<rt></rt>", punc);
                 }
             });
             output += "\n</ruby>";
             output
         }
-        None => simple_pr_clause_to_xml(variants, &vec![line.clone()])
+        None => simple_pr_clause_to_xml(variants, &vec![line.clone()]),
     }
 }
 
@@ -1367,7 +1427,11 @@ fn to_yue_lang_name(lang: AltLang) -> String {
 }
 
 fn to_xml_badge_helper(is_emphasized: bool, tag: &String) -> String {
-    format!("<span class=\"badge{}\">{}</span>", if is_emphasized { "-em" } else { "-weak" }, tag)
+    format!(
+        "<span class=\"badge{}\">{}</span>",
+        if is_emphasized { "-em" } else { "-weak" },
+        tag
+    )
 }
 
 fn to_xml_badge_em(tag: &String) -> String {
@@ -1582,29 +1646,58 @@ pub struct JyutPing {
     pub initial: Option<JyutPingInitial>,
     pub nucleus: JyutPingNucleus,
     pub coda: Option<JyutPingCoda>,
-    pub tone: Option<JyutPingTone>
+    pub tone: Option<JyutPingTone>,
 }
 
 #[derive(EnumString, Debug, PartialEq)]
 #[strum(ascii_case_insensitive)]
 pub enum JyutPingInitial {
-    B,P,M,F,D,T,N,L,G,K,Ng,H,Gw,Kw,W,Z,C,S,J
+    B,
+    P,
+    M,
+    F,
+    D,
+    T,
+    N,
+    L,
+    G,
+    K,
+    Ng,
+    H,
+    Gw,
+    Kw,
+    W,
+    Z,
+    C,
+    S,
+    J,
 }
 
 #[derive(EnumString, Debug, PartialEq)]
 #[strum(ascii_case_insensitive)]
 pub enum JyutPingNucleus {
-    Aa,I,U,E,O,
-    Yu,Oe,
-    A,Eo
+    Aa,
+    I,
+    U,
+    E,
+    O,
+    Yu,
+    Oe,
+    A,
+    Eo,
 }
 
 #[derive(EnumString, Debug, PartialEq)]
 #[strum(ascii_case_insensitive)]
 pub enum JyutPingCoda {
-    P,T,K, // stop
-    M,N,Ng, // nasal
-    I,U // vowel
+    P,
+    T,
+    K, // stop
+    M,
+    N,
+    Ng, // nasal
+    I,
+    U, // vowel
 }
 
 #[derive(EnumString, Debug, PartialEq)]
@@ -1620,53 +1713,52 @@ pub enum JyutPingTone {
     #[strum(serialize = "5")]
     T5,
     #[strum(serialize = "6")]
-    T6
+    T6,
 }
 
 pub fn parse_jyutping(str: &String) -> Option<JyutPing> {
     let mut start = 0;
 
-    let initial: Option<JyutPingInitial> = parse_jyutping_initial(str)
-        .map(|(_initial, _start)| {
-            start = _start;
-            _initial
-        });
+    let initial: Option<JyutPingInitial> = parse_jyutping_initial(str).map(|(_initial, _start)| {
+        start = _start;
+        _initial
+    });
 
     let nucleus: JyutPingNucleus;
     match parse_jyutping_nucleus(start, str) {
         Some((_nucleus, _start)) => {
             nucleus = _nucleus;
             start = _start;
-        },
+        }
         None => {
             return None;
         }
     };
-    
-    let coda: Option<JyutPingCoda> = parse_jyutping_coda(start, str)
-        .map(|(_coda, _start)| {
-            start = _start;
-            _coda
-        });
 
+    let coda: Option<JyutPingCoda> = parse_jyutping_coda(start, str).map(|(_coda, _start)| {
+        start = _start;
+        _coda
+    });
     let tone: Option<JyutPingTone> = parse_jyutping_tone(start, str);
 
-    Some(JyutPing {initial, nucleus, coda, tone})
+    Some(JyutPing {
+        initial,
+        nucleus,
+        coda,
+        tone,
+    })
 }
 
 fn parse_jyutping_component<T: FromStr>(start: usize, str: &String) -> Option<(T, usize)> {
-    get_slice(str, start..start+2).and_then(|first_two|
-        match T::from_str(first_two) {
-            Ok(component) => Some((component, start+2)),
-            Err(_) =>
-                get_slice(str, start..start+1).and_then(|first_one|
-                    match T::from_str(first_one) {
-                        Ok(component) => Some((component, start+1)),
-                        Err(_) => None
-                    }
-                )
+    get_slice(str, start..start + 2).and_then(|first_two| match T::from_str(first_two) {
+        Ok(component) => Some((component, start + 2)),
+        Err(_) => {
+            get_slice(str, start..start + 1).and_then(|first_one| match T::from_str(first_one) {
+                Ok(component) => Some((component, start + 1)),
+                Err(_) => None,
+            })
         }
-    )
+    })
 }
 
 fn parse_jyutping_initial(str: &String) -> Option<(JyutPingInitial, usize)> {
@@ -1683,12 +1775,10 @@ fn parse_jyutping_coda(start: usize, str: &String) -> Option<(JyutPingCoda, usiz
 
 fn parse_jyutping_tone(start: usize, str: &String) -> Option<JyutPingTone> {
     // println!("{} {} {}", str, start, str.len());
-    get_slice(str, start..str.len()).and_then(|substr|
-        match JyutPingTone::from_str(substr) {
-            Ok(tone) => Some(tone),
-            Err(_) => None,
-        }
-    )
+    get_slice(str, start..str.len()).and_then(|substr| match JyutPingTone::from_str(substr) {
+        Ok(tone) => Some(tone),
+        Err(_) => None,
+    })
 }
 
 fn get_slice(s: &str, range: Range<usize>) -> Option<&str> {
