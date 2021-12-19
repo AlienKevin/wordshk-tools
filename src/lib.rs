@@ -1251,7 +1251,7 @@ fn pr_line_to_xml(variants: &Vec<String>, (line, pr): &PrLine) -> String {
                             word += &seg;
                         });
                         ruby += "\n</ruby>";
-                        output += &link_to_xml(&word, &ruby);
+                        output += &format!("<rb>{}</rb><rt></rt>", &link_to_xml(&word, &ruby));
                     },
                     RubySegment::Word(word, prs) => {
                         output += &format!("\n<rb>{}</rb>\n<rt>{}</rt>",
