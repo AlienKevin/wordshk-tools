@@ -1251,6 +1251,13 @@ fn segment_to_xml((seg_type, seg): &Segment) -> String {
     }
 }
 
+fn word_segment_to_xml((seg_type, word): &WordSegment) -> String {
+    match seg_type {
+        SegmentType::Text => word_to_xml(word),
+        SegmentType::Link => link_to_xml(&word_to_string(&word), &word_to_xml(&word)),
+    }
+}
+
 fn link_to_xml(link: &String, word: &String) -> String {
     format!(
         r#"<a href="x-dictionary:d:{}:{dict_id}">{}</a>"#,
@@ -1268,7 +1275,25 @@ fn clause_to_xml_with_class_name(class_name: &str, clause: &Clause) -> String {
             .iter()
             .map(|line| {
                 line.iter()
-                    .map(segment_to_xml)
+                .map(segment_to_xml)
+                    .collect::<Vec<String>>()
+                    .join("")
+            })
+            .collect::<Vec<String>>()
+            .join("\n")
+    )
+}
+
+// Convert simple PrClause (without Pr) to XML
+fn simple_pr_clause_to_xml(variants: &Vec<String>, clause: &Clause) -> String {
+    format!(
+        "<div class=\"{}\">{}</div>",
+        "pr-clause",
+        clause
+            .iter()
+            .map(|line| {
+                flatten_line(variants, line).iter()
+                    .map(word_segment_to_xml)
                     .collect::<Vec<String>>()
                     .join("")
             })
@@ -1319,7 +1344,7 @@ fn pr_line_to_xml(variants: &Vec<String>, (line, pr): &PrLine) -> String {
             output += "\n</ruby>";
             output
         }
-        None => clause_to_xml_with_class_name("pr-clause", &vec![line.clone()])
+        None => simple_pr_clause_to_xml(variants, &vec![line.clone()])
     }
 }
 
@@ -1369,6 +1394,7 @@ pub fn dict_to_xml(dict: Dict) -> String {
     let entries = dict
         .iter()
         .map(|(_id, entry)| {
+            let variant_words = entry.variants.iter().map(|variant| variant.word.clone()).collect::<Vec<String>>();
             let entry_str = format!(
                 indoc! {r#"
                 <d:entry id="{id}" d:title="{variant_0_word}">
@@ -1475,7 +1501,6 @@ pub fn dict_to_xml(dict: Dict) -> String {
                                     .egs
                                     .iter()
                                     .map(|eg| {
-                                        let variant_words = entry.variants.iter().map(|variant| variant.word.clone()).collect::<Vec<String>>();
                                         "<div class=\"eg\">\n".to_string()
                                         + &eg.zho.clone().map_or("".to_string(), |zho| {
                                             let clause = pr_line_to_xml(&variant_words, &zho);
