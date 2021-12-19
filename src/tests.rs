@@ -1,13 +1,21 @@
 use super::*;
-use super::SegmentType::*;
+use super::SegmentType;
 use super::RubySegment::*;
 
 fn text(string: &'static str) -> Segment {
-    (Text, string.to_string())
+    (SegmentType::Text, string.to_string())
 }
 
 fn link(string: &'static str) -> Segment {
-    (Link, string.to_string())
+    (SegmentType::Link, string.to_string())
+}
+
+fn text_word(word: super::Word) -> WordSegment {
+    (SegmentType::Text, word)
+}
+
+fn link_word(word: super::Word) -> WordSegment {
+    (SegmentType::Link, word)
 }
 
 fn simple_line(string: &'static str) -> Line {
@@ -16,6 +24,22 @@ fn simple_line(string: &'static str) -> Line {
 
 fn simple_clause(string: &'static str) -> Clause {
     vec![simple_line(string)]
+}
+
+fn bold(string: &'static str) -> Text {
+    (TextStyle::Bold, string.to_string())
+}
+
+fn normal(string: &'static str) -> Text {
+    (TextStyle::Normal, string.to_string())
+}
+
+fn bold_word(string: &'static str) -> super::Word {
+    vec![bold(string)]
+}
+
+fn normal_word(string: &'static str) -> super::Word {
+    vec![normal(string)]
 }
 
 #[cfg(test)]
@@ -463,71 +487,77 @@ fn test_is_latin() {
 }
 
 #[test]
-fn test_text_to_bits() {
-    assert_eq!(text_to_bits("我 upgrade 咗做 Win 10 之後"), vec!["我", "upgrade", "咗", "做", "Win 10", "之", "後"]);
-    assert_eq!(text_to_bits("唔該幫我13蚊沽200股。"), vec!["唔", "該", "幫", "我", "13", "蚊", "沽", "200", "股", "。"]);
-    assert_eq!(text_to_bits("「你好耐。」「55」"), vec!["「", "你", "好", "耐", "。", "」", "「", "55", "」"]);
-    assert_eq!(text_to_bits("I mean，廣東話。"), vec!["I mean", "，", "廣", "東", "話", "。"]);
+fn test_tokenize() {
+    assert_eq!(tokenize(&vec!["upgrade".into()], "我 upgrade 咗做 Win 10 之後"),
+        vec![normal_word("我"), bold_word("upgrade"), normal_word("咗"), normal_word("做"), normal_word("Win 10"), normal_word("之"), normal_word("後")]
+    );
+    assert_eq!(tokenize(&vec!["沽".into()], "唔該幫我13蚊沽200股。"), vec![normal_word("唔"), normal_word("該"), normal_word("幫"), normal_word("我"), normal_word("13"), normal_word("蚊"), bold_word("沽"), normal_word("200"), normal_word("股"), normal_word("。")]);
+    assert_eq!(tokenize(&vec!["好耐".into()], "「你好耐。」「55」"), vec![normal_word("「"), normal_word("你"), bold_word("好"), bold_word("耐"), normal_word("。"), normal_word("」"), normal_word("「"), normal_word("55"), normal_word("」")]);
+    assert_eq!(tokenize(&vec!["I mean".into()], "I mean，廣東話。"), vec![bold_word("I mean"), normal_word("，"), normal_word("廣"), normal_word("東"), normal_word("話"), normal_word("。")]);
 }
 
 #[test]
 fn test_flatten_line() {
-    assert_eq!(flatten_line(&vec![text("我 "), link("upgrade"), text(" 咗做 Win 10 之後")]),
-        vec![text("我"), link("upgrade"), text("咗"), text("做"), text("Win 10"), text("之"), text("後")]
+    assert_eq!(flatten_line(&vec!["upgrade".into()], &vec![text("我 "), link("upgrade"), text(" 咗做 Win 10 之後")]),
+        vec![text_word(normal_word("我")), link_word(bold_word("upgrade")), text_word(normal_word("咗")), text_word(normal_word("做")), text_word(normal_word("Win 10")), text_word(normal_word("之")), text_word(normal_word("後"))]
     );
-    assert_eq!(flatten_line(&vec![text("I mean，廣東話。")]), vec!["I mean", "，", "廣", "東", "話", "。"].iter().map(|x| text(x)).collect::<Vec<Segment>>());
-    assert_eq!(flatten_line(&vec![text("I mean，"), link("廣東話"), text("。")]), vec![text("I mean"), text("，"), link("廣"), link("東"), link("話"), text("。")]);
+    assert_eq!(flatten_line(&vec!["I mean".into()], &vec![text("I mean，廣東話。")]),
+        vec![text_word(bold_word("I mean")), text_word(normal_word("，")), text_word(normal_word("廣")), text_word(normal_word("東")), text_word(normal_word("話")), text_word(normal_word("。"))]
+    );
+    assert_eq!(flatten_line(&vec!["I mean".into()], &vec![text("I mean，"), link("廣東話"), text("。")]),
+        vec![text_word(bold_word("I mean")), text_word(normal_word("，")), link_word(normal_word("廣")), link_word(normal_word("東")), link_word(normal_word("話")), text_word(normal_word("。"))]
+    );
 }
 
 #[test]
 fn test_match_ruby() {
-    assert_eq!(match_ruby(&vec![text("I mean，廣東話。")], &vec!["aai6", "min1", "gwong2", "dung1", "waa2"]),
-    vec![Word("I mean".into(), vec!["aai6".into(), "min1".into()]),
+    assert_eq!(match_ruby(&vec!["I mean".into()], &vec![text("I mean，廣東話。")], &vec!["aai6", "min1", "gwong2", "dung1", "waa2"]),
+    vec![Word(bold_word("I mean"), vec!["aai6".into(), "min1".into()]),
     Punc("，".into()),
-    Word("廣".into(), vec!["gwong2".into()]),
-    Word("東".into(), vec!["dung1".into()]),
-    Word("話".into(), vec!["waa2".into()]),
+    Word(normal_word("廣"), vec!["gwong2".into()]),
+    Word(normal_word("東"), vec!["dung1".into()]),
+    Word(normal_word("話"), vec!["waa2".into()]),
     Punc("。".into()),
     ]);
 
-    assert_eq!(match_ruby(&vec![text("唔該，幫我13蚊沽200股。")],
+    assert_eq!(match_ruby(&vec!["沽".into()], &vec![text("唔該，幫我13蚊沽200股。")],
         &"m4 goi1 bong1 ngo5 sap6 saam1 man1 gu1 ji6 baak3 gu2".split_whitespace().collect::<Vec<&str>>()),
-    vec![Word("唔".into(), vec!["m4".into()]),
-    Word("該".into(), vec!["goi1".into()]),
+    vec![Word(normal_word("唔"), vec!["m4".into()]),
+    Word(normal_word("該"), vec!["goi1".into()]),
     Punc("，".into()),
-    Word("幫".into(), vec!["bong1".into()]),
-    Word("我".into(), vec!["ngo5".into()]),
-    Word("13".into(), vec!["sap6".into(), "saam1".into()]),
-    Word("蚊".into(), vec!["man1".into()]),
-    Word("沽".into(), vec!["gu1".into()]),
-    Word("200".into(), vec!["ji6".into(), "baak3".into()]),
-    Word("股".into(), vec!["gu2".into()]),
+    Word(normal_word("幫"), vec!["bong1".into()]),
+    Word(normal_word("我"), vec!["ngo5".into()]),
+    Word(normal_word("13"), vec!["sap6".into(), "saam1".into()]),
+    Word(normal_word("蚊"), vec!["man1".into()]),
+    Word(bold_word("沽"), vec!["gu1".into()]),
+    Word(normal_word("200"), vec!["ji6".into(), "baak3".into()]),
+    Word(normal_word("股"), vec!["gu2".into()]),
     Punc("。".into()),
     ]);
 
-    assert_eq!(match_ruby(&vec![text("我 "), link("upgrade"), text(" 咗做 Win 10 之後。")],
+    assert_eq!(match_ruby(&vec!["upgrade".into()], &vec![text("我 "), link("upgrade"), text(" 咗做 Win 10 之後。")],
         &"ngo5 ap1 gwei1 zo2 zou6 win1 sap6 zi1 hau6".split_whitespace().collect::<Vec<&str>>()),
-    vec![Word("我".into(), vec!["ngo5".into()]),
-    LinkedWord(vec![("upgrade".into(), vec!["ap1".into(), "gwei1".into()])]),
-    Word("咗".into(), vec!["zo2".into()]),
-    Word("做".into(), vec!["zou6".into()]),
-    Word("Win 10".into(), vec!["win1".into(), "sap6".into()]),
-    Word("之".into(), vec!["zi1".into()]),
-    Word("後".into(), vec!["hau6".into()]),
+    vec![Word(normal_word("我"), vec!["ngo5".into()]),
+    LinkedWord(vec![(bold_word("upgrade"), vec!["ap1".into(), "gwei1".into()])]),
+    Word(normal_word("咗"), vec!["zo2".into()]),
+    Word(normal_word("做"), vec!["zou6".into()]),
+    Word(normal_word("Win 10"), vec!["win1".into(), "sap6".into()]),
+    Word(normal_word("之"), vec!["zi1".into()]),
+    Word(normal_word("後"), vec!["hau6".into()]),
     Punc("。".into()),
     ]);
 
     // two full matches
-    assert_eq!(match_ruby(&vec![link("經理")], &vec!["ging1".into(), "lei5".into()]),
-    vec![LinkedWord(vec![("經".into(), vec!["ging1".into()]), ("理".into(), vec!["lei5".into()])])]);
+    assert_eq!(match_ruby(&vec!["經理".into()], &vec![link("經理")], &vec!["ging1".into(), "lei5".into()]),
+    vec![LinkedWord(vec![(bold_word("經"), vec!["ging1".into()]), (bold_word("理"), vec!["lei5".into()])])]);
 
     // one half match
-    assert_eq!(match_ruby(&vec![link("經理")], &vec!["ging1".into(), "lei".into()]),
-    vec![LinkedWord(vec![("經".into(), vec!["ging1".into()]), ("理".into(), vec!["lei".into()])])]);
+    assert_eq!(match_ruby(&vec!["經理".into()], &vec![link("經理")], &vec!["ging1".into(), "lei".into()]),
+    vec![LinkedWord(vec![(bold_word("經"), vec!["ging1".into()]), (bold_word("理"), vec!["lei".into()])])]);
 
     // two half matches
-    assert_eq!(match_ruby(&vec![link("經理")], &vec!["ging".into(), "lei".into()]),
-    vec![LinkedWord(vec![("經".into(), vec!["ging".into()]), ("理".into(), vec!["lei".into()])])]);
+    assert_eq!(match_ruby(&vec!["經理".into()], &vec![link("經理")], &vec!["ging".into(), "lei".into()]),
+    vec![LinkedWord(vec![(bold_word("經"), vec!["ging".into()]), (bold_word("理"), vec!["lei".into()])])]);
 }
 
 #[test]

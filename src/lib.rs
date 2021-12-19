@@ -942,7 +942,9 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
                 match (bold_start_index, bold_end_index) {
                     (Some(start), Some(end)) => {
                         let prev_end = prev_bold_end_index.map(|x| x + 1).unwrap_or(i);
-                        word.push((TextStyle::Normal, gs[prev_end..start].join("").into()));
+                        if prev_end < start {
+                            word.push((TextStyle::Normal, gs[prev_end..start].join("").into()));
+                        }
                         word.push((TextStyle::Bold, gs[start..end+1].join("").into()));
                         prev_bold_end_index = bold_end_index;
                         bold_start_index = None;
@@ -954,7 +956,10 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
             }
             if let Some(bold_end) = prev_bold_end_index {
                 if bold_end+1 < j {
-                    word.push((TextStyle::Normal, gs[bold_end+1..j].join("").trim_end().into()));
+                    let rest = gs[bold_end+1..j].join("").trim_end().to_string();
+                    if rest.len() > 0 {
+                        word.push((TextStyle::Normal, rest));
+                    }
                 }
             } else if let Some(bold_start) = bold_start_index {
                 word.push((TextStyle::Bold, gs[bold_start..j].join("").trim_end().into()));
