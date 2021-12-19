@@ -84,8 +84,6 @@ pub struct Variant {
 pub enum SegmentType {
     Text,
     Link,
-    BoldStart,
-    BoldEnd,
 }
 
 /// A segment can be a text or a link
@@ -95,6 +93,18 @@ pub enum SegmentType {
 /// Link: A link to the entry 雞蛋 would be #雞蛋
 ///
 pub type Segment = (SegmentType, String);
+
+pub type WordSegment = (SegmentType, Word);
+
+pub type Word = Vec<Text>;
+
+pub type Text = (TextStyle, String);
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum TextStyle {
+    Bold,
+    Normal,
+}
 
 // type RubyFlatSegment = (SegmentType, RubyFlatBit);
 
@@ -106,11 +116,9 @@ pub type Segment = (SegmentType, String);
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum RubySegment {
-    BoldStart,
-    BoldEnd,
     Punc(String),
-    Word(String, Vec<String>),
-    LinkedWord(Vec<(String, Vec<String>)>),
+    Word(Word, Vec<String>),
+    LinkedWord(Vec<(Word, Vec<String>)>),
 }
 
 /// A line consists of one or more [Segment]s
@@ -124,6 +132,8 @@ pub enum RubySegment {
 pub type Line = Vec<Segment>;
 
 pub type RubyLine = Vec<RubySegment>;
+
+pub type WordLine = Vec<WordSegment>;
 
 /// A clause consists of one or more [Line]s. Appears in explanations and example sentences
 ///
@@ -866,12 +876,6 @@ type CharList = HashMap<char, HashMap<String, usize>>;
 
 // type WordList = HashMap<String, Vec<String>>;
 
-enum Bit {
-    Text(String),
-    BoldStart,
-    BoldEnd,
-}
-
 // source: https://stackoverflow.com/a/35907071/6798201
 fn find_subsequences<T>(haystack: &[T], needle: &[T]) -> Vec<(usize, usize)>
     where for<'a> &'a [T]: PartialEq
@@ -885,9 +889,9 @@ fn find_subsequences<T>(haystack: &[T], needle: &[T]) -> Vec<(usize, usize)>
     }).collect()
 }
 
-fn text_to_bits(variants: &Vec<String>, text: &str) -> Vec<Bit> {
+fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
     let mut i = 0;
-    let mut bits = vec![];
+    let mut words: Vec<Word> = vec![];
     let gs = UnicodeSegmentation::graphemes(&text[..], true).collect::<Vec<&str>>();
     let mut start_end_pairs: Vec<(usize, usize)> = vec![];
     variants.iter().for_each(|variant| {
@@ -910,15 +914,16 @@ fn text_to_bits(variants: &Vec<String>, text: &str) -> Vec<Bit> {
             }
         });
     });
+    let mut is_bolded = false;
     while i < gs.len() {
         let g = gs[i];
         if test_g(is_cjk, g) {
             if start_end_pairs.iter().any(|(start, _)| start == &i) {
-                bits.push(Bit::BoldStart);
+                is_bolded = true;
             }
-            bits.push(Bit::Text(g.to_string()));
+            words.push(vec![(if is_bolded { TextStyle::Bold } else { TextStyle::Normal },g.to_string())]);
             if start_end_pairs.iter().any(|(_, end)| end == &i) {
-                bits.push(Bit::BoldEnd);
+                is_bolded = false;
             }
             i += 1;
         } else if test_g(is_alphanumeric, g) {
@@ -926,38 +931,62 @@ fn text_to_bits(variants: &Vec<String>, text: &str) -> Vec<Bit> {
             while j < gs.len() && (test_g(is_alphanumeric, gs[j]) || (test_g(char::is_whitespace, gs[j]))) {
                 j+=1;
             }
-            bits.push(Bit::Text(gs[i..j].join("").trim_end().into()));
+            words.push(vec![(TextStyle::Normal, gs[i..j].join("").trim_end().into())]);
             i = j;
         } else { // a punctuation or space
             if !test_g(char::is_whitespace, g) {
-                bits.push(Bit::Text(g.to_string()));
+                words.push(vec![(TextStyle::Normal, g.to_string())]);
             }
             i += 1;
         }
     }
-    bits
+    words
 }
 
-pub fn flatten_line(variants: &Vec<String>, line: &Line) -> Line {
-    let mut bit_line = vec![];
+pub fn flatten_line(variants: &Vec<String>, line: &Line) -> WordLine {
+    let mut bit_line: WordLine = vec![];
     line.iter().for_each(|(seg_type, seg): &Segment| {
-        bit_line.extend::<Vec<Segment>>(text_to_bits(variants, seg).iter().map(|bit|
-            match bit {
-                Bit::Text(text) => (seg_type.clone(), text.into()),
-                Bit::BoldStart => (SegmentType::BoldStart, "".into()),
-                Bit::BoldEnd => (SegmentType::BoldEnd, "".into()),
-            }
+        bit_line.extend::<WordLine>(tokenize(variants, seg).iter().map(|text|
+            (seg_type.clone(), text.clone())
         ).collect());
     });
     bit_line
 }
 
-fn create_ruby_segment(seg_type: &SegmentType, seg: &str, prs: &[&str]) -> RubySegment {
+fn word_to_string(word: &Word) -> String {
+    word.iter().map(|(_, seg)| seg.clone()).collect::<Vec<String>>().join("")
+}
+
+fn get_xml_start_tag(style: &TextStyle) -> &'static str {
+    match style {
+        TextStyle::Normal => "",
+        TextStyle::Bold => "<b>",
+    }
+}
+
+fn get_xml_end_tag(style: &TextStyle) -> &'static str {
+    match style {
+        TextStyle::Normal => "",
+        TextStyle::Bold => "</b>",
+    }
+}
+
+fn word_to_xml(word: &Word) -> String {
+    word.iter().map(|(style, seg)|
+        format!("{start_tag}{content}{end_tag}",
+            start_tag = get_xml_start_tag(style),
+            content = xml_escape(seg),
+            end_tag = get_xml_end_tag(style),
+        )
+    ).collect::<Vec<String>>().join("")
+}
+
+fn create_ruby_segment(seg_type: &SegmentType, word: &Word, prs: &[&str]) -> RubySegment {
     let prs = prs.iter().map(|x| x.to_string()).collect();
     if *seg_type == SegmentType::Link {
-        RubySegment::LinkedWord(vec![(seg.to_string(), prs)])
+        RubySegment::LinkedWord(vec![(word.clone(), prs)])
     } else {
-        RubySegment::Word(seg.to_string(), prs)
+        RubySegment::Word(word.clone(), prs)
     }
 }
 
@@ -966,49 +995,45 @@ pub fn match_ruby(variants: &Vec<String>, line: &Line, prs: &Vec<&str>) -> RubyL
     let pr_scores = match_ruby_construct_table(&line, prs);
     let pr_map = match_ruby_backtrack(&line, prs, &pr_scores);
     // println!("{:?}", pr_map);
-    let flattened_ruby_line = line.iter().enumerate().map(|(i, (seg_type, seg))| {
-        match seg_type {
-            SegmentType::BoldStart => RubySegment::BoldStart,
-            SegmentType::BoldEnd => RubySegment::BoldEnd,
-            _ =>
-                match pr_map.get(&i) {
-                    Some(j) => {
-                        create_ruby_segment(seg_type, seg, &prs[*j..j+1])
-                    },
-                    None => {
-                        if test_g(is_punctuation, seg) {
-                            RubySegment::Punc(seg.to_string())
-                        } else {
-                            let start =
-                            {
-                                let mut j = i;
-                                while j >= 1 && pr_map.get(&j) == None {
-                                    j -= 1;
-                                }
-                                match pr_map.get(&j) {
-                                    Some(start) => *start + 1,
-                                    None => 0,
-                                }
-                            };
-                            // println!("pr_map: {:?}", pr_map);
-                            // println!("i: {}", i);
-                            // println!("start: {}", start);
-                            let end = {
-                                let mut j = i + 1;
-                                while j < line.len() && pr_map.get(&j) == None {
-                                    j += 1;
-                                }
-                                match pr_map.get(&j) {
-                                    Some(end) => *end,
-                                    None => prs.len(),
-                                }
-                            };
-                            create_ruby_segment(seg_type, seg, &prs[start..end])
+    let flattened_ruby_line = line.iter().enumerate().map(|(i, (seg_type, word))| {
+        match pr_map.get(&i) {
+            Some(j) => {
+                create_ruby_segment(seg_type, word, &prs[*j..j+1])
+            },
+            None => {
+                let word_str = word_to_string(word);
+                if test_g(is_punctuation, &word_str) {
+                    RubySegment::Punc(word_str)
+                } else {
+                    let start =
+                    {
+                        let mut j = i;
+                        while j >= 1 && pr_map.get(&j) == None {
+                            j -= 1;
                         }
-                    }
+                        match pr_map.get(&j) {
+                            Some(start) => *start + 1,
+                            None => 0,
+                        }
+                    };
+                    // println!("pr_map: {:?}", pr_map);
+                    // println!("i: {}", i);
+                    // println!("start: {}", start);
+                    let end = {
+                        let mut j = i + 1;
+                        while j < line.len() && pr_map.get(&j) == None {
+                            j += 1;
+                        }
+                        match pr_map.get(&j) {
+                            Some(end) => *end,
+                            None => prs.len(),
+                        }
+                    };
+                    create_ruby_segment(seg_type, word, &prs[start..end])
                 }
             }
-        }).collect::<RubyLine>();
+        }
+    }).collect::<RubyLine>();
     unflatten_ruby_line(&flattened_ruby_line)
 }
 
@@ -1071,7 +1096,7 @@ fn match_pr(seg: &String, pr: &str) -> PrMatch {
     }
 }
 
-fn match_ruby_construct_table(line: &Line, prs: &Vec<&str>) -> Vec<Vec<usize>> {
+fn match_ruby_construct_table(line: &WordLine, prs: &Vec<&str>) -> Vec<Vec<usize>> {
     let m = line.len() + 1;
     let n = prs.len() + 1;
     let mut pr_scores = vec![vec![0; n]; m];
@@ -1079,8 +1104,8 @@ fn match_ruby_construct_table(line: &Line, prs: &Vec<&str>) -> Vec<Vec<usize>> {
     for i in 1..m {
         for j in 1..n {
             // println!("i: {}, j: {}", i, j);
-            let (_, seg) = &line[i-1];
-            let cell_pr_match = match_pr(seg, prs[j-1]);
+            let (_, word) = &line[i-1];
+            let cell_pr_match = match_pr(&word_to_string(&word), prs[j-1]);
             match cell_pr_match {
                 PrMatch::Full | PrMatch::Half => {
                     pr_scores[i][j] = pr_scores[i-1][j-1] + pr_match_to_score(cell_pr_match);
@@ -1096,15 +1121,15 @@ fn match_ruby_construct_table(line: &Line, prs: &Vec<&str>) -> Vec<Vec<usize>> {
     pr_scores
 }
 
-fn match_ruby_backtrack(line: &Line, prs: &Vec<&str>, pr_scores: &Vec<Vec<usize>>) -> HashMap<usize, usize> {
+fn match_ruby_backtrack(line: &WordLine, prs: &Vec<&str>, pr_scores: &Vec<Vec<usize>>) -> HashMap<usize, usize> {
     let mut pr_map = HashMap::new();
     let mut i = pr_scores.len()-1;
     let mut j = pr_scores[0].len()-1;
 
     while i > 0 && j > 0 {
         // println!("i: {}, j: {}", i, j);
-        let (_, seg) = &line[i-1];
-        match match_pr(&seg, &prs[j-1]) {
+        let (_, word) = &line[i-1];
+        match match_pr(&word_to_string(&word), &prs[j-1]) {
             PrMatch::Full | PrMatch::Half => {
                 pr_map.insert(i-1, j-1);
                 // backtrack to the top left
@@ -1193,8 +1218,6 @@ fn segment_to_xml((seg_type, seg): &Segment) -> String {
     match seg_type {
         SegmentType::Text => xml_escape(seg),
         SegmentType::Link => link_to_xml(&xml_escape(&seg), &xml_escape(&seg)),
-        SegmentType::BoldStart => "<b>".into(),
-        SegmentType::BoldEnd => "</b>".into(),
     }
 }
 
@@ -1235,38 +1258,31 @@ fn pr_line_to_xml(variants: &Vec<String>, (line, pr): &PrLine) -> String {
         Some(pr) => {
             let prs = pr.unicode_words().collect::<Vec<&str>>();
             let ruby_line = match_ruby(variants, line, &prs);
-            let mut is_bolded = false;
             
             let mut output = "<ruby class=\"pr-clause\">".to_string();
             ruby_line.iter().for_each(|seg| {
                 match seg {
                     RubySegment::LinkedWord(pairs) => {
                         let mut ruby = "<ruby>".to_string();
-                        let mut word = String::new();
-                        pairs.iter().for_each(|(seg, prs)| {
+                        let mut word_str = String::new();
+                        pairs.iter().for_each(|(word, prs)| {
                             ruby += &format!("\n<rb>{}</rb>\n<rt>{}</rt>",
-                                if is_bolded { format!("<b>{}</b>", xml_escape(seg)) } else { xml_escape(seg) },
+                                word_to_xml(word),
                                 prs.join(" ")
                             );
-                            word += &seg;
+                            word_str += &word_to_string(word);
                         });
                         ruby += "\n</ruby>";
-                        output += &format!("<rb>{}</rb><rt></rt>", &link_to_xml(&word, &ruby));
+                        output += &format!("<rb>{}</rb><rt></rt>", &link_to_xml(&word_str, &ruby));
                     },
                     RubySegment::Word(word, prs) => {
                         output += &format!("\n<rb>{}</rb>\n<rt>{}</rt>",
-                            if is_bolded { format!("<b>{}</b>", xml_escape(word)) } else { xml_escape(word) },
+                            word_to_xml(word),
                             prs.join(" ")
                         );
                     },
                     RubySegment::Punc(punc) => {
                         output += &format!("\n<rb>{}</rb>\n<rt></rt>", punc);
-                    },
-                    RubySegment::BoldStart => {
-                        is_bolded = true;
-                    },
-                    RubySegment::BoldEnd => {
-                        is_bolded = false;
                     },
                 }
             });
