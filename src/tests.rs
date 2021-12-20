@@ -732,16 +732,6 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
-        parse_jyutping(&"aa".to_string()),
-        Some(JyutPing {
-            initial: None,
-            nucleus: JyutPingNucleus::Aa,
-            coda: None,
-            tone: None
-        })
-    );
-
-    assert_eq!(
         parse_jyutping(&"a2".to_string()),
         Some(JyutPing {
             initial: None,
@@ -755,6 +745,234 @@ fn test_parse_jyutping() {
         parse_jyutping(&"seoi5".to_string()),
         Some(JyutPing {
             initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+}
+
+#[test]
+fn test_compare_jyutping() {
+    // identical jyutpings
+    assert_eq!(
+        25,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    assert_eq!(
+        25,
+        compare_jyutping(JyutPing {
+            initial: None,
+            nucleus: JyutPingNucleus::Aa,
+            coda: None,
+            tone: None
+        }, JyutPing {
+            initial: None,
+            nucleus: JyutPingNucleus::Aa,
+            coda: None,
+            tone: None
+        })
+    );
+
+    // Initial: same category
+    assert_eq!(
+        21,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::F),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    // Initial: different category
+    assert_eq!(
+        15,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::T),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    // Initial: one has initial the other does not
+    assert_eq!(
+        15,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::T),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        }, JyutPing {
+            initial: None,
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    // Nucleus: same category
+    assert_eq!(
+        22,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Oe,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    // Nucleus: different roundedness
+    assert_eq!(
+        21,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::I,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Yu,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    // Nucleus: different height
+    assert_eq!(
+        20,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::T),
+            nucleus: JyutPingNucleus::I,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::T),
+            nucleus: JyutPingNucleus::E,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    // Nucleus: different backness
+    assert_eq!(
+        20,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::T),
+            nucleus: JyutPingNucleus::Yu,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::T),
+            nucleus: JyutPingNucleus::U,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    // Coda: same category
+    assert_eq!(
+        23,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::P),
+            tone: Some(JyutPingTone::T5)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::T),
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    // Coda: different category
+    assert_eq!(
+        19,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::P),
+            tone: Some(JyutPingTone::T5)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    // Coda: one has coda the other does not
+    assert_eq!(
+        19,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::T),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::I),
+            tone: Some(JyutPingTone::T5)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::T),
+            nucleus: JyutPingNucleus::Eo,
+            coda: None,
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    // Tone: different tone
+    assert_eq!(
+        24,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::T),
+            tone: Some(JyutPingTone::T4)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::T),
+            tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    // Mixed:
+    // Initial: different category
+    // Coda: different category
+    assert_eq!(
+        9,
+        compare_jyutping(JyutPing {
+            initial: Some(JyutPingInitial::S),
+            nucleus: JyutPingNucleus::Eo,
+            coda: Some(JyutPingCoda::P),
+            tone: Some(JyutPingTone::T5)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::T),
             nucleus: JyutPingNucleus::Eo,
             coda: Some(JyutPingCoda::I),
             tone: Some(JyutPingTone::T5)
