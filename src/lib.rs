@@ -1756,11 +1756,12 @@ pub enum JyutPingTone {
     T6,
 }
 
-/// Manners of articulation
-/// source: https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf
+/// Manners of articulation of initials
+/// 
+/// source: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
 /// (page 9)
 #[derive(Debug, PartialEq)]
-pub enum InitialCategories {
+enum InitialCategories {
     Plosive,
     Nasal,
     Fricative,
@@ -1769,6 +1770,8 @@ pub enum InitialCategories {
     SemiVowel,
 }
 
+/// Classify initials based on their manner of articulation
+/// 
 /// source: https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf
 /// (page 7)
 fn classify_initial(initial: JyutPingInitial) -> InitialCategories {
@@ -1784,29 +1787,32 @@ fn classify_initial(initial: JyutPingInitial) -> InitialCategories {
     }
 }
 
+/// Categories of nucleus
 type NucleusCategories = (VowelBackness, VowelHeight, VowelRoundedness);
 
 #[derive(Debug, PartialEq)]
-pub enum VowelBackness {
+enum VowelBackness {
     Front,
     Central,
     Back,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum VowelHeight {
+enum VowelHeight {
     Close,
     Mid,
     Open,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum VowelRoundedness {
+enum VowelRoundedness {
     Rounded,
     Unrounded,
 }
 
-/// source: https://www.wikiwand.com/en/Cantonese_phonology#/Vowels_and_terminals
+/// Classify nucleus based on their backness, height, and roundedness
+/// 
+/// source: <https://www.wikiwand.com/en/Cantonese_phonology#/Vowels_and_terminals>
 fn classify_nucleus(nucleus: JyutPingNucleus) -> NucleusCategories {
     use JyutPingNucleus::*;
     use VowelBackness::*;
@@ -1823,13 +1829,15 @@ fn classify_nucleus(nucleus: JyutPingNucleus) -> NucleusCategories {
     }
 }
 
+/// Categories of coda
 #[derive(Debug, PartialEq)]
-pub enum CodaCategories {
+enum CodaCategories {
     Stop,
     Nasal,
     Vowel,
 }
 
+/// Classify coda based on whether they are stops, nasals, or vowels
 fn classify_coda(coda: JyutPingCoda) -> CodaCategories {
     use CodaCategories::*;
     use JyutPingCoda::*;
