@@ -94,26 +94,40 @@ pub enum SegmentType {
 ///
 pub type Segment = (SegmentType, String);
 
+/// A segment containing a [Word]
+///
+/// `(SegmentType::Text, vec![(TextStyle::Bold, "兩"), (TextStyle::Normal, "周")])`
+///
 pub type WordSegment = (SegmentType, Word);
 
+/// A consecutive series of [Text]s
+///
+/// `vec![(TextStyle::Bold, "兩"), (TextStyle::Normal, "周")]`
+///
 pub type Word = Vec<Text>;
 
+/// A styled text segment
+///
+/// Normal: `(TextStyle::Normal, "好")`
+///
+/// Bold: `(TextStyle::Bold, "good")`
+///
 pub type Text = (TextStyle, String);
 
+/// Text styles, can be bold or normal
 #[derive(Debug, PartialEq, Clone)]
 pub enum TextStyle {
     Bold,
     Normal,
 }
 
-// type RubyFlatSegment = (SegmentType, RubyFlatBit);
-
-// #[derive(Debug, PartialEq, Clone)]
-// enum RubyFlatBit {
-//     Punc(String),
-//     Word(String, Vec<String>),
-// }
-
+/// A segment marked with pronunciation (called "ruby" in HTML)
+///
+/// Segment can be one of
+/// * a single punctuation
+/// * or a [Word] with its pronunciations
+/// * or a linked segment with a series of [Word]s
+/// and their pronunciations
 #[derive(Debug, PartialEq, Clone)]
 pub enum RubySegment {
     Punc(String),
@@ -131,8 +145,10 @@ pub enum RubySegment {
 ///
 pub type Line = Vec<Segment>;
 
+/// A line consists of one or more [RubySegment]s
 pub type RubyLine = Vec<RubySegment>;
 
+/// A line consists of one or more [WordSegment]s
 pub type WordLine = Vec<WordSegment>;
 
 /// A clause consists of one or more [Line]s. Appears in explanations and example sentences
@@ -1005,6 +1021,15 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
     words
 }
 
+/// Flatten a [Line] by breaking each [Segment] into tokens
+///
+/// A token can be:
+/// * A Chinese character
+/// * A series of consecutive alphanumeric words (includes spaces in between)
+/// * A punctuation mark
+///
+/// Tokens are units of pronunciation matching (see [match_ruby])
+///
 pub fn flatten_line(variants: &Vec<String>, line: &Line) -> WordLine {
     let mut bit_line: WordLine = vec![];
     line.iter().for_each(|(seg_type, seg): &Segment| {
@@ -1062,6 +1087,7 @@ fn create_ruby_segment(seg_type: &SegmentType, word: &Word, prs: &[&str]) -> Rub
     }
 }
 
+/// Match a [Line] to its pronunciations and bold the variants
 pub fn match_ruby(variants: &Vec<String>, line: &Line, prs: &Vec<&str>) -> RubyLine {
     let line = flatten_line(variants, line);
     let pr_scores = match_ruby_construct_table(&line, prs);
@@ -1070,39 +1096,34 @@ pub fn match_ruby(variants: &Vec<String>, line: &Line, prs: &Vec<&str>) -> RubyL
     let flattened_ruby_line = line
         .iter()
         .enumerate()
-        .map(|(i, (seg_type, word))| {
-            match pr_map.get(&i) {
-                Some(j) => create_ruby_segment(seg_type, word, &prs[*j..j + 1]),
-                None => {
-                    let word_str = word_to_string(word);
-                    if test_g(is_punctuation, &word_str) {
-                        RubySegment::Punc(word_str)
-                    } else {
-                        let start = {
-                            let mut j = i;
-                            while j >= 1 && pr_map.get(&j) == None {
-                                j -= 1;
-                            }
-                            match pr_map.get(&j) {
-                                Some(start) => *start + 1,
-                                None => 0,
-                            }
-                        };
-                        // println!("pr_map: {:?}", pr_map);
-                        // println!("i: {}", i);
-                        // println!("start: {}", start);
-                        let end = {
-                            let mut j = i + 1;
-                            while j < line.len() && pr_map.get(&j) == None {
-                                j += 1;
-                            }
-                            match pr_map.get(&j) {
-                                Some(end) => *end,
-                                None => prs.len(),
-                            }
-                        };
-                        create_ruby_segment(seg_type, word, &prs[start..end])
-                    }
+        .map(|(i, (seg_type, word))| match pr_map.get(&i) {
+            Some(j) => create_ruby_segment(seg_type, word, &prs[*j..j + 1]),
+            None => {
+                let word_str = word_to_string(word);
+                if test_g(is_punctuation, &word_str) {
+                    RubySegment::Punc(word_str)
+                } else {
+                    let start = {
+                        let mut j = i;
+                        while j >= 1 && pr_map.get(&j) == None {
+                            j -= 1;
+                        }
+                        match pr_map.get(&j) {
+                            Some(start) => *start + 1,
+                            None => 0,
+                        }
+                    };
+                    let end = {
+                        let mut j = i + 1;
+                        while j < line.len() && pr_map.get(&j) == None {
+                            j += 1;
+                        }
+                        match pr_map.get(&j) {
+                            Some(end) => *end,
+                            None => prs.len(),
+                        }
+                    };
+                    create_ruby_segment(seg_type, word, &prs[start..end])
                 }
             }
         })
@@ -1640,7 +1661,9 @@ pub fn dict_to_xml(dict: Dict) -> String {
 //     tokens
 // }
 
-// Phonetics info based on: https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf
+/// JyutPing encoding with initial, nucleus (required), coda, and tone
+///
+/// Phonetics info based on: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
 #[derive(Debug, PartialEq)]
 pub struct JyutPing {
     pub initial: Option<JyutPingInitial>,
@@ -1649,6 +1672,10 @@ pub struct JyutPing {
     pub tone: Option<JyutPingTone>,
 }
 
+/// Initial segment of a JyutPing, optional
+///
+/// Eg: 's' in "sap6"
+///
 #[derive(EnumString, Debug, PartialEq)]
 #[strum(ascii_case_insensitive)]
 pub enum JyutPingInitial {
@@ -1673,6 +1700,10 @@ pub enum JyutPingInitial {
     J,
 }
 
+/// Nucleus segment of a Jyutping, always required
+///
+/// Eg: 'a' in "sap6"
+///
 #[derive(EnumString, Debug, PartialEq)]
 #[strum(ascii_case_insensitive)]
 pub enum JyutPingNucleus {
@@ -1687,6 +1718,10 @@ pub enum JyutPingNucleus {
     Eo,
 }
 
+/// Coda segment of a Jyutping, optional
+///
+/// Eg: 'p' in "sap6"
+///
 #[derive(EnumString, Debug, PartialEq)]
 #[strum(ascii_case_insensitive)]
 pub enum JyutPingCoda {
@@ -1700,6 +1735,11 @@ pub enum JyutPingCoda {
     U, // vowel
 }
 
+/// Tone segment of a Jyutping, optional.
+/// Six tones from 1 to 6.
+///
+/// Eg: '6' in "sap6"
+///
 #[derive(EnumString, Debug, PartialEq)]
 pub enum JyutPingTone {
     #[strum(serialize = "1")]
@@ -1716,6 +1756,7 @@ pub enum JyutPingTone {
     T6,
 }
 
+/// Parse [JyutPing] pronunciation
 pub fn parse_jyutping(str: &String) -> Option<JyutPing> {
     let mut start = 0;
 
