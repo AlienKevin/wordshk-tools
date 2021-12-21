@@ -403,11 +403,25 @@ fn test_parse_content() {
         let variants = vec![
             Variant {
                 word: "zip".to_string(),
-                prs: vec!["zip4".to_string()],
+                prs: vec![vec![
+                    DictJyutPingSegment::Standard(JyutPing {
+                        initial: Some(JyutPingInitial::Z),
+                        nucleus: JyutPingNucleus::I,
+                        coda: Some(JyutPingCoda::P),
+                        tone: Some(JyutPingTone::T4)
+                    })
+                ]],
             },
             Variant {
                 word: "jip".to_string(),
-                prs: vec!["zip4".to_string()],
+                prs: vec![vec![
+                    DictJyutPingSegment::Standard(JyutPing {
+                        initial: Some(JyutPingInitial::Z),
+                        nucleus: JyutPingNucleus::I,
+                        coda: Some(JyutPingCoda::P),
+                        tone: Some(JyutPingTone::T4)
+                    })
+                ]],
             },
         ];
         assert_succeed(
@@ -451,7 +465,20 @@ eng:Stop tsking!",
         let id = 20;
         let variants = vec![Variant {
             word: "hihi".to_string(),
-            prs: vec!["haai1 haai1".to_string()],
+            prs: vec![vec![
+                DictJyutPingSegment::Standard(JyutPing {
+                    initial: Some(JyutPingInitial::H),
+                    nucleus: JyutPingNucleus::Aa,
+                    coda: Some(JyutPingCoda::I),
+                    tone: Some(JyutPingTone::T1)
+                }),
+                DictJyutPingSegment::Standard(JyutPing {
+                    initial: Some(JyutPingInitial::H),
+                    nucleus: JyutPingNucleus::Aa,
+                    coda: Some(JyutPingCoda::I),
+                    tone: Some(JyutPingTone::T1)
+                })
+            ]],
         }];
         assert_succeed(
                 parse_content(id, variants.clone()),

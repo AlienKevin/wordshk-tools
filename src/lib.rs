@@ -27,7 +27,6 @@ use std::fs;
 use std::io;
 use std::ops::Range;
 use std::str::FromStr;
-use strum::EnumString;
 use unicode_names2;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -71,7 +70,7 @@ pub struct Entry {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variant {
     pub word: String,
-    pub prs: Vec<String>,
+    pub prs: Vec<DictJyutPing>,
 }
 
 /// Two types of segments: text or link. See [Segment]
@@ -242,10 +241,21 @@ pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
                     .keep(take_chomped(chomp_while1c(&(|c: &char| c != &':'), "word")))
                     .keep(sequence(
                         ":",
-                        BoxedParser::new(take_chomped(chomp_while1c(
-                            &(|c: &char| c != &':' && c != &','),
-                            "jyutping",
-                        ))),
+                        BoxedParser::new(
+                            take_chomped(chomp_while1c(
+                                &(|c: &char| c != &':' && c != &','),
+                                "jyutping",
+                            ))
+                            .map(|pr_str| {
+                                pr_str
+                                    .split_whitespace()
+                                    .map(|pr_seg| match parse_jyutping(&pr_seg.to_string()) {
+                                        Some(pr) => DictJyutPingSegment::Standard(pr),
+                                        None => DictJyutPingSegment::Nonstandard(pr_seg.to_string()),
+                                    })
+                                    .collect::<DictJyutPing>()
+                            }),
+                        ),
                         ":",
                         space0(),
                         "",
@@ -833,7 +843,7 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 /// # "};
 ///
 /// let id = 98634;
-/// let variants = vec![(Variant {word: "奸爸爹".into(), prs: vec!["gaan1 baa1 de1".into()]})];
+/// let variants = vec![(Variant {word: "奸爸爹".into(), prs: vec![]})]; // prs omitted for brevity
 ///
 /// // which parses to:
 ///
@@ -1370,22 +1380,16 @@ fn clause_to_xml_with_class_name(class_name: &str, clause: &Clause) -> String {
     )
 }
 
-// Convert simple PrClause (without Pr) to XML
-fn simple_pr_clause_to_xml(variants: &Vec<String>, clause: &Clause) -> String {
+// Convert a [Line] (without Pr) to XML, highlighting variants
+fn line_to_xml(variants: &Vec<String>, line: &Line) -> String {
     format!(
         "<div class=\"{}\">{}</div>",
         "pr-clause",
-        clause
+        flatten_line(variants, line)
             .iter()
-            .map(|line| {
-                flatten_line(variants, line)
-                    .iter()
-                    .map(word_segment_to_xml)
-                    .collect::<Vec<String>>()
-                    .join("")
-            })
+            .map(word_segment_to_xml)
             .collect::<Vec<String>>()
-            .join("\n")
+            .join("")
     )
 }
 
@@ -1430,7 +1434,7 @@ fn pr_line_to_xml(variants: &Vec<String>, (line, pr): &PrLine) -> String {
             output += "\n</ruby>";
             output
         }
-        None => simple_pr_clause_to_xml(variants, &vec![line.clone()]),
+        None => line_to_xml(variants, line),
     }
 }
 
@@ -1461,6 +1465,43 @@ fn to_xml_badge_em(tag: &String) -> String {
 
 fn to_xml_badge(tag: &String) -> String {
     to_xml_badge_helper(false, tag)
+}
+
+fn prs_to_string(prs: &Vec<DictJyutPing>) -> String {
+    prs.iter()
+        .map(pr_to_string)
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
+fn pr_to_string(pr_segs: &DictJyutPing) -> String {
+    pr_segs
+    .iter()
+    .map(pr_segment_to_string)
+    .collect::<Vec<String>>()
+    .join(" ")
+}
+
+fn pr_to_string_without_tone(pr_segs: &DictJyutPing) -> String {
+    pr_segs
+    .iter()
+    .map(pr_segment_to_string_without_tone)
+    .collect::<Vec<String>>()
+    .join(" ")
+}
+
+fn pr_segment_to_string(pr: &DictJyutPingSegment) -> String {
+    match pr {
+        DictJyutPingSegment::Standard(pr) => jyutping_to_string(pr),
+        DictJyutPingSegment::Nonstandard(pr_str) => pr_str.clone(),
+    }
+}
+
+fn pr_segment_to_string_without_tone(pr: &DictJyutPingSegment) -> String {
+    match pr {
+        DictJyutPingSegment::Standard(pr) => jyutping_to_string_without_tone(pr),
+        DictJyutPingSegment::Nonstandard(pr_str) => pr_str.clone(),
+    }
 }
 
 /// Convert a [Dict] to Apple Dictionary XML format
@@ -1505,31 +1546,24 @@ pub fn dict_to_xml(dict: Dict) -> String {
                     .variants
                     .iter()
                     .map(|variant| {
-                        let prs = variant.prs.join(", ");
                         format!(
                             indoc!{r#"<d:index d:value="{word}" d:pr="{prs}"/>
                             {pr_indices}"#},
                             word = variant.word,
-                            prs = prs,
+                            prs = prs_to_string(&variant.prs),
                             pr_indices = variant.prs.iter().map(|pr| {
-                                let word_and_pr = variant.word.clone() + " " + &pr;
-                                format!(r#"<d:index d:value="{pr}" d:title="{word_and_pr}" d:priority="2"/>{simple_pr}"#,
-                                    pr = pr,
+                                let word_and_pr = variant.word.clone() + " " + &pr_to_string(pr);
+                                format!(r#"<d:index d:value="{pr}" d:title="{word_and_pr}" d:priority="2"/>{pr_without_tone}"#,
+                                    pr = pr_to_string(pr),
                                     word_and_pr = word_and_pr,
-                                    simple_pr = {
-                                        let simple_pr = pr.split_whitespace().map(|seg|
-                                            if seg.chars().last().unwrap().is_digit(10) {
-                                                let mut chars = seg.chars();
-                                                chars.next_back();
-                                                chars.as_str()
-                                            } else {
-                                                seg
-                                            }).collect::<Vec<&str>>().join(" ");
-                                        if simple_pr == *pr {
+                                    pr_without_tone = {
+                                        if pr.iter().any(|pr_seg|
+                                            if let DictJyutPingSegment::Nonstandard(_) = pr_seg { true } else { false }
+                                        ){
                                             "".to_string()
                                         } else {
-                                            format!(r#"<d:index d:value="{simple_pr}" d:title="{word_and_pr}" d:priority="2"/>"#,
-                                                simple_pr = simple_pr,
+                                            format!(r#"<d:index d:value="{pr_without_tone}" d:title="{word_and_pr}" d:priority="2"/>"#,
+                                                pr_without_tone = pr_to_string_without_tone(pr),
                                                 word_and_pr = word_and_pr
                                             )
                                         }
@@ -1550,7 +1584,7 @@ pub fn dict_to_xml(dict: Dict) -> String {
                             <span class="prs"><span d:pr="JYUTPING">{}</span></span>
                             </div>"#},
                             variant.word,
-                            variant.prs.join(", ")
+                            prs_to_string(&variant.prs),
                         )
                     })
                     .collect::<Vec<String>>()
@@ -1664,7 +1698,7 @@ pub fn dict_to_xml(dict: Dict) -> String {
 /// JyutPing encoding with initial, nucleus (required), coda, and tone
 ///
 /// Phonetics info based on: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct JyutPing {
     pub initial: Option<JyutPingInitial>,
     pub nucleus: JyutPingNucleus,
@@ -1672,12 +1706,36 @@ pub struct JyutPing {
     pub tone: Option<JyutPingTone>,
 }
 
+pub fn jyutping_to_string(pr: &JyutPing) -> String {
+    let pr = pr.clone();
+    pr.initial.map(|i| i.to_string()).unwrap_or("".to_string())
+        + &pr.nucleus.to_string()
+        + &pr.coda.map(|i| i.to_string()).unwrap_or("".to_string())
+        + &pr.tone.map(|i| i.to_string()).unwrap_or("".to_string())
+}
+
+pub fn jyutping_to_string_without_tone(pr: &JyutPing) -> String {
+    let pr = pr.clone();
+    pr.initial.map(|i| i.to_string()).unwrap_or("".to_string())
+        + &pr.nucleus.to_string()
+        + &pr.coda.map(|i| i.to_string()).unwrap_or("".to_string())
+}
+
+type DictJyutPing = Vec<DictJyutPingSegment>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum DictJyutPingSegment {
+    Standard(JyutPing),
+    Nonstandard(String),
+}
+
 /// Initial segment of a JyutPing, optional
 ///
 /// Eg: 's' in "sap6"
 ///
-#[derive(EnumString, Debug, PartialEq)]
+#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq)]
 #[strum(ascii_case_insensitive)]
+#[strum(serialize_all = "lowercase")]
 pub enum JyutPingInitial {
     B,
     P,
@@ -1704,8 +1762,9 @@ pub enum JyutPingInitial {
 ///
 /// Eg: 'a' in "sap6"
 ///
-#[derive(EnumString, Debug, PartialEq)]
+#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq)]
 #[strum(ascii_case_insensitive)]
+#[strum(serialize_all = "lowercase")]
 pub enum JyutPingNucleus {
     Aa,
     I,
@@ -1722,8 +1781,9 @@ pub enum JyutPingNucleus {
 ///
 /// Eg: 'p' in "sap6"
 ///
-#[derive(EnumString, Debug, PartialEq)]
+#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq)]
 #[strum(ascii_case_insensitive)]
+#[strum(serialize_all = "lowercase")]
 pub enum JyutPingCoda {
     P,
     T,
@@ -1740,7 +1800,7 @@ pub enum JyutPingCoda {
 ///
 /// Eg: '6' in "sap6"
 ///
-#[derive(EnumString, Debug, PartialEq)]
+#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq)]
 pub enum JyutPingTone {
     #[strum(serialize = "1")]
     T1,
