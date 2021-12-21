@@ -251,7 +251,9 @@ pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
                                     .split_whitespace()
                                     .map(|pr_seg| match parse_jyutping(&pr_seg.to_string()) {
                                         Some(pr) => DictJyutPingSegment::Standard(pr),
-                                        None => DictJyutPingSegment::Nonstandard(pr_seg.to_string()),
+                                        None => {
+                                            DictJyutPingSegment::Nonstandard(pr_seg.to_string())
+                                        }
                                     })
                                     .collect::<DictJyutPing>()
                             }),
@@ -1476,18 +1478,18 @@ fn prs_to_string(prs: &Vec<DictJyutPing>) -> String {
 
 fn pr_to_string(pr_segs: &DictJyutPing) -> String {
     pr_segs
-    .iter()
-    .map(pr_segment_to_string)
-    .collect::<Vec<String>>()
-    .join(" ")
+        .iter()
+        .map(pr_segment_to_string)
+        .collect::<Vec<String>>()
+        .join(" ")
 }
 
 fn pr_to_string_without_tone(pr_segs: &DictJyutPing) -> String {
     pr_segs
-    .iter()
-    .map(pr_segment_to_string_without_tone)
-    .collect::<Vec<String>>()
-    .join(" ")
+        .iter()
+        .map(pr_segment_to_string_without_tone)
+        .collect::<Vec<String>>()
+        .join(" ")
 }
 
 fn pr_segment_to_string(pr: &DictJyutPingSegment) -> String {
@@ -1817,7 +1819,7 @@ pub enum JyutPingTone {
 }
 
 /// Manners of articulation of initials
-/// 
+///
 /// source: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
 /// (page 9)
 #[derive(Debug, PartialEq)]
@@ -1831,7 +1833,7 @@ enum InitialCategories {
 }
 
 /// Classify initials based on their manner of articulation
-/// 
+///
 /// source: https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf
 /// (page 7)
 fn classify_initial(initial: JyutPingInitial) -> InitialCategories {
@@ -1871,7 +1873,7 @@ enum VowelRoundedness {
 }
 
 /// Classify nucleus based on their backness, height, and roundedness
-/// 
+///
 /// source: <https://www.wikiwand.com/en/Cantonese_phonology#/Vowels_and_terminals>
 fn classify_nucleus(nucleus: JyutPingNucleus) -> NucleusCategories {
     use JyutPingNucleus::*;
@@ -1983,15 +1985,15 @@ fn get_slice(s: &str, range: Range<usize>) -> Option<&str> {
 }
 
 /// Weighted jyutping comparison
-/// 
+///
 /// Highest score when identical: 25
-/// 
+///
 /// Score is split into four parts:
 /// * Initial: 10
 /// * Nucleus: 8
 /// * Coda: 6
 /// * Tone: 1
-/// 
+///
 pub fn compare_jyutping(pr1: JyutPing, pr2: JyutPing) -> usize {
     if pr1 == pr2 {
         10 + 8 + 6 + 1 // 25
