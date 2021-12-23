@@ -1,7 +1,8 @@
 use super::*;
-use strsim::{normalized_levenshtein};
+use strsim::{normalized_levenshtein, generic_levenshtein};
 use std::collections::BinaryHeap;
 use std::cmp::Ordering;
+use unicode_segmentation::UnicodeSegmentation;
 
 /// Max score is 25
 type Score = usize;
@@ -149,11 +150,11 @@ pub fn compare_jyutping(pr1: &JyutPing, pr2: &JyutPing) -> Score {
 }
 
 fn compare_string(s1: &str, s2: &str) -> Score {
-    (normalized_levenshtein(s1, s2) * MAX_SCORE as f64).round() as usize
+    normalize_score(normalized_levenshtein(s1, s2))
 }
 
-fn normalize_score(n_times_max_score: usize, s: Score) -> Score {
-    s / n_times_max_score
+fn normalize_score(s: f64) -> Score {
+    (s * MAX_SCORE as f64).round() as usize
 }
 
 pub fn compare_lax_jyutping_segment(pr1: &LaxJyutPingSegment, pr2: &LaxJyutPingSegment) -> Score {
@@ -174,10 +175,10 @@ fn compare_lax_jyutping(pr1: &LaxJyutPing, pr2: &LaxJyutPing) -> Score {
     if pr1.len() != pr2.len() {
         0
     } else {
-        let score = pr1.iter().zip(pr2).map(|(pr1, pr2)|
+        let score: Score = pr1.iter().zip(pr2).map(|(pr1, pr2)|
             compare_lax_jyutping_segment(pr1, pr2)
         ).sum();
-        normalize_score(pr1.len(), score)
+        score / pr1.len()
     }
 }
 
@@ -228,6 +229,74 @@ pub fn pr_search(dict: &Dict, query: &LaxJyutPing) -> BinaryHeap<PrSearchResult>
                     score,
                     pr_index,
                 });
+            });
+        });
+    });
+    results
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct VariantSearchResult {
+    pub id: usize,
+    pub variant_index: Index,
+    pub occurrence_index: Index,
+    pub levenshtein_score: Score,
+}
+
+impl Ord for VariantSearchResult {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.occurrence_index.cmp(&self.occurrence_index)
+            .then_with(|| self.levenshtein_score.cmp(&other.levenshtein_score))
+    }
+}
+
+impl PartialOrd for VariantSearchResult {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+fn normalized_unicode_levenshtein(a: &str, b: &str) -> f64 {
+    if a.is_empty() && b.is_empty() {
+        return 1.0;
+    }
+    let a_graphemes = UnicodeSegmentation::graphemes(a, true).collect::<Vec<&str>>();
+    let a_len = a_graphemes.len();
+    let b_graphemes = UnicodeSegmentation::graphemes(b, true).collect::<Vec<&str>>();
+    let b_len = b_graphemes.len();
+    1.0 - (generic_levenshtein(&a_graphemes, &b_graphemes) as f64) / (a_len.max(b_len) as f64)
+}
+
+// source: https://stackoverflow.com/a/35907071/6798201
+fn find_subsequence<T>(haystack: &[T], needle: &[T]) -> Option<usize>
+where
+    for<'a> &'a [T]: PartialEq,
+{
+    haystack.windows(needle.len()).position(|window| window == needle)
+}
+
+fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
+    let variant_graphemes = UnicodeSegmentation::graphemes(entry_variant, true).collect::<Vec<&str>>();
+    let query_graphemes = UnicodeSegmentation::graphemes(query, true).collect::<Vec<&str>>();
+    let occurrence_index =
+        match find_subsequence(&variant_graphemes, &query_graphemes) {
+            Some(i) => i,
+            None => usize::MAX,
+        };
+    let levenshtein_score = normalize_score(normalized_unicode_levenshtein(entry_variant, query));
+    (occurrence_index, levenshtein_score)
+}
+
+pub fn variant_search(dict: &Dict, query: &str) -> BinaryHeap<VariantSearchResult> {
+    let mut results = BinaryHeap::new();
+    dict.iter().for_each(|(id, entry)| {
+        entry.variants.iter().enumerate().for_each(|(variant_index, variant)| {
+            let (occurrence_index, levenshtein_score) = score_variant_query(&variant.word, query);
+            results.push(VariantSearchResult {
+                id: *id,
+                variant_index,
+                occurrence_index,
+                levenshtein_score,
             });
         });
     });
