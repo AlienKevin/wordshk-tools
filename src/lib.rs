@@ -70,7 +70,7 @@ pub struct Entry {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variant {
     pub word: String,
-    pub prs: Vec<DictJyutPing>,
+    pub prs: Vec<LaxJyutPing>,
 }
 
 /// Two types of segments: text or link. See [Segment]
@@ -250,12 +250,12 @@ pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
                                 pr_str
                                     .split_whitespace()
                                     .map(|pr_seg| match parse_jyutping(&pr_seg.to_string()) {
-                                        Some(pr) => DictJyutPingSegment::Standard(pr),
+                                        Some(pr) => LaxJyutPingSegment::Standard(pr),
                                         None => {
-                                            DictJyutPingSegment::Nonstandard(pr_seg.to_string())
+                                            LaxJyutPingSegment::Nonstandard(pr_seg.to_string())
                                         }
                                     })
-                                    .collect::<DictJyutPing>()
+                                    .collect::<LaxJyutPing>()
                             }),
                         ),
                         ":",
@@ -1469,14 +1469,14 @@ fn to_xml_badge(tag: &String) -> String {
     to_xml_badge_helper(false, tag)
 }
 
-fn prs_to_string(prs: &Vec<DictJyutPing>) -> String {
+pub fn prs_to_string(prs: &Vec<LaxJyutPing>) -> String {
     prs.iter()
         .map(pr_to_string)
         .collect::<Vec<String>>()
         .join(", ")
 }
 
-fn pr_to_string(pr_segs: &DictJyutPing) -> String {
+pub fn pr_to_string(pr_segs: &LaxJyutPing) -> String {
     pr_segs
         .iter()
         .map(pr_segment_to_string)
@@ -1484,7 +1484,7 @@ fn pr_to_string(pr_segs: &DictJyutPing) -> String {
         .join(" ")
 }
 
-fn pr_to_string_without_tone(pr_segs: &DictJyutPing) -> String {
+pub fn pr_to_string_without_tone(pr_segs: &LaxJyutPing) -> String {
     pr_segs
         .iter()
         .map(pr_segment_to_string_without_tone)
@@ -1492,17 +1492,17 @@ fn pr_to_string_without_tone(pr_segs: &DictJyutPing) -> String {
         .join(" ")
 }
 
-fn pr_segment_to_string(pr: &DictJyutPingSegment) -> String {
+pub fn pr_segment_to_string(pr: &LaxJyutPingSegment) -> String {
     match pr {
-        DictJyutPingSegment::Standard(pr) => jyutping_to_string(pr),
-        DictJyutPingSegment::Nonstandard(pr_str) => pr_str.clone(),
+        LaxJyutPingSegment::Standard(pr) => jyutping_to_string(pr),
+        LaxJyutPingSegment::Nonstandard(pr_str) => pr_str.clone(),
     }
 }
 
-fn pr_segment_to_string_without_tone(pr: &DictJyutPingSegment) -> String {
+pub fn pr_segment_to_string_without_tone(pr: &LaxJyutPingSegment) -> String {
     match pr {
-        DictJyutPingSegment::Standard(pr) => jyutping_to_string_without_tone(pr),
-        DictJyutPingSegment::Nonstandard(pr_str) => pr_str.clone(),
+        LaxJyutPingSegment::Standard(pr) => jyutping_to_string_without_tone(pr),
+        LaxJyutPingSegment::Nonstandard(pr_str) => pr_str.clone(),
     }
 }
 
@@ -1560,7 +1560,7 @@ pub fn dict_to_xml(dict: Dict) -> String {
                                     word_and_pr = word_and_pr,
                                     pr_without_tone = {
                                         if pr.iter().any(|pr_seg|
-                                            if let DictJyutPingSegment::Nonstandard(_) = pr_seg { true } else { false }
+                                            if let LaxJyutPingSegment::Nonstandard(_) = pr_seg { true } else { false }
                                         ){
                                             "".to_string()
                                         } else {
@@ -1723,10 +1723,10 @@ pub fn jyutping_to_string_without_tone(pr: &JyutPing) -> String {
         + &pr.coda.map(|i| i.to_string()).unwrap_or("".to_string())
 }
 
-type DictJyutPing = Vec<DictJyutPingSegment>;
+pub type LaxJyutPing = Vec<LaxJyutPingSegment>;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum DictJyutPingSegment {
+pub enum LaxJyutPingSegment {
     Standard(JyutPing),
     Nonstandard(String),
 }

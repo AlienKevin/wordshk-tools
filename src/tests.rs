@@ -403,7 +403,7 @@ fn test_parse_content() {
         let variants = vec![
             Variant {
                 word: "zip".to_string(),
-                prs: vec![vec![DictJyutPingSegment::Standard(JyutPing {
+                prs: vec![vec![LaxJyutPingSegment::Standard(JyutPing {
                     initial: Some(JyutPingInitial::Z),
                     nucleus: JyutPingNucleus::I,
                     coda: Some(JyutPingCoda::P),
@@ -412,7 +412,7 @@ fn test_parse_content() {
             },
             Variant {
                 word: "jip".to_string(),
-                prs: vec![vec![DictJyutPingSegment::Standard(JyutPing {
+                prs: vec![vec![LaxJyutPingSegment::Standard(JyutPing {
                     initial: Some(JyutPingInitial::Z),
                     nucleus: JyutPingNucleus::I,
                     coda: Some(JyutPingCoda::P),
@@ -462,13 +462,13 @@ eng:Stop tsking!",
         let variants = vec![Variant {
             word: "hihi".to_string(),
             prs: vec![vec![
-                DictJyutPingSegment::Standard(JyutPing {
+                LaxJyutPingSegment::Standard(JyutPing {
                     initial: Some(JyutPingInitial::H),
                     nucleus: JyutPingNucleus::Aa,
                     coda: Some(JyutPingCoda::I),
                     tone: Some(JyutPingTone::T1),
                 }),
-                DictJyutPingSegment::Standard(JyutPing {
+                LaxJyutPingSegment::Standard(JyutPing {
                     initial: Some(JyutPingInitial::H),
                     nucleus: JyutPingNucleus::Aa,
                     coda: Some(JyutPingCoda::I),
