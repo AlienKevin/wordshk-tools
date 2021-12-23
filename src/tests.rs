@@ -1,6 +1,7 @@
 use super::RubySegment::*;
 use super::SegmentType;
 use super::*;
+use super::search::*;
 
 fn text(string: &'static str) -> Segment {
     (SegmentType::Text, string.to_string())
@@ -781,13 +782,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         25,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::I),
                 tone: Some(JyutPingTone::T5)
             },
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::I),
@@ -799,13 +800,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         25,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: None,
                 nucleus: JyutPingNucleus::Aa,
                 coda: None,
                 tone: None
             },
-            JyutPing {
+            &JyutPing {
                 initial: None,
                 nucleus: JyutPingNucleus::Aa,
                 coda: None,
@@ -818,13 +819,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         21,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::F),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::I),
                 tone: Some(JyutPingTone::T5)
             },
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::I),
@@ -837,13 +838,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         15,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::T),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::I),
                 tone: Some(JyutPingTone::T5)
             },
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::I),
@@ -856,13 +857,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         15,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::T),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::I),
                 tone: Some(JyutPingTone::T5)
             },
-            JyutPing {
+            &JyutPing {
                 initial: None,
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::I),
@@ -875,13 +876,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         22,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::I),
                 tone: Some(JyutPingTone::T5)
             },
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Oe,
                 coda: Some(JyutPingCoda::I),
@@ -894,13 +895,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         21,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::I,
                 coda: Some(JyutPingCoda::I),
                 tone: Some(JyutPingTone::T5)
             },
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Yu,
                 coda: Some(JyutPingCoda::I),
@@ -913,13 +914,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         20,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::T),
                 nucleus: JyutPingNucleus::I,
                 coda: Some(JyutPingCoda::I),
                 tone: Some(JyutPingTone::T5)
             },
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::T),
                 nucleus: JyutPingNucleus::E,
                 coda: Some(JyutPingCoda::I),
@@ -932,13 +933,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         20,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::T),
                 nucleus: JyutPingNucleus::Yu,
                 coda: Some(JyutPingCoda::I),
                 tone: Some(JyutPingTone::T5)
             },
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::T),
                 nucleus: JyutPingNucleus::U,
                 coda: Some(JyutPingCoda::I),
@@ -951,13 +952,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         23,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::P),
                 tone: Some(JyutPingTone::T5)
             },
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::T),
@@ -970,13 +971,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         19,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::P),
                 tone: Some(JyutPingTone::T5)
             },
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::I),
@@ -989,13 +990,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         19,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::T),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::I),
                 tone: Some(JyutPingTone::T5)
             },
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::T),
                 nucleus: JyutPingNucleus::Eo,
                 coda: None,
@@ -1008,13 +1009,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         24,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::T),
                 tone: Some(JyutPingTone::T4)
             },
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::T),
@@ -1029,13 +1030,13 @@ fn test_compare_jyutping() {
     assert_eq!(
         9,
         compare_jyutping(
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::S),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::P),
                 tone: Some(JyutPingTone::T5)
             },
-            JyutPing {
+            &JyutPing {
                 initial: Some(JyutPingInitial::T),
                 nucleus: JyutPingNucleus::Eo,
                 coda: Some(JyutPingCoda::I),
