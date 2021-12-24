@@ -1,4 +1,5 @@
 use super::*;
+use super::unicode;
 use strsim::{normalized_levenshtein, generic_levenshtein};
 use std::collections::BinaryHeap;
 use std::cmp::Ordering;
@@ -288,10 +289,11 @@ fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
 }
 
 pub fn variant_search(dict: &Dict, query: &str) -> BinaryHeap<VariantSearchResult> {
+    let query_safe = &convert_to_hk_safe_variant(query);
     let mut results = BinaryHeap::new();
     dict.iter().for_each(|(id, entry)| {
         entry.variants.iter().enumerate().for_each(|(variant_index, variant)| {
-            let (occurrence_index, levenshtein_score) = score_variant_query(&variant.word, query);
+            let (occurrence_index, levenshtein_score) = score_variant_query(&variant.word, query_safe);
             results.push(VariantSearchResult {
                 id: *id,
                 variant_index,
@@ -301,4 +303,33 @@ pub fn variant_search(dict: &Dict, query: &str) -> BinaryHeap<VariantSearchResul
         });
     });
     results
+}
+
+lazy_static! {
+    static ref HONG_KONG_VARIANT_MAP_SAFE: HashMap<char, char> = {
+        HashMap::from([
+            ('倂', '併'), ('僞', '偽'), ('兌', '兑'), ('册', '冊'), ('删', '刪'), ('匀', '勻'), ('滙', '匯'), ('叄', '叁'), ('吿', '告'), ('啟', '啓'), ('塡', '填'), ('姗', '姍'), ('媼', '媪'), ('嬀', '媯'), ('幷', '并'), ('悅', '悦'), ('悳', '惪'), ('慍', '愠'), ('戶', '户'), ('抛', '拋'), ('挩', '捝'), ('㨂', '揀'), ('搵', '揾'), ('敎', '教'), ('敓', '敚'), ('旣', '既'), ('曁', '暨'), ('栅', '柵'), ('梲', '棁'), ('槪', '概'), ('榲', '榅'), ('氳', '氲'), ('汙', '污'), ('没', '沒'), ('洩', '泄'), ('涗', '涚'), ('溫', '温'), ('潙', '溈'), ('潨', '潀'), ('溼', '濕'), ('爲', '為'), ('熅', '煴'), ('床', '牀'), ('奬', '獎'), ('眞', '真'), ('衆', '眾'), ('硏', '研'), ('稅', '税'), ('緖', '緒'), ('縕', '緼'), ('駡', '罵'), ('羣', '群'), ('脫', '脱'), ('膃', '腽'), ('蔥', '葱'), ('蒕', '蒀'), ('蔿', '蒍'), ('葯', '藥'), ('蘊', '藴'), ('蛻', '蜕'), ('衛', '衞'), ('裡', '裏'), ('說', '説'), ('艷', '豔'), ('轀', '輼'), ('醞', '醖'), ('鉤', '鈎'), ('銳', '鋭'), ('錬', '鍊'), ('鎭', '鎮'), ('銹', '鏽'), ('閱', '閲'), ('鷄', '雞'), ('鰮', '鰛'), ('麵', '麪')
+        ])
+    };
+}
+
+/// Returns a 'HK variant' of the characters of the input text. The input is
+/// assumed to be Chinese traditional. This variant list confirms to most
+/// expectations of how characters should be written in Hong Kong, but does not
+/// necessarily conform to any rigid standard. It may be fine tuned by editors
+/// of words.hk. This is the "safe" version that is probably less controversial.
+fn convert_to_hk_safe_variant(variant: &str) -> String {
+    unicode::to_graphemes(variant).iter().map(|g| {
+        if unicode::test_g(unicode::is_cjk, g) {
+            if g.chars().count() == 1 {
+                if let Some(c) = g.chars().next() {
+                    return match HONG_KONG_VARIANT_MAP_SAFE.get(&c) {
+                        Some(s) => s.to_string(),
+                        None => g.to_string(),
+                    };
+                }
+            }
+        }
+        return g.to_string();
+    }).collect::<Vec<String>>().join("")
 }

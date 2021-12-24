@@ -13,7 +13,9 @@ fn do_variant_search() {
             process::exit(1);
         }
         Ok(dict) => {
-            let mut results = variant_search(&dict, "老友");
+            // 說 is a variant that does not appear in dictionary variant data
+            // Two words contains 說明: 說明 and 説明書
+            let mut results = variant_search(&dict, "說明");
             let mut i = 0;
             while results.len() > 0 && i < 10 {
                 let VariantSearchResult { id, variant_index, .. } = results.pop().unwrap();
