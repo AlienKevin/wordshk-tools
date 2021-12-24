@@ -1,8 +1,13 @@
-use super::*;
+use super::parse::{
+    jyutping_to_string, Dict, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus,
+    LaxJyutPing, LaxJyutPingSegment,
+};
 use super::unicode;
-use strsim::{normalized_levenshtein, generic_levenshtein};
-use std::collections::BinaryHeap;
+use lazy_static::lazy_static;
 use std::cmp::Ordering;
+use std::collections::BinaryHeap;
+use std::collections::HashMap;
+use strsim::{generic_levenshtein, normalized_levenshtein};
 use unicode_segmentation::UnicodeSegmentation;
 
 /// Max score is 25
@@ -131,8 +136,10 @@ pub fn compare_jyutping(pr1: &JyutPing, pr2: &JyutPing) -> Score {
         }) + (if pr1.nucleus == pr2.nucleus {
             8
         } else {
-            let ((backness1, height1, roundedness1), (backness2, height2, roundedness2)) =
-                (classify_nucleus(&pr1.nucleus), classify_nucleus(&pr2.nucleus));
+            let ((backness1, height1, roundedness1), (backness2, height2, roundedness2)) = (
+                classify_nucleus(&pr1.nucleus),
+                classify_nucleus(&pr2.nucleus),
+            );
             (if backness1 == backness2 { 2 } else { 0 })
                 + (if height1 == height2 { 2 } else { 0 })
                 + (if roundedness1 == roundedness2 { 1 } else { 0 })
@@ -161,14 +168,10 @@ fn normalize_score(s: f64) -> Score {
 pub fn compare_lax_jyutping_segment(pr1: &LaxJyutPingSegment, pr2: &LaxJyutPingSegment) -> Score {
     use LaxJyutPingSegment::*;
     match (pr1, pr2) {
-        (Standard(pr1), Standard(pr2)) =>
-            compare_jyutping(pr1, pr2),
-        (Standard(pr1), Nonstandard(pr2)) =>
-            compare_string(&jyutping_to_string(pr1), &pr2),
-        (Nonstandard(pr1), Standard(pr2)) =>
-            compare_string(pr1, &jyutping_to_string(pr2)),
-        (Nonstandard(pr1), Nonstandard(pr2)) =>
-            compare_string(pr1, pr2),
+        (Standard(pr1), Standard(pr2)) => compare_jyutping(pr1, pr2),
+        (Standard(pr1), Nonstandard(pr2)) => compare_string(&jyutping_to_string(pr1), &pr2),
+        (Nonstandard(pr1), Standard(pr2)) => compare_string(pr1, &jyutping_to_string(pr2)),
+        (Nonstandard(pr1), Nonstandard(pr2)) => compare_string(pr1, pr2),
     }
 }
 
@@ -176,9 +179,11 @@ fn compare_lax_jyutping(pr1: &LaxJyutPing, pr2: &LaxJyutPing) -> Score {
     if pr1.len() != pr2.len() {
         0
     } else {
-        let score: Score = pr1.iter().zip(pr2).map(|(pr1, pr2)|
-            compare_lax_jyutping_segment(pr1, pr2)
-        ).sum();
+        let score: Score = pr1
+            .iter()
+            .zip(pr2)
+            .map(|(pr1, pr2)| compare_lax_jyutping_segment(pr1, pr2))
+            .sum();
         score / pr1.len()
     }
 }
@@ -207,7 +212,8 @@ pub struct PrSearchResult {
 
 impl Ord for PrSearchResult {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.score.cmp(&other.score)
+        self.score
+            .cmp(&other.score)
             .then_with(|| other.pr_index.cmp(&self.pr_index))
     }
 }
@@ -221,17 +227,21 @@ impl PartialOrd for PrSearchResult {
 pub fn pr_search(dict: &Dict, query: &LaxJyutPing) -> BinaryHeap<PrSearchResult> {
     let mut results = BinaryHeap::new();
     dict.iter().for_each(|(id, entry)| {
-        entry.variants.iter().enumerate().for_each(|(variant_index, variant)| {
-            variant.prs.iter().for_each(|pr| {
-                let (score, pr_index) = score_pr_query(pr, query);
-                results.push(PrSearchResult {
-                    id: *id,
-                    variant_index,
-                    score,
-                    pr_index,
+        entry
+            .variants
+            .iter()
+            .enumerate()
+            .for_each(|(variant_index, variant)| {
+                variant.prs.iter().for_each(|pr| {
+                    let (score, pr_index) = score_pr_query(pr, query);
+                    results.push(PrSearchResult {
+                        id: *id,
+                        variant_index,
+                        score,
+                        pr_index,
+                    });
                 });
             });
-        });
     });
     results
 }
@@ -246,7 +256,9 @@ pub struct VariantSearchResult {
 
 impl Ord for VariantSearchResult {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.occurrence_index.cmp(&self.occurrence_index)
+        other
+            .occurrence_index
+            .cmp(&self.occurrence_index)
             .then_with(|| self.levenshtein_score.cmp(&other.levenshtein_score))
     }
 }
@@ -273,17 +285,19 @@ fn find_subsequence<T>(haystack: &[T], needle: &[T]) -> Option<usize>
 where
     for<'a> &'a [T]: PartialEq,
 {
-    haystack.windows(needle.len()).position(|window| window == needle)
+    haystack
+        .windows(needle.len())
+        .position(|window| window == needle)
 }
 
 fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
-    let variant_graphemes = UnicodeSegmentation::graphemes(entry_variant, true).collect::<Vec<&str>>();
+    let variant_graphemes =
+        UnicodeSegmentation::graphemes(entry_variant, true).collect::<Vec<&str>>();
     let query_graphemes = UnicodeSegmentation::graphemes(query, true).collect::<Vec<&str>>();
-    let occurrence_index =
-        match find_subsequence(&variant_graphemes, &query_graphemes) {
-            Some(i) => i,
-            None => usize::MAX,
-        };
+    let occurrence_index = match find_subsequence(&variant_graphemes, &query_graphemes) {
+        Some(i) => i,
+        None => usize::MAX,
+    };
     let levenshtein_score = normalize_score(normalized_unicode_levenshtein(entry_variant, query));
     (occurrence_index, levenshtein_score)
 }
@@ -292,15 +306,20 @@ pub fn variant_search(dict: &Dict, query: &str) -> BinaryHeap<VariantSearchResul
     let query_safe = &convert_to_hk_safe_variant(query);
     let mut results = BinaryHeap::new();
     dict.iter().for_each(|(id, entry)| {
-        entry.variants.iter().enumerate().for_each(|(variant_index, variant)| {
-            let (occurrence_index, levenshtein_score) = score_variant_query(&variant.word, query_safe);
-            results.push(VariantSearchResult {
-                id: *id,
-                variant_index,
-                occurrence_index,
-                levenshtein_score,
+        entry
+            .variants
+            .iter()
+            .enumerate()
+            .for_each(|(variant_index, variant)| {
+                let (occurrence_index, levenshtein_score) =
+                    score_variant_query(&variant.word, query_safe);
+                results.push(VariantSearchResult {
+                    id: *id,
+                    variant_index,
+                    occurrence_index,
+                    levenshtein_score,
+                });
             });
-        });
     });
     results
 }
@@ -308,7 +327,81 @@ pub fn variant_search(dict: &Dict, query: &str) -> BinaryHeap<VariantSearchResul
 lazy_static! {
     static ref HONG_KONG_VARIANT_MAP_SAFE: HashMap<char, char> = {
         HashMap::from([
-            ('倂', '併'), ('僞', '偽'), ('兌', '兑'), ('册', '冊'), ('删', '刪'), ('匀', '勻'), ('滙', '匯'), ('叄', '叁'), ('吿', '告'), ('啟', '啓'), ('塡', '填'), ('姗', '姍'), ('媼', '媪'), ('嬀', '媯'), ('幷', '并'), ('悅', '悦'), ('悳', '惪'), ('慍', '愠'), ('戶', '户'), ('抛', '拋'), ('挩', '捝'), ('㨂', '揀'), ('搵', '揾'), ('敎', '教'), ('敓', '敚'), ('旣', '既'), ('曁', '暨'), ('栅', '柵'), ('梲', '棁'), ('槪', '概'), ('榲', '榅'), ('氳', '氲'), ('汙', '污'), ('没', '沒'), ('洩', '泄'), ('涗', '涚'), ('溫', '温'), ('潙', '溈'), ('潨', '潀'), ('溼', '濕'), ('爲', '為'), ('熅', '煴'), ('床', '牀'), ('奬', '獎'), ('眞', '真'), ('衆', '眾'), ('硏', '研'), ('稅', '税'), ('緖', '緒'), ('縕', '緼'), ('駡', '罵'), ('羣', '群'), ('脫', '脱'), ('膃', '腽'), ('蔥', '葱'), ('蒕', '蒀'), ('蔿', '蒍'), ('葯', '藥'), ('蘊', '藴'), ('蛻', '蜕'), ('衛', '衞'), ('裡', '裏'), ('說', '説'), ('艷', '豔'), ('轀', '輼'), ('醞', '醖'), ('鉤', '鈎'), ('銳', '鋭'), ('錬', '鍊'), ('鎭', '鎮'), ('銹', '鏽'), ('閱', '閲'), ('鷄', '雞'), ('鰮', '鰛'), ('麵', '麪')
+            ('倂', '併'),
+            ('僞', '偽'),
+            ('兌', '兑'),
+            ('册', '冊'),
+            ('删', '刪'),
+            ('匀', '勻'),
+            ('滙', '匯'),
+            ('叄', '叁'),
+            ('吿', '告'),
+            ('啟', '啓'),
+            ('塡', '填'),
+            ('姗', '姍'),
+            ('媼', '媪'),
+            ('嬀', '媯'),
+            ('幷', '并'),
+            ('悅', '悦'),
+            ('悳', '惪'),
+            ('慍', '愠'),
+            ('戶', '户'),
+            ('抛', '拋'),
+            ('挩', '捝'),
+            ('㨂', '揀'),
+            ('搵', '揾'),
+            ('敎', '教'),
+            ('敓', '敚'),
+            ('旣', '既'),
+            ('曁', '暨'),
+            ('栅', '柵'),
+            ('梲', '棁'),
+            ('槪', '概'),
+            ('榲', '榅'),
+            ('氳', '氲'),
+            ('汙', '污'),
+            ('没', '沒'),
+            ('洩', '泄'),
+            ('涗', '涚'),
+            ('溫', '温'),
+            ('潙', '溈'),
+            ('潨', '潀'),
+            ('溼', '濕'),
+            ('爲', '為'),
+            ('熅', '煴'),
+            ('床', '牀'),
+            ('奬', '獎'),
+            ('眞', '真'),
+            ('衆', '眾'),
+            ('硏', '研'),
+            ('稅', '税'),
+            ('緖', '緒'),
+            ('縕', '緼'),
+            ('駡', '罵'),
+            ('羣', '群'),
+            ('脫', '脱'),
+            ('膃', '腽'),
+            ('蔥', '葱'),
+            ('蒕', '蒀'),
+            ('蔿', '蒍'),
+            ('葯', '藥'),
+            ('蘊', '藴'),
+            ('蛻', '蜕'),
+            ('衛', '衞'),
+            ('裡', '裏'),
+            ('說', '説'),
+            ('艷', '豔'),
+            ('轀', '輼'),
+            ('醞', '醖'),
+            ('鉤', '鈎'),
+            ('銳', '鋭'),
+            ('錬', '鍊'),
+            ('鎭', '鎮'),
+            ('銹', '鏽'),
+            ('閱', '閲'),
+            ('鷄', '雞'),
+            ('鰮', '鰛'),
+            ('麵', '麪'),
         ])
     };
 }
@@ -319,17 +412,21 @@ lazy_static! {
 /// necessarily conform to any rigid standard. It may be fine tuned by editors
 /// of words.hk. This is the "safe" version that is probably less controversial.
 fn convert_to_hk_safe_variant(variant: &str) -> String {
-    unicode::to_graphemes(variant).iter().map(|g| {
-        if unicode::test_g(unicode::is_cjk, g) {
-            if g.chars().count() == 1 {
-                if let Some(c) = g.chars().next() {
-                    return match HONG_KONG_VARIANT_MAP_SAFE.get(&c) {
-                        Some(s) => s.to_string(),
-                        None => g.to_string(),
-                    };
+    unicode::to_graphemes(variant)
+        .iter()
+        .map(|g| {
+            if unicode::test_g(unicode::is_cjk, g) {
+                if g.chars().count() == 1 {
+                    if let Some(c) = g.chars().next() {
+                        return match HONG_KONG_VARIANT_MAP_SAFE.get(&c) {
+                            Some(s) => s.to_string(),
+                            None => g.to_string(),
+                        };
+                    }
                 }
             }
-        }
-        return g.to_string();
-    }).collect::<Vec<String>>().join("")
+            return g.to_string();
+        })
+        .collect::<Vec<String>>()
+        .join("")
 }

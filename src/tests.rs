@@ -1,8 +1,6 @@
-use super::RubySegment::*;
-use super::SegmentType;
-use super::*;
-use super::search::*;
-use super::unicode::*;
+use super::emit::{Text, TextStyle, Word, WordSegment};
+use super::parse::*;
+use lip::assert_succeed;
 
 fn text(string: &'static str) -> Segment {
     (SegmentType::Text, string.to_string())
@@ -12,11 +10,11 @@ fn link(string: &'static str) -> Segment {
     (SegmentType::Link, string.to_string())
 }
 
-fn text_word(word: super::Word) -> WordSegment {
+fn text_word(word: Word) -> WordSegment {
     (SegmentType::Text, word)
 }
 
-fn link_word(word: super::Word) -> WordSegment {
+fn link_word(word: Word) -> WordSegment {
     (SegmentType::Link, word)
 }
 
@@ -36,11 +34,11 @@ fn normal(string: &'static str) -> Text {
     (TextStyle::Normal, string.to_string())
 }
 
-fn bold_word(string: &'static str) -> super::Word {
+fn bold_word(string: &'static str) -> Word {
     vec![bold(string)]
 }
 
-fn normal_word(string: &'static str) -> super::Word {
+fn normal_word(string: &'static str) -> Word {
     vec![normal(string)]
 }
 
@@ -504,6 +502,8 @@ yue:「#仆街」嘅代名詞",
 
 #[test]
 fn test_is_latin() {
+    use super::unicode::is_latin;
+
     assert!(is_latin('a'));
     assert!(is_latin('A'));
     assert!(is_latin('Ä'));
@@ -522,6 +522,8 @@ fn test_is_latin() {
 
 #[test]
 fn test_tokenize() {
+    use super::emit::tokenize;
+
     assert_eq!(
         tokenize(&vec!["upgrade".into()], "我 upgrade 咗做 Win 10 之後"),
         vec![
@@ -578,6 +580,8 @@ fn test_tokenize() {
 
 #[test]
 fn test_flatten_line() {
+    use super::emit::flatten_line;
+
     assert_eq!(
         flatten_line(
             &vec!["upgrade".into()],
@@ -622,6 +626,8 @@ fn test_flatten_line() {
 
 #[test]
 fn test_match_ruby() {
+    use super::emit::{match_ruby, RubySegment::*};
+
     assert_eq!(
         match_ruby(
             &vec!["I mean".into()],
@@ -779,6 +785,8 @@ fn test_parse_jyutping() {
 
 #[test]
 fn test_compare_jyutping() {
+    use super::search::compare_jyutping;
+
     // identical jyutpings
     assert_eq!(
         25,
