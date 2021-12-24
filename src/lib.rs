@@ -1611,42 +1611,6 @@ pub fn dict_to_xml(dict: Dict) -> String {
     header.to_string() + &entries + "\n</d:dictionary>\n"
 }
 
-// fn tokenize(text: &str) -> Vec<&str> {
-//     let mut i = 0;
-//     let mut tokens = vec![];
-//     let gs = UnicodeSegmentation::graphemes(&text[..], true).collect::<Vec<&str>>();
-//     while i < gs.len() {
-//         let g = gs[i];
-//         let mut token = String::new();
-//         while i < gs.len() && test_g(is_cjk, g) {
-//             token += g;
-//             i += 1;
-//         }
-//         if token.len() > 0 {
-//             tokens.push(token.as_str());
-//             token = String::new();
-//         }
-//         while i < gs.len() && test_g(is_alphanumeric, g) {
-//             let mut j = i + 1;
-//             while j < gs.len() && (test_g(is_alphanumeric, gs[j]) || (test_g(char::is_whitespace, gs[j]))) {
-//                 j+=1;
-//             }
-//             tokens.push(gs[i..j].join("").trim_end());
-//             i = j;
-//         }
-//         if token.len() > 0 {
-//             tokens.push(token.as_str());
-//         }
-//         while i < gs.len() && !test_g(is_cjk, g) && !test_g(is_alphanumeric, g) { // a punctuation or space
-//             if !test_g(char::is_whitespace, g) {
-//                 tokens.push(g);
-//             }
-//             i += 1;
-//         }
-//     }
-//     tokens
-// }
-
 /// JyutPing encoding with initial, nucleus (required), coda, and tone
 ///
 /// Phonetics info based on: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
