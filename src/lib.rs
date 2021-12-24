@@ -13,6 +13,7 @@
 
 #[macro_use]
 mod tests;
+mod unicode;
 pub mod search;
 
 use indoc::indoc;
@@ -21,15 +22,12 @@ use lip::ParseResult;
 use lip::*;
 use std::cmp;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::convert::identity;
 use std::error::Error;
 use std::fs;
 use std::io;
 use std::ops::Range;
 use std::str::FromStr;
-use unicode_names2;
-use unicode_segmentation::UnicodeSegmentation;
 
 /// A dictionary is a list of entries
 pub type Dict = HashMap<usize, Entry>;
@@ -358,7 +356,7 @@ pub fn parse_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
             succeed!(|string| (SegmentType::Link, string))
                 .skip(token("#"))
                 .keep(take_chomped(chomp_while1c(
-                    &(|c: &char| !is_punctuation(*c) && !c.is_whitespace()),
+                    &(|c: &char| !unicode::is_punctuation(*c) && !c.is_whitespace()),
                     name
                 )))
                 .skip(optional("", token(" "))),
@@ -421,7 +419,7 @@ pub fn parse_partial_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Lin
             succeed!(|string: String| (SegmentType::Link, string.trim_end().to_string()))
                 .skip(token("#"))
                 .keep(take_chomped(chomp_while1c(
-                    &(|c: &char| !is_punctuation(*c) && !c.is_whitespace() && *c != '('),
+                    &(|c: &char| !unicode::is_punctuation(*c) && !c.is_whitespace() && *c != '('),
                     name
                 )))
                 .skip(optional("", token(" "))),
@@ -923,10 +921,10 @@ where
 fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
     let mut i = 0;
     let mut words: Vec<Word> = vec![];
-    let gs = UnicodeSegmentation::graphemes(&text[..], true).collect::<Vec<&str>>();
+    let gs = unicode::to_graphemes(text);
     let mut start_end_pairs: Vec<(usize, usize)> = vec![];
     variants.iter().for_each(|variant| {
-        let variant = UnicodeSegmentation::graphemes(&variant[..], true).collect::<Vec<&str>>();
+        let variant = unicode::to_graphemes(variant);
         find_subsequences(&gs, &variant)
             .iter()
             .for_each(|(start_index, end_index)| {
@@ -951,7 +949,7 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
     let mut is_bolded = false;
     while i < gs.len() {
         let g = gs[i];
-        if test_g(is_cjk, g) {
+        if unicode::test_g(unicode::is_cjk, g) {
             if start_end_pairs.iter().any(|(start, _)| start == &i) {
                 is_bolded = true;
             }
@@ -967,14 +965,14 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
                 is_bolded = false;
             }
             i += 1;
-        } else if test_g(is_alphanumeric, g) {
+        } else if unicode::test_g(unicode::is_alphanumeric, g) {
             let mut j = i;
             let mut prev_bold_end_index: Option<usize> = None;
             let mut bold_start_index = None;
             let mut bold_end_index = None;
             let mut word: Word = vec![];
             while j < gs.len()
-                && (test_g(is_alphanumeric, gs[j]) || (test_g(char::is_whitespace, gs[j])))
+                && (unicode::test_g(unicode::is_alphanumeric, gs[j]) || (unicode::test_g(char::is_whitespace, gs[j])))
             {
                 if start_end_pairs.iter().any(|(start, _)| start == &j) {
                     bold_start_index = Some(j);
@@ -1018,7 +1016,7 @@ fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
             i = j;
         } else {
             // a punctuation or space
-            if !test_g(char::is_whitespace, g) {
+            if !unicode::test_g(char::is_whitespace, g) {
                 words.push(vec![(
                     if is_bolded {
                         TextStyle::Bold
@@ -1113,7 +1111,7 @@ pub fn match_ruby(variants: &Vec<String>, line: &Line, prs: &Vec<&str>) -> RubyL
             Some(j) => create_ruby_segment(seg_type, word, &prs[*j..j + 1]),
             None => {
                 let word_str = word_to_string(word);
-                if test_g(is_punctuation, &word_str) {
+                if unicode::test_g(unicode::is_punctuation, &word_str) {
                     RubySegment::Punc(word_str)
                 } else {
                     let start = {
@@ -1282,60 +1280,11 @@ fn match_ruby_backtrack(
 }
 
 lazy_static! {
-    static ref PUNCTUATIONS: HashSet<char> = {
-        HashSet::from([
-            // Shared punctuations
-            '@', '#', '$', '%', '^', '&', '*',
-            // English punctuations
-            '~', '`', '!',  '(', ')', '-', '_', '{', '}', '[', ']', '|', '\\', ':', ';',
-            '"', '\'', '<', '>', ',', '.', '?', '/',
-            // Chinese punctuations
-            '～', '·', '！', '：', '；', '“', '”', '‘', '’', '【', '】', '（', '）',
-            '「', '」', '《', '》', '？', '，', '。', '、', '／', '＋'
-        ])
-    };
-
     static ref CHARLIST: CharList = {
         let charlist_file = fs::File::open("charlist.json").unwrap();
         let charlist_reader = io::BufReader::new(charlist_file);
         serde_json::from_reader(charlist_reader).unwrap()
     };
-}
-
-/// Test whether a character is a Chinese/English punctuation
-fn is_punctuation(c: char) -> bool {
-    PUNCTUATIONS.contains(&c)
-}
-
-/// Test if a character is latin small or capital letter
-fn is_latin(c: char) -> bool {
-    if let Some(name) = unicode_names2::name(c) {
-        let name = format!("{}", name);
-        name.starts_with("LATIN SMALL LETTER") || name.starts_with("LATIN CAPITAL LETTER")
-    } else {
-        false
-    }
-}
-
-fn is_alphanumeric(c: char) -> bool {
-    let cp = c as i32;
-    (0x30 <= cp && cp < 0x40) || (0xFF10 <= cp && cp < 0xFF20) || is_latin(c)
-}
-
-fn is_cjk(c: char) -> bool {
-    let cp = c as i32;
-    (0x3400 <= cp && cp <= 0x4DBF)
-        || (0x4E00 <= cp && cp <= 0x9FFF)
-        || (0xF900 <= cp && cp <= 0xFAFF)
-        || (0x20000 <= cp && cp <= 0x2FFFF)
-}
-
-fn test_g(f: fn(char) -> bool, g: &str) -> bool {
-    if let Some(c) = g.chars().next() {
-        g.chars().count() == 1 && f(c)
-    } else {
-        false
-    }
 }
 
 /// Escape '<' and '&' in an XML string
@@ -1405,7 +1354,7 @@ fn clause_to_xml(clause: &Clause) -> String {
 fn pr_line_to_xml(variants: &Vec<String>, (line, pr): &PrLine) -> String {
     match pr {
         Some(pr) => {
-            let prs = pr.unicode_words().collect::<Vec<&str>>();
+            let prs = unicode::to_words(pr);
             let ruby_line = match_ruby(variants, line, &prs);
             let mut output = "<ruby class=\"pr-clause\">".to_string();
             ruby_line.iter().for_each(|seg| match seg {

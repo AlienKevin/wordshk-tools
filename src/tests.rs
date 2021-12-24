@@ -2,6 +2,7 @@ use super::RubySegment::*;
 use super::SegmentType;
 use super::*;
 use super::search::*;
+use super::unicode::*;
 
 fn text(string: &'static str) -> Segment {
     (SegmentType::Text, string.to_string())
