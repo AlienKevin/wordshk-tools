@@ -10,10 +10,10 @@ use std::collections::HashMap;
 use strsim::{generic_levenshtein, normalized_levenshtein};
 use unicode_segmentation::UnicodeSegmentation;
 
-/// Max score is 25
+/// Max score is 100
 type Score = usize;
 
-const MAX_SCORE: Score = 25;
+const MAX_SCORE: Score = 100;
 
 type Index = usize;
 
@@ -111,49 +111,49 @@ fn classify_coda(coda: &JyutPingCoda) -> CodaCategories {
 
 /// Weighted jyutping comparison
 ///
-/// Highest score when identical: 25
+/// Highest score when identical: 100
 ///
 /// Score is split into four parts:
-/// * Initial: 10
-/// * Nucleus: 8
-/// * Coda: 6
-/// * Tone: 1
+/// * Initial: 40
+/// * Nucleus: 32
+/// * Coda: 24
+/// * Tone: 4
 ///
 pub fn compare_jyutping(pr1: &JyutPing, pr2: &JyutPing) -> Score {
     if pr1 == pr2 {
-        10 + 8 + 6 + 1 // 25
+        100
     } else {
         (if pr1.initial == pr2.initial {
-            10
+            40
         } else if let (Some(i1), Some(i2)) = (pr1.initial.as_ref(), pr2.initial.as_ref()) {
             if classify_initial(&i1) == classify_initial(&i2) {
-                6
+                24
             } else {
                 0
             }
         } else {
             0
         }) + (if pr1.nucleus == pr2.nucleus {
-            8
+            32
         } else {
             let ((backness1, height1, roundedness1), (backness2, height2, roundedness2)) = (
                 classify_nucleus(&pr1.nucleus),
                 classify_nucleus(&pr2.nucleus),
             );
-            (if backness1 == backness2 { 2 } else { 0 })
-                + (if height1 == height2 { 2 } else { 0 })
-                + (if roundedness1 == roundedness2 { 1 } else { 0 })
+            (if backness1 == backness2 { 8 } else { 0 })
+                + (if height1 == height2 { 8 } else { 0 })
+                + (if roundedness1 == roundedness2 { 4 } else { 0 })
         }) + (if pr1.coda == pr2.coda {
-            6
+            24
         } else if let (Some(i1), Some(i2)) = (pr1.coda.as_ref(), pr2.coda.as_ref()) {
             if classify_coda(&i1) == classify_coda(&i2) {
-                4
+                16
             } else {
                 0
             }
         } else {
             0
-        }) + (if pr1.tone == pr2.tone { 1 } else { 0 })
+        }) + (if pr1.tone == pr2.tone { 4 } else { 0 })
     }
 }
 

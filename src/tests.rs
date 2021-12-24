@@ -789,7 +789,7 @@ fn test_compare_jyutping() {
 
     // identical jyutpings
     assert_eq!(
-        25,
+        100,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::S),
@@ -807,7 +807,7 @@ fn test_compare_jyutping() {
     );
 
     assert_eq!(
-        25,
+        100,
         compare_jyutping(
             &JyutPing {
                 initial: None,
@@ -826,7 +826,7 @@ fn test_compare_jyutping() {
 
     // Initial: same category
     assert_eq!(
-        21,
+        84,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::F),
@@ -845,7 +845,7 @@ fn test_compare_jyutping() {
 
     // Initial: different category
     assert_eq!(
-        15,
+        60,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::T),
@@ -864,7 +864,7 @@ fn test_compare_jyutping() {
 
     // Initial: one has initial the other does not
     assert_eq!(
-        15,
+        60,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::T),
@@ -883,7 +883,7 @@ fn test_compare_jyutping() {
 
     // Nucleus: same category
     assert_eq!(
-        22,
+        88,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::S),
@@ -902,7 +902,7 @@ fn test_compare_jyutping() {
 
     // Nucleus: different roundedness
     assert_eq!(
-        21,
+        84,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::S),
@@ -921,7 +921,7 @@ fn test_compare_jyutping() {
 
     // Nucleus: different height
     assert_eq!(
-        20,
+        80,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::T),
@@ -940,7 +940,7 @@ fn test_compare_jyutping() {
 
     // Nucleus: different backness
     assert_eq!(
-        20,
+        80,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::T),
@@ -959,7 +959,7 @@ fn test_compare_jyutping() {
 
     // Coda: same category
     assert_eq!(
-        23,
+        92,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::S),
@@ -978,7 +978,7 @@ fn test_compare_jyutping() {
 
     // Coda: different category
     assert_eq!(
-        19,
+        76,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::S),
@@ -997,7 +997,7 @@ fn test_compare_jyutping() {
 
     // Coda: one has coda the other does not
     assert_eq!(
-        19,
+        76,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::T),
@@ -1016,7 +1016,7 @@ fn test_compare_jyutping() {
 
     // Tone: different tone
     assert_eq!(
-        24,
+        96,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::S),
@@ -1037,7 +1037,7 @@ fn test_compare_jyutping() {
     // Initial: different category
     // Coda: different category
     assert_eq!(
-        9,
+        36,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::S),
