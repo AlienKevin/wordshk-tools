@@ -262,6 +262,28 @@ pub fn flatten_line(variants: &Vec<&str>, line: &Line) -> WordLine {
     bit_line
 }
 
+fn unflatten_word_line(line: &WordLine) -> WordLine {
+    let mut i = 0;
+    let mut unflattened_line: WordLine = vec![];
+    while i < line.len() {
+        let mut link_word = vec![];
+        while let (SegmentType::Link, seg) = &line[i] {
+            link_word.extend(seg.0.clone());
+            i += 1;
+            if i >= line.len() {
+                break;
+            }
+        }
+        if link_word.len() > 0 {
+            unflattened_line.push((SegmentType::Link, Word(link_word)));
+        } else {
+            unflattened_line.push(line[i].clone());
+            i += 1;
+        }
+    }
+    unflattened_line
+}
+
 fn create_ruby_segment(seg_type: &SegmentType, word: &Word, prs: &[&str]) -> RubySegment {
     let prs = prs.iter().map(|x| x.to_string()).collect();
     if *seg_type == SegmentType::Link {
@@ -495,7 +517,7 @@ pub fn enrich_dict(dict: &Dict) -> RichDict {
 pub fn enrich_pr_line(variants: &Vec<&str>, pr_line: &PrLine) -> RichLine {
     match pr_line {
         (line, Some(pr)) => RichLine::Ruby(match_ruby(variants, line, &unicode::to_words(pr))),
-        (line, None) => RichLine::Text(flatten_line(variants, line)),
+        (line, None) => RichLine::Text(unflatten_word_line(&flatten_line(variants, line))),
     }
 }
 
