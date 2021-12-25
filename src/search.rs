@@ -206,15 +206,16 @@ fn score_pr_query(entry_pr: &LaxJyutPing, query: &LaxJyutPing) -> (Score, Index)
 pub struct PrSearchResult {
     pub id: usize,
     pub variant_index: Index,
-    pub score: Score,
     pub pr_index: Index,
+    pub score: Score,
+    pub pr_start_index: Index,
 }
 
 impl Ord for PrSearchResult {
     fn cmp(&self, other: &Self) -> Ordering {
         self.score
             .cmp(&other.score)
-            .then_with(|| other.pr_index.cmp(&self.pr_index))
+            .then_with(|| other.pr_start_index.cmp(&self.pr_start_index))
     }
 }
 
@@ -232,15 +233,26 @@ pub fn pr_search(dict: &Dict, query: &LaxJyutPing) -> BinaryHeap<PrSearchResult>
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
-                variant.prs.iter().for_each(|pr| {
-                    let (score, pr_index) = score_pr_query(pr, query);
+                let (score, pr_start_index, pr_index) = variant.prs.iter().enumerate().fold(
+                    (0, 0, 0),
+                    |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
+                        let (score, pr_start_index) = score_pr_query(pr, query);
+                        if score > max_score {
+                            (score, pr_start_index, pr_index)
+                        } else {
+                            (max_score, max_pr_start_index, max_pr_index)
+                        }
+                    },
+                );
+                if score >= 80 {
                     results.push(PrSearchResult {
                         id: *id,
                         variant_index,
-                        score,
                         pr_index,
+                        score,
+                        pr_start_index,
                     });
-                });
+                }
             });
     });
     results
