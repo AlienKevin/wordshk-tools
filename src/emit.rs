@@ -9,6 +9,46 @@ use std::collections::HashMap;
 use std::fs;
 use std::io;
 
+pub type RichDict = HashMap<usize, RichEntry>;
+
+#[derive(Debug, PartialEq)]
+pub struct RichEntry {
+    pub id: usize,
+    pub variants: Vec<Variant>,
+    pub poses: Vec<String>,
+    pub labels: Vec<String>,
+    pub sims: Vec<String>,
+    pub ants: Vec<String>,
+    pub refs: Vec<String>,
+    pub imgs: Vec<String>,
+    pub defs: Vec<RichDef>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct RichDef {
+    pub yue: RichClause,
+    pub eng: Option<RichClause>,
+    pub alts: Vec<RichAltClause>,
+    pub egs: Vec<RichEg>,
+}
+
+pub type RichClause = Vec<WordLine>;
+
+pub type RichAltClause = (AltLang, RichClause);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RichEg {
+    pub zho: Option<RichLine>,
+    pub yue: Option<RichLine>,
+    pub eng: Option<WordLine>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RichLine {
+    Ruby(RubyLine),
+    Text(WordLine),
+}
+
 /// A styled text segment
 ///
 /// Normal: `(TextStyle::Normal, "好")`
@@ -465,6 +505,64 @@ pub fn pr_segment_to_string_without_tone(pr: &LaxJyutPingSegment) -> String {
     match pr {
         LaxJyutPingSegment::Standard(pr) => jyutping_to_string_without_tone(pr),
         LaxJyutPingSegment::Nonstandard(pr_str) => pr_str.clone(),
+    }
+}
+
+pub fn enrich_dict(dict: &Dict) -> RichDict {
+    dict.iter()
+        .map(|(id, entry)| {
+            let variants = &variants_to_words(&entry.variants);
+            let rich_defs = entry
+                .defs
+                .iter()
+                .map(|def| RichDef {
+                    yue: enrich_clause(variants, &def.yue),
+                    eng: def.eng.as_ref().map(|eng| enrich_clause(variants, &eng)),
+                    alts: def
+                        .alts
+                        .iter()
+                        .map(|(tag, alt)| (*tag, enrich_clause(variants, alt)))
+                        .collect::<Vec<RichAltClause>>(),
+                    egs: def.egs.iter().map(|eg| enrich_eg(variants, eg)).collect(),
+                })
+                .collect();
+            (
+                *id,
+                RichEntry {
+                    id: *id,
+                    variants: entry.variants.clone(),
+                    poses: entry.poses.clone(),
+                    labels: entry.labels.clone(),
+                    sims: entry.sims.clone(),
+                    ants: entry.ants.clone(),
+                    refs: entry.refs.clone(),
+                    imgs: entry.imgs.clone(),
+                    defs: rich_defs,
+                },
+            )
+        })
+        .collect::<RichDict>()
+}
+
+pub fn enrich_clause(variants: &Vec<&str>, clause: &Clause) -> RichClause {
+    clause
+        .iter()
+        .map(|line| flatten_line(variants, line))
+        .collect()
+}
+
+pub fn enrich_pr_line(variants: &Vec<&str>, pr_line: &PrLine) -> RichLine {
+    match pr_line {
+        (line, Some(pr)) => RichLine::Ruby(match_ruby(variants, line, &unicode::to_words(pr))),
+        (line, None) => RichLine::Text(flatten_line(variants, line)),
+    }
+}
+
+pub fn enrich_eg(variants: &Vec<&str>, eg: &Eg) -> RichEg {
+    RichEg {
+        zho: eg.zho.as_ref().map(|zho| enrich_pr_line(variants, &zho)),
+        yue: eg.yue.as_ref().map(|yue| enrich_pr_line(variants, &yue)),
+        eng: eg.eng.as_ref().map(|eng| flatten_line(variants, &eng)),
     }
 }
 
