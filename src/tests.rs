@@ -883,7 +883,7 @@ fn test_compare_jyutping() {
 
     // Nucleus: same category
     assert_eq!(
-        88,
+        96,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::S),
@@ -902,7 +902,7 @@ fn test_compare_jyutping() {
 
     // Nucleus: different roundedness
     assert_eq!(
-        84,
+        94,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::S),
@@ -921,7 +921,7 @@ fn test_compare_jyutping() {
 
     // Nucleus: different height
     assert_eq!(
-        80,
+        93,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::T),
@@ -940,7 +940,7 @@ fn test_compare_jyutping() {
 
     // Nucleus: different backness
     assert_eq!(
-        80,
+        93,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::T),
@@ -959,7 +959,7 @@ fn test_compare_jyutping() {
 
     // Coda: same category
     assert_eq!(
-        92,
+        94,
         compare_jyutping(
             &JyutPing {
                 initial: Some(JyutPingInitial::S),

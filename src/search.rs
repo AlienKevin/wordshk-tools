@@ -142,14 +142,19 @@ pub fn compare_jyutping(pr1: &JyutPing, pr2: &JyutPing) -> Score {
                 classify_nucleus(&pr1.nucleus),
                 classify_nucleus(&pr2.nucleus),
             );
-            (if backness1 == backness2 { 8 } else { 0 })
-                + (if height1 == height2 { 8 } else { 0 })
-                + (if roundedness1 == roundedness2 { 4 } else { 0 })
+            if backness1 == backness2 && height1 == height2 && roundedness1 == roundedness2 {
+                32 - 4
+            } else {
+                32 - 3
+                - (if backness1 == backness2 { 0 } else { 4 })
+                - (if height1 == height2 { 0 } else { 4 })
+                - (if roundedness1 == roundedness2 { 0 } else { 3 })
+            }
         }) + (if pr1.coda == pr2.coda {
             24
         } else if let (Some(i1), Some(i2)) = (pr1.coda.as_ref(), pr2.coda.as_ref()) {
             if classify_coda(&i1) == classify_coda(&i2) {
-                16
+                18
             } else {
                 0
             }
