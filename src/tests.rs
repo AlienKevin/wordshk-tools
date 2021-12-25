@@ -36,11 +36,11 @@ fn normal(string: &'static str) -> Text {
 }
 
 fn bold_word(string: &'static str) -> Word {
-    vec![bold(string)]
+    Word(vec![bold(string)])
 }
 
 fn normal_word(string: &'static str) -> Word {
-    vec![normal(string)]
+    Word(vec![normal(string)])
 }
 
 #[cfg(test)]
@@ -401,26 +401,30 @@ vec!(text(r#"The sexagenary cycle is often used for counting years in the Chines
 fn test_parse_content() {
     {
         let id = 103022;
-        let variants = vec![
+        let variants = Variants(vec![
             Variant {
                 word: "zip".to_string(),
-                prs: vec![vec![LaxJyutPingSegment::Standard(JyutPing {
-                    initial: Some(JyutPingInitial::Z),
-                    nucleus: JyutPingNucleus::I,
-                    coda: Some(JyutPingCoda::P),
-                    tone: Some(JyutPingTone::T4),
-                })]],
+                prs: LaxJyutPings(vec![LaxJyutPing(vec![LaxJyutPingSegment::Standard(
+                    JyutPing {
+                        initial: Some(JyutPingInitial::Z),
+                        nucleus: JyutPingNucleus::I,
+                        coda: Some(JyutPingCoda::P),
+                        tone: Some(JyutPingTone::T4),
+                    },
+                )])]),
             },
             Variant {
                 word: "jip".to_string(),
-                prs: vec![vec![LaxJyutPingSegment::Standard(JyutPing {
-                    initial: Some(JyutPingInitial::Z),
-                    nucleus: JyutPingNucleus::I,
-                    coda: Some(JyutPingCoda::P),
-                    tone: Some(JyutPingTone::T4),
-                })]],
+                prs: LaxJyutPings(vec![LaxJyutPing(vec![LaxJyutPingSegment::Standard(
+                    JyutPing {
+                        initial: Some(JyutPingInitial::Z),
+                        nucleus: JyutPingNucleus::I,
+                        coda: Some(JyutPingCoda::P),
+                        tone: Some(JyutPingTone::T4),
+                    },
+                )])]),
             },
-        ];
+        ]);
         assert_succeed(
             parse_content(id, variants.clone()),
             "(pos:動詞)(pos:擬聲詞)
@@ -460,9 +464,9 @@ eng:Stop tsking!",
     }
     {
         let id = 20;
-        let variants = vec![Variant {
+        let variants = Variants(vec![Variant {
             word: "hihi".to_string(),
-            prs: vec![vec![
+            prs: LaxJyutPings(vec![LaxJyutPing(vec![
                 LaxJyutPingSegment::Standard(JyutPing {
                     initial: Some(JyutPingInitial::H),
                     nucleus: JyutPingNucleus::Aa,
@@ -475,8 +479,8 @@ eng:Stop tsking!",
                     coda: Some(JyutPingCoda::I),
                     tone: Some(JyutPingTone::T1),
                 }),
-            ]],
-        }];
+            ])]),
+        }]);
         assert_succeed(
                 parse_content(id, variants.clone()),
                 "(pos:動詞)(label:潮語)(label:粗俗)(ref:http://evchk.wikia.com/wiki/%E9%AB%98%E7%99%BB%E7%B2%97%E5%8F%A3Filter)

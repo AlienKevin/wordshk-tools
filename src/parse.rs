@@ -39,28 +39,37 @@ pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
                 "",
                 succeed!(|word, prs| Variant { word, prs })
                     .keep(take_chomped(chomp_while1c(&(|c: &char| c != &':'), "word")))
-                    .keep(sequence(
-                        ":",
-                        BoxedParser::new(
-                            take_chomped(chomp_while1c(
-                                &(|c: &char| c != &':' && c != &','),
-                                "jyutping",
-                            ))
-                            .map(|pr_str| {
-                                pr_str
-                                    .split_whitespace()
-                                    .map(|pr_seg| match parse_jyutping(&pr_seg.to_string()) {
-                                        Some(pr) => LaxJyutPingSegment::Standard(pr),
-                                        None => LaxJyutPingSegment::Nonstandard(pr_seg.to_string()),
-                                    })
-                                    .collect::<LaxJyutPing>()
-                            }),
-                        ),
-                        ":",
-                        space0(),
-                        "",
-                        Trailing::Forbidden,
-                    )),
+                    .keep(
+                        sequence(
+                            ":",
+                            BoxedParser::new(
+                                take_chomped(chomp_while1c(
+                                    &(|c: &char| c != &':' && c != &','),
+                                    "jyutping",
+                                ))
+                                .map(|pr_str| {
+                                    LaxJyutPing(
+                                        pr_str
+                                            .split_whitespace()
+                                            .map(|pr_seg| {
+                                                match parse_jyutping(&pr_seg.to_string()) {
+                                                    Some(pr) => LaxJyutPingSegment::Standard(pr),
+                                                    None => LaxJyutPingSegment::Nonstandard(
+                                                        pr_seg.to_string(),
+                                                    ),
+                                                }
+                                            })
+                                            .collect(),
+                                    )
+                                }),
+                            ),
+                            ":",
+                            space0(),
+                            "",
+                            Trailing::Forbidden,
+                        )
+                        .map(|prs| LaxJyutPings(prs)),
+                    ),
                 ",",
                 space0(),
                 "",
@@ -71,7 +80,7 @@ pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
                 ParseResult::Ok {
                     output: head_result,
                     ..
-                } => match parse_content(id, head_result).run(content, ()) {
+                } => match parse_content(id, Variants(head_result)).run(content, ()) {
                     ParseResult::Ok {
                         output: content_result,
                         ..
@@ -631,7 +640,7 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 /// For example, here's the content of the Entry for 奸爸爹
 ///
 /// ```
-/// # use wordshk_tools::dict::{Def, Entry, Variant, AltLang, SegmentType::*};
+/// # use wordshk_tools::dict::{Def, Entry, Variants, Variant, LaxJyutPings, AltLang, SegmentType::*};
 /// # use wordshk_tools::parse::{parse_content};
 /// # let source = indoc::indoc! {"
 /// (pos:語句)(label:外來語)(label:潮語)(label:香港)
@@ -641,7 +650,8 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 /// # "};
 ///
 /// let id = 98634;
-/// let variants = vec![(Variant {word: "奸爸爹".into(), prs: vec![]})]; // prs omitted for brevity
+/// // prs omitted below for brevity
+/// let variants = Variants(vec![(Variant {word: "奸爸爹".into(), prs: LaxJyutPings(vec![])})]);
 ///
 /// // which parses to:
 ///
@@ -665,10 +675,7 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 /// # );
 /// ```
 ///
-pub fn parse_content<'a>(
-    id: usize,
-    variants: Vec<Variant>,
-) -> lip::BoxedParser<'a, Option<Entry>, ()> {
+pub fn parse_content<'a>(id: usize, variants: Variants) -> lip::BoxedParser<'a, Option<Entry>, ()> {
     one_of!(
         succeed!(|poses, labels, sims, ants, refs, imgs, defs| Some(Entry {
             id,
@@ -691,21 +698,6 @@ pub fn parse_content<'a>(
         .keep(parse_defs()),
         succeed!(|_| None).keep(token("未有內容 NO DATA"))
     )
-}
-
-pub fn jyutping_to_string(pr: &JyutPing) -> String {
-    let pr = pr.clone();
-    pr.initial.map(|i| i.to_string()).unwrap_or("".to_string())
-        + &pr.nucleus.to_string()
-        + &pr.coda.map(|i| i.to_string()).unwrap_or("".to_string())
-        + &pr.tone.map(|i| i.to_string()).unwrap_or("".to_string())
-}
-
-pub fn jyutping_to_string_without_tone(pr: &JyutPing) -> String {
-    let pr = pr.clone();
-    pr.initial.map(|i| i.to_string()).unwrap_or("".to_string())
-        + &pr.nucleus.to_string()
-        + &pr.coda.map(|i| i.to_string()).unwrap_or("".to_string())
 }
 
 /// Parse [JyutPing] pronunciation

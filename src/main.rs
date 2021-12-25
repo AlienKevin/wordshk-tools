@@ -1,8 +1,8 @@
 use std::process;
 use wordshk_tools::dict::{
-    JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, JyutPingTone, LaxJyutPingSegment,
+    JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, JyutPingTone, LaxJyutPing,
+    LaxJyutPingSegment,
 };
-use wordshk_tools::emit::{pr_to_string, prs_to_string};
 use wordshk_tools::emit_apple_dict::rich_dict_to_xml;
 use wordshk_tools::parse::parse_dict;
 use wordshk_tools::rich_dict::enrich_dict;
@@ -28,8 +28,8 @@ fn do_variant_search() {
                     id, variant_index, ..
                 } = results.pop().unwrap();
                 let entry = dict.get(&id).unwrap();
-                let variant = &entry.variants[variant_index];
-                println!("{} {}", variant.word, prs_to_string(&variant.prs));
+                let variant = &entry.variants.0[variant_index];
+                println!("{} {}", variant.word, &variant.prs.to_string());
                 i += 1;
             }
         }
@@ -46,7 +46,7 @@ fn do_pr_search() {
             let queries = vec![
                 (
                     "麪包",
-                    vec![
+                    LaxJyutPing(vec![
                         LaxJyutPingSegment::Standard(JyutPing {
                             initial: Some(JyutPingInitial::M),
                             nucleus: JyutPingNucleus::I,
@@ -59,11 +59,11 @@ fn do_pr_search() {
                             coda: Some(JyutPingCoda::U),
                             tone: None,
                         }),
-                    ],
+                    ]),
                 ),
                 (
                     "學生",
-                    vec![
+                    LaxJyutPing(vec![
                         LaxJyutPingSegment::Standard(JyutPing {
                             initial: Some(JyutPingInitial::H),
                             nucleus: JyutPingNucleus::O,
@@ -76,11 +76,11 @@ fn do_pr_search() {
                             coda: Some(JyutPingCoda::Ng),
                             tone: None,
                         }),
-                    ],
+                    ]),
                 ),
             ];
             queries.iter().for_each(|(intended, query)| {
-                println!("{}\t{}\n", intended, pr_to_string(query));
+                println!("{}\t{}\n", intended, query.to_string());
                 let mut results = pr_search(&dict, query);
                 let mut i = 0;
                 while results.len() > 0 && i < 10 {
@@ -92,11 +92,11 @@ fn do_pr_search() {
                         ..
                     } = results.pop().unwrap();
                     let entry = dict.get(&id).unwrap();
-                    let variant = &entry.variants[variant_index];
+                    let variant = &entry.variants.0[variant_index];
                     println!(
                         "{}\t{}\t({})",
                         variant.word,
-                        pr_to_string(&variant.prs[pr_index]),
+                        &variant.prs.0[pr_index].to_string(),
                         score
                     );
                     i += 1;

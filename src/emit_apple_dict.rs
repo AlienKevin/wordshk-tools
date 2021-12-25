@@ -1,6 +1,3 @@
-use super::emit::{
-    pr_to_string, pr_to_string_without_tone, prs_to_string, to_yue_lang_name, word_to_string,
-};
 use super::dict::{LaxJyutPingSegment, SegmentType};
 use super::rich_dict::{
     RichClause, RichDict, RichLine, RubySegment, TextStyle, Word, WordLine, WordSegment,
@@ -24,7 +21,8 @@ fn get_xml_end_tag(style: &TextStyle) -> &'static str {
 }
 
 fn word_to_xml(word: &Word) -> String {
-    word.iter()
+    word.0
+        .iter()
         .map(|(style, seg)| {
             format!(
                 "{start_tag}{content}{end_tag}",
@@ -45,7 +43,7 @@ fn xml_escape(s: &str) -> String {
 fn word_segment_to_xml((seg_type, word): &WordSegment) -> String {
     match seg_type {
         SegmentType::Text => word_to_xml(word),
-        SegmentType::Link => link_to_xml(&word_to_string(&word), &word_to_xml(&word)),
+        SegmentType::Link => link_to_xml(&word.to_string(), &word_to_xml(&word)),
     }
 }
 
@@ -107,7 +105,7 @@ fn rich_line_to_xml(line: &RichLine) -> String {
                             word_to_xml(word),
                             prs.join(" ")
                         );
-                        word_str += &word_to_string(word);
+                        word_str += &word.to_string();
                     });
                     ruby += "\n</ruby>";
                     output += &format!("<rb>{}</rb><rt></rt>", &link_to_xml(&word_str, &ruby));
@@ -182,29 +180,29 @@ pub fn rich_dict_to_xml(dict: RichDict) -> String {
                 </div>
                 </d:entry>"#},
                 id = entry.id,
-                variant_0_word = entry.variants[0].word,
+                variant_0_word = entry.variants.0[0].word,
                 variants_index = entry
-                    .variants
+                    .variants.0
                     .iter()
                     .map(|variant| {
                         format!(
                             indoc!{r#"<d:index d:value="{word}" d:pr="{prs}"/>
                             {pr_indices}"#},
                             word = variant.word,
-                            prs = prs_to_string(&variant.prs),
-                            pr_indices = variant.prs.iter().map(|pr| {
-                                let word_and_pr = variant.word.clone() + " " + &pr_to_string(pr);
+                            prs = &variant.prs.to_string(),
+                            pr_indices = variant.prs.0.iter().map(|pr| {
+                                let word_and_pr = variant.word.clone() + " " + &pr.to_string();
                                 format!(r#"<d:index d:value="{pr}" d:title="{word_and_pr}" d:priority="2"/>{pr_without_tone}"#,
-                                    pr = pr_to_string(pr),
+                                    pr = pr.to_string(),
                                     word_and_pr = word_and_pr,
                                     pr_without_tone = {
-                                        if pr.iter().any(|pr_seg|
+                                        if pr.0.iter().any(|pr_seg|
                                             if let LaxJyutPingSegment::Nonstandard(_) = pr_seg { true } else { false }
                                         ){
                                             "".to_string()
                                         } else {
                                             format!(r#"<d:index d:value="{pr_without_tone}" d:title="{word_and_pr}" d:priority="2"/>"#,
-                                                pr_without_tone = pr_to_string_without_tone(pr),
+                                                pr_without_tone = pr.to_string_without_tone(),
                                                 word_and_pr = word_and_pr
                                             )
                                         }
@@ -216,7 +214,7 @@ pub fn rich_dict_to_xml(dict: RichDict) -> String {
                     .collect::<Vec<String>>()
                     .join("\n"),
                 variants_word_pr = entry
-                    .variants
+                    .variants.0
                     .iter()
                     .map(|variant| {
                         format!(
@@ -225,7 +223,7 @@ pub fn rich_dict_to_xml(dict: RichDict) -> String {
                             <span class="prs"><span d:pr="JYUTPING">{}</span></span>
                             </div>"#},
                             variant.word,
-                            prs_to_string(&variant.prs),
+                            &variant.prs.to_string(),
                         )
                     })
                     .collect::<Vec<String>>()
@@ -255,7 +253,7 @@ pub fn rich_dict_to_xml(dict: RichDict) -> String {
                                     .map(|(lang, clause)| {
                                         format!(
                                             "<div class=\"def-alt\"> <div>【{lang_name}】</div> {clause} </div>\n",
-                                            lang_name = to_yue_lang_name(*lang),
+                                            lang_name = lang.to_yue_name(),
                                             clause = clause_to_xml(clause)
                                         )
                                     })

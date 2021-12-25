@@ -1,7 +1,6 @@
 use super::dict::{
     Dict, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing, LaxJyutPingSegment,
 };
-use super::parse::jyutping_to_string;
 use super::unicode;
 use lazy_static::lazy_static;
 use std::cmp::Ordering;
@@ -176,37 +175,38 @@ pub fn compare_lax_jyutping_segment(pr1: &LaxJyutPingSegment, pr2: &LaxJyutPingS
     use LaxJyutPingSegment::*;
     match (pr1, pr2) {
         (Standard(pr1), Standard(pr2)) => compare_jyutping(pr1, pr2),
-        (Standard(pr1), Nonstandard(pr2)) => compare_string(&jyutping_to_string(pr1), &pr2),
-        (Nonstandard(pr1), Standard(pr2)) => compare_string(pr1, &jyutping_to_string(pr2)),
+        (Standard(pr1), Nonstandard(pr2)) => compare_string(&pr1.to_string(), &pr2),
+        (Nonstandard(pr1), Standard(pr2)) => compare_string(pr1, &pr2.to_string()),
         (Nonstandard(pr1), Nonstandard(pr2)) => compare_string(pr1, pr2),
     }
 }
 
 fn compare_lax_jyutping(pr1: &LaxJyutPing, pr2: &LaxJyutPing) -> Score {
-    if pr1.len() != pr2.len() {
+    if pr1.0.len() != pr2.0.len() {
         0
     } else {
         let score: Score = pr1
+            .0
             .iter()
-            .zip(pr2)
-            .map(|(pr1, pr2)| compare_lax_jyutping_segment(pr1, pr2))
+            .zip(&pr2.0)
+            .map(|(pr1, pr2)| compare_lax_jyutping_segment(pr1, &pr2))
             .sum();
-        score / pr1.len()
+        score / pr1.0.len()
     }
 }
 
 fn score_pr_query(entry_pr: &LaxJyutPing, query: &LaxJyutPing) -> (Score, Index) {
-    entry_pr
-        .windows(query.len())
-        .enumerate()
-        .fold((0, 0), |(max_score, max_index), (i, seg)| {
+    entry_pr.0.windows(query.0.len()).enumerate().fold(
+        (0, 0),
+        |(max_score, max_index), (i, seg)| {
             let score = compare_lax_jyutping(entry_pr, query);
             if score > max_score {
                 (score, i)
             } else {
                 (max_score, max_index)
             }
-        })
+        },
+    )
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -237,10 +237,11 @@ pub fn pr_search(dict: &Dict, query: &LaxJyutPing) -> BinaryHeap<PrSearchResult>
     dict.iter().for_each(|(id, entry)| {
         entry
             .variants
+            .0
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
-                let (score, pr_start_index, pr_index) = variant.prs.iter().enumerate().fold(
+                let (score, pr_start_index, pr_index) = variant.prs.0.iter().enumerate().fold(
                     (0, 0, 0),
                     |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
                         let (score, pr_start_index) = score_pr_query(pr, query);
@@ -327,6 +328,7 @@ pub fn variant_search(dict: &Dict, query: &str) -> BinaryHeap<VariantSearchResul
     dict.iter().for_each(|(id, entry)| {
         entry
             .variants
+            .0
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {

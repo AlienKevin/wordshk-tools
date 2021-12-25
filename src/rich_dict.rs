@@ -1,9 +1,9 @@
-use super::dict::{AltLang, Clause, Dict, Eg, Line, PrLine, Segment, SegmentType, Variant};
-use super::emit::{variants_to_words, word_to_string};
+use super::dict::{AltLang, Clause, Dict, Eg, Line, PrLine, Segment, SegmentType, Variants};
 use super::unicode;
 use lazy_static::lazy_static;
 use std::cmp;
 use std::collections::HashMap;
+use std::fmt;
 use std::fs;
 use std::io;
 
@@ -12,7 +12,7 @@ pub type RichDict = HashMap<usize, RichEntry>;
 #[derive(Debug, PartialEq)]
 pub struct RichEntry {
     pub id: usize,
-    pub variants: Vec<Variant>,
+    pub variants: Variants,
     pub poses: Vec<String>,
     pub labels: Vec<String>,
     pub sims: Vec<String>,
@@ -72,7 +72,22 @@ pub type WordSegment = (SegmentType, Word);
 ///
 /// `vec![(TextStyle::Bold, "兩"), (TextStyle::Normal, "周")]`
 ///
-pub type Word = Vec<Text>;
+#[derive(Debug, PartialEq, Clone)]
+pub struct Word(pub Vec<Text>);
+
+impl fmt::Display for Word {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|(_, seg)| seg.clone())
+                .collect::<Vec<String>>()
+                .join("")
+        )
+    }
+}
 
 /// A segment marked with pronunciation (called "ruby" in HTML)
 ///
@@ -149,14 +164,14 @@ pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
             if start_end_pairs.iter().any(|(start, _)| start == &i) {
                 is_bolded = true;
             }
-            words.push(vec![(
+            words.push(Word(vec![(
                 if is_bolded {
                     TextStyle::Bold
                 } else {
                     TextStyle::Normal
                 },
                 g.to_string(),
-            )]);
+            )]));
             if start_end_pairs.iter().any(|(_, end)| end == &i) {
                 is_bolded = false;
             }
@@ -166,7 +181,7 @@ pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
             let mut prev_bold_end_index: Option<usize> = None;
             let mut bold_start_index = None;
             let mut bold_end_index = None;
-            let mut word: Word = vec![];
+            let mut word = vec![];
             while j < gs.len()
                 && (unicode::test_g(unicode::is_alphanumeric, gs[j])
                     || (unicode::test_g(char::is_whitespace, gs[j])))
@@ -209,19 +224,19 @@ pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
             } else {
                 word.push((TextStyle::Normal, gs[i..j].join("").trim_end().into()));
             }
-            words.push(word);
+            words.push(Word(word));
             i = j;
         } else {
             // a punctuation or space
             if !unicode::test_g(char::is_whitespace, g) {
-                words.push(vec![(
+                words.push(Word(vec![(
                     if is_bolded {
                         TextStyle::Bold
                     } else {
                         TextStyle::Normal
                     },
                     g.to_string(),
-                )]);
+                )]));
             }
             i += 1;
         }
@@ -272,7 +287,7 @@ pub fn match_ruby(variants: &Vec<&str>, line: &Line, prs: &Vec<&str>) -> RubyLin
         .map(|(i, (seg_type, word))| match pr_map.get(&i) {
             Some(j) => create_ruby_segment(seg_type, word, &prs[*j..j + 1]),
             None => {
-                let word_str = word_to_string(word);
+                let word_str = word.to_string();
                 if unicode::test_g(unicode::is_punctuation, &word_str) {
                     RubySegment::Punc(word_str)
                 } else {
@@ -387,7 +402,7 @@ fn match_ruby_construct_table(line: &WordLine, prs: &Vec<&str>) -> Vec<Vec<usize
         for j in 1..n {
             // println!("i: {}, j: {}", i, j);
             let (_, word) = &line[i - 1];
-            let cell_pr_match = match_pr(&word_to_string(&word), prs[j - 1]);
+            let cell_pr_match = match_pr(&word.to_string(), prs[j - 1]);
             match cell_pr_match {
                 PrMatch::Full | PrMatch::Half => {
                     pr_scores[i][j] = pr_scores[i - 1][j - 1] + pr_match_to_score(cell_pr_match);
@@ -415,7 +430,7 @@ fn match_ruby_backtrack(
     while i > 0 && j > 0 {
         // println!("i: {}, j: {}", i, j);
         let (_, word) = &line[i - 1];
-        match match_pr(&word_to_string(&word), &prs[j - 1]) {
+        match match_pr(&word.to_string(), &prs[j - 1]) {
             PrMatch::Full | PrMatch::Half => {
                 pr_map.insert(i - 1, j - 1);
                 // backtrack to the top left
@@ -452,7 +467,7 @@ lazy_static! {
 pub fn enrich_dict(dict: &Dict) -> RichDict {
     dict.iter()
         .map(|(id, entry)| {
-            let variants = &variants_to_words(&entry.variants);
+            let variants = &entry.variants.to_words();
             let rich_defs = entry
                 .defs
                 .iter()

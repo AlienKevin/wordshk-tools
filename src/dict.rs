@@ -1,4 +1,6 @@
+use itertools::Itertools;
 use std::collections::HashMap;
+use std::fmt;
 
 /// A dictionary is a list of entries
 pub type Dict = HashMap<usize, Entry>;
@@ -26,7 +28,7 @@ pub type Dict = HashMap<usize, Entry>;
 #[derive(Debug, PartialEq)]
 pub struct Entry {
     pub id: usize,
-    pub variants: Vec<Variant>,
+    pub variants: Variants,
     pub poses: Vec<String>,
     pub labels: Vec<String>,
     pub sims: Vec<String>,
@@ -36,11 +38,20 @@ pub struct Entry {
     pub defs: Vec<Def>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Variants(pub Vec<Variant>);
+
+impl Variants {
+    pub fn to_words(&self) -> Vec<&str> {
+        self.0.iter().map(|variant| &variant.word[..]).collect()
+    }
+}
+
 /// A variant of a \[word\] with \[prs\] (pronounciations)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variant {
     pub word: String,
-    pub prs: Vec<LaxJyutPing>,
+    pub prs: LaxJyutPings,
 }
 
 /// Two types of segments: text or link. See [Segment]
@@ -125,6 +136,21 @@ pub enum AltLang {
     Fra, // French
 }
 
+impl AltLang {
+    /// Convert [AltLang] to a language name in Cantonese
+    pub fn to_yue_name(&self) -> String {
+        match self {
+            AltLang::Jpn => "日文",
+            AltLang::Kor => "韓文",
+            AltLang::Por => "葡萄牙文",
+            AltLang::Vie => "越南文",
+            AltLang::Lat => "拉丁文",
+            AltLang::Fra => "法文",
+        }
+        .to_string()
+    }
+}
+
 /// An example sentence in Mandarin, Cantonese, and/or English
 ///
 /// \[zho\] Mandarin example with optional Jyutping pronunciation: 可否見面？ (ho2 fau2 gin3 min6?)
@@ -146,6 +172,15 @@ pub struct Eg {
 ///
 pub type PrLine = (Line, Option<String>);
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct LaxJyutPings(pub Vec<LaxJyutPing>);
+
+impl fmt::Display for LaxJyutPings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.iter().map(|pr| pr.to_string()).join(", "))
+    }
+}
+
 /// JyutPing encoding with initial, nucleus (required), coda, and tone
 ///
 /// Phonetics info based on: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
@@ -157,12 +192,88 @@ pub struct JyutPing {
     pub tone: Option<JyutPingTone>,
 }
 
-pub type LaxJyutPing = Vec<LaxJyutPingSegment>;
+impl fmt::Display for JyutPing {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", {
+            self.initial
+                .as_ref()
+                .map(|i| i.to_string())
+                .unwrap_or("".to_string())
+                + &self.nucleus.to_string()
+                + &self
+                    .coda
+                    .as_ref()
+                    .map(|i| i.to_string())
+                    .unwrap_or("".to_string())
+                + &self
+                    .tone
+                    .as_ref()
+                    .map(|i| i.to_string())
+                    .unwrap_or("".to_string())
+        })
+    }
+}
+
+impl JyutPing {
+    pub fn to_string_without_tone(&self) -> String {
+        self.initial
+            .as_ref()
+            .map(|i| i.to_string())
+            .unwrap_or("".to_string())
+            + &self.nucleus.to_string()
+            + &self
+                .coda
+                .as_ref()
+                .map(|i| i.to_string())
+                .unwrap_or("".to_string())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LaxJyutPing(pub Vec<LaxJyutPingSegment>);
+
+impl fmt::Display for LaxJyutPing {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.iter().map(|seg| seg.to_string()).join(" "))
+    }
+}
+
+impl LaxJyutPing {
+    pub fn to_string_without_tone(&self) -> String {
+        self.0
+            .iter()
+            .map(|seg| seg.to_string_without_tone())
+            .collect::<Vec<String>>()
+            .join(" ")
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LaxJyutPingSegment {
     Standard(JyutPing),
     Nonstandard(String),
+}
+
+impl fmt::Display for LaxJyutPingSegment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                LaxJyutPingSegment::Standard(pr) => pr.to_string(),
+                LaxJyutPingSegment::Nonstandard(pr_str) => pr_str.clone(),
+            }
+        )
+    }
+}
+
+impl LaxJyutPingSegment {
+    pub fn to_string_without_tone(&self) -> String {
+        match self {
+            LaxJyutPingSegment::Standard(pr) => pr.to_string_without_tone(),
+            LaxJyutPingSegment::Nonstandard(pr_str) => pr_str.clone(),
+        }
+    }
 }
 
 /// Initial segment of a JyutPing, optional
