@@ -1,6 +1,6 @@
 use std::process;
-use wordshk_tools::emit::{pr_to_string, prs_to_string};
-use wordshk_tools::emit_apple_dict::dict_to_xml;
+use wordshk_tools::emit::{pr_to_string, prs_to_string, enrich_dict};
+use wordshk_tools::emit_apple_dict::rich_dict_to_xml;
 use wordshk_tools::parse::{
     parse_dict, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, JyutPingTone,
     LaxJyutPingSegment,
@@ -8,7 +8,7 @@ use wordshk_tools::parse::{
 use wordshk_tools::search::{pr_search, variant_search, PrSearchResult, VariantSearchResult};
 
 fn main() {
-    do_pr_search();
+    generated_apple_dict();
 }
 
 fn do_variant_search() {
@@ -113,7 +113,7 @@ fn generated_apple_dict() {
             process::exit(1);
         }
         Ok(dict) => {
-            print!("{}", dict_to_xml(dict));
+            print!("{}", rich_dict_to_xml(enrich_dict(&dict)));
         }
     }
 }

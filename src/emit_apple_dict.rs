@@ -1,9 +1,8 @@
 use super::emit::{
-    flatten_line, match_ruby, pr_to_string, pr_to_string_without_tone, prs_to_string,
-    to_yue_lang_name, variants_to_words, word_to_string, RubySegment, TextStyle, Word, WordSegment,
+    pr_to_string, pr_to_string_without_tone, prs_to_string,
+    to_yue_lang_name, word_to_string, RubySegment, TextStyle, Word, WordLine, WordSegment, RichDict, RichClause, RichLine
 };
-use super::parse::{Clause, Dict, LaxJyutPingSegment, Line, PrLine, Segment, SegmentType};
-use super::unicode;
+use super::parse::{LaxJyutPingSegment, SegmentType};
 
 use indoc::indoc;
 use std::fs;
@@ -41,13 +40,6 @@ fn xml_escape(s: &str) -> String {
     s.replace("<", "&lt;").replace("&", "&amp;")
 }
 
-fn segment_to_xml((seg_type, seg): &Segment) -> String {
-    match seg_type {
-        SegmentType::Text => xml_escape(seg),
-        SegmentType::Link => link_to_xml(&xml_escape(&seg), &xml_escape(&seg)),
-    }
-}
-
 fn word_segment_to_xml((seg_type, word): &WordSegment) -> String {
     match seg_type {
         SegmentType::Text => word_to_xml(word),
@@ -64,7 +56,7 @@ fn link_to_xml(link: &str, word: &str) -> String {
     )
 }
 
-fn clause_to_xml_with_class_name(class_name: &str, clause: &Clause) -> String {
+fn clause_to_xml_with_class_name(class_name: &str, clause: &RichClause) -> String {
     format!(
         "<div class=\"{}\">{}</div>",
         class_name,
@@ -72,7 +64,7 @@ fn clause_to_xml_with_class_name(class_name: &str, clause: &Clause) -> String {
             .iter()
             .map(|line| {
                 line.iter()
-                    .map(segment_to_xml)
+                    .map(word_segment_to_xml)
                     .collect::<Vec<String>>()
                     .join("")
             })
@@ -81,12 +73,12 @@ fn clause_to_xml_with_class_name(class_name: &str, clause: &Clause) -> String {
     )
 }
 
-// Convert a [Line] (without Pr) to XML, highlighting variants
-fn line_to_xml(variants: &Vec<&str>, line: &Line) -> String {
+// Convert a [WordLine] to XML, highlighting variants
+fn word_line_to_xml(line: &WordLine) -> String {
     format!(
         "<div class=\"{}\">{}</div>",
         "pr-clause",
-        flatten_line(variants, line)
+        line
             .iter()
             .map(word_segment_to_xml)
             .collect::<Vec<String>>()
@@ -94,17 +86,15 @@ fn line_to_xml(variants: &Vec<&str>, line: &Line) -> String {
     )
 }
 
-/// Convert a [Clause] to an Apple Dictionary XML string
-fn clause_to_xml(clause: &Clause) -> String {
+/// Convert a [RichClause] to an Apple Dictionary XML string
+fn clause_to_xml(clause: &RichClause) -> String {
     clause_to_xml_with_class_name("clause", clause)
 }
 
-/// Convert a [PrLine] to an Apple Dictionary XML string
-fn pr_line_to_xml(variants: &Vec<&str>, (line, pr): &PrLine) -> String {
-    match pr {
-        Some(pr) => {
-            let prs = unicode::to_words(pr);
-            let ruby_line = match_ruby(variants, line, &prs);
+/// Convert a [RichLine] to an Apple Dictionary XML string
+fn rich_line_to_xml(line: &RichLine) -> String {
+    match line {
+        RichLine::Ruby(ruby_line) => {
             let mut output = "<ruby class=\"pr-clause\">".to_string();
             ruby_line.iter().for_each(|seg| match seg {
                 RubySegment::LinkedWord(pairs) => {
@@ -135,7 +125,7 @@ fn pr_line_to_xml(variants: &Vec<&str>, (line, pr): &PrLine) -> String {
             output += "\n</ruby>";
             output
         }
-        None => line_to_xml(variants, line),
+        RichLine::Text(line) => word_line_to_xml(&line),
     }
 }
 
@@ -155,8 +145,8 @@ fn to_xml_badge(tag: &str) -> String {
     to_xml_badge_helper(false, tag)
 }
 
-/// Convert a [Dict] to Apple Dictionary XML format
-pub fn dict_to_xml(dict: Dict) -> String {
+/// Convert a [RichDict] to Apple Dictionary XML format
+pub fn rich_dict_to_xml(dict: RichDict) -> String {
     let front_back_matter_filename = "apple_dict/front_back_matter.html";
     let front_back_matter = fs::read_to_string(front_back_matter_filename).expect(&format!(
         "Something went wrong when I tried to read {}",
@@ -176,7 +166,6 @@ pub fn dict_to_xml(dict: Dict) -> String {
     let entries = dict
         .iter()
         .map(|(_id, entry)| {
-            let variant_words = variants_to_words(&entry.variants);
             let entry_str = format!(
                 indoc! {r#"
                 <d:entry id="{id}" d:title="{variant_0_word}">
@@ -278,13 +267,13 @@ pub fn dict_to_xml(dict: Dict) -> String {
                                     .map(|eg| {
                                         "<div class=\"eg\">\n".to_string()
                                         + &eg.zho.clone().map_or("".to_string(), |zho| {
-                                            let clause = pr_line_to_xml(&variant_words, &zho);
+                                            let clause = rich_line_to_xml(&zho);
                                             format!(
                                                 "<div class=\"eg-clause\"> <div class=\"lang-tag-ch\">（中）</div> {} </div>\n",
                                                 clause
                                             )
                                         }) + &eg.yue.clone().map_or("".to_string(), |yue| {
-                                            let clause = pr_line_to_xml(&variant_words, &yue);
+                                            let clause = rich_line_to_xml(&yue);
                                             format!(
                                                 "<div class=\"eg-clause\"> <div class=\"lang-tag-ch\">（粵）</div> {} </div>\n",
                                                 clause
