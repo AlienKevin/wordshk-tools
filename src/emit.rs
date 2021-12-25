@@ -1,6 +1,6 @@
 use super::parse::{
-    jyutping_to_string, jyutping_to_string_without_tone, AltLang, LaxJyutPing, LaxJyutPingSegment,
-    Line, Segment, SegmentType,
+    jyutping_to_string, jyutping_to_string_without_tone, AltLang, Clause, Dict, Eg, LaxJyutPing,
+    LaxJyutPingSegment, Line, PrLine, Segment, SegmentType, Variant,
 };
 use super::unicode;
 use lazy_static::lazy_static;
@@ -76,7 +76,7 @@ where
         .collect()
 }
 
-pub fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
+pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
     let mut i = 0;
     let mut words: Vec<Word> = vec![];
     let gs = unicode::to_graphemes(text);
@@ -200,7 +200,7 @@ pub fn tokenize(variants: &Vec<String>, text: &str) -> Vec<Word> {
 ///
 /// Tokens are units of pronunciation matching (see [match_ruby])
 ///
-pub fn flatten_line(variants: &Vec<String>, line: &Line) -> WordLine {
+pub fn flatten_line(variants: &Vec<&str>, line: &Line) -> WordLine {
     let mut bit_line: WordLine = vec![];
     line.iter().for_each(|(seg_type, seg): &Segment| {
         bit_line.extend::<WordLine>(
@@ -230,7 +230,7 @@ fn create_ruby_segment(seg_type: &SegmentType, word: &Word, prs: &[&str]) -> Rub
 }
 
 /// Match a [Line] to its pronunciations and bold the variants
-pub fn match_ruby(variants: &Vec<String>, line: &Line, prs: &Vec<&str>) -> RubyLine {
+pub fn match_ruby(variants: &Vec<&str>, line: &Line, prs: &Vec<&str>) -> RubyLine {
     let line = flatten_line(variants, line);
     let pr_scores = match_ruby_construct_table(&line, prs);
     let pr_map = match_ruby_backtrack(&line, prs, &pr_scores);
@@ -466,4 +466,8 @@ pub fn pr_segment_to_string_without_tone(pr: &LaxJyutPingSegment) -> String {
         LaxJyutPingSegment::Standard(pr) => jyutping_to_string_without_tone(pr),
         LaxJyutPingSegment::Nonstandard(pr_str) => pr_str.clone(),
     }
+}
+
+pub fn variants_to_words(variants: &Vec<Variant>) -> Vec<&str> {
+    variants.iter().map(|variant| &variant.word[..]).collect()
 }

@@ -1,6 +1,6 @@
 use super::emit::{
     flatten_line, match_ruby, pr_to_string, pr_to_string_without_tone, prs_to_string,
-    to_yue_lang_name, word_to_string, RubySegment, TextStyle, Word, WordSegment,
+    to_yue_lang_name, variants_to_words, word_to_string, RubySegment, TextStyle, Word, WordSegment,
 };
 use super::parse::{Clause, Dict, LaxJyutPingSegment, Line, PrLine, Segment, SegmentType};
 use super::unicode;
@@ -82,7 +82,7 @@ fn clause_to_xml_with_class_name(class_name: &str, clause: &Clause) -> String {
 }
 
 // Convert a [Line] (without Pr) to XML, highlighting variants
-fn line_to_xml(variants: &Vec<String>, line: &Line) -> String {
+fn line_to_xml(variants: &Vec<&str>, line: &Line) -> String {
     format!(
         "<div class=\"{}\">{}</div>",
         "pr-clause",
@@ -100,7 +100,7 @@ fn clause_to_xml(clause: &Clause) -> String {
 }
 
 /// Convert a [PrLine] to an Apple Dictionary XML string
-fn pr_line_to_xml(variants: &Vec<String>, (line, pr): &PrLine) -> String {
+fn pr_line_to_xml(variants: &Vec<&str>, (line, pr): &PrLine) -> String {
     match pr {
         Some(pr) => {
             let prs = unicode::to_words(pr);
@@ -176,7 +176,7 @@ pub fn dict_to_xml(dict: Dict) -> String {
     let entries = dict
         .iter()
         .map(|(_id, entry)| {
-            let variant_words = entry.variants.iter().map(|variant| variant.word.clone()).collect::<Vec<String>>();
+            let variant_words = variants_to_words(&entry.variants);
             let entry_str = format!(
                 indoc! {r#"
                 <d:entry id="{id}" d:title="{variant_0_word}">
