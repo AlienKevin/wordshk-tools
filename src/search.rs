@@ -95,7 +95,8 @@ fn classify_nucleus(nucleus: &JyutPingNucleus) -> NucleusCategories {
 enum CodaCategories {
     Stop,
     Nasal,
-    Vowel,
+    VowelI,
+    VowelU,
 }
 
 /// Classify coda based on whether they are stops, nasals, or vowels
@@ -105,7 +106,8 @@ fn classify_coda(coda: &JyutPingCoda) -> CodaCategories {
     match coda {
         P | T | K => Stop,
         M | N | Ng => Nasal,
-        I | U => Vowel,
+        I => VowelI,
+        U => VowelU,
     }
 }
 
