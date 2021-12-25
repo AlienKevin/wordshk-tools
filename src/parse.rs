@@ -947,7 +947,7 @@ pub enum JyutPingTone {
 }
 
 /// Parse [JyutPing] pronunciation
-pub fn parse_jyutping(str: &String) -> Option<JyutPing> {
+pub fn parse_jyutping(str: &str) -> Option<JyutPing> {
     let mut start = 0;
 
     let initial: Option<JyutPingInitial> = parse_jyutping_initial(str).map(|(_initial, _start)| {
@@ -980,7 +980,7 @@ pub fn parse_jyutping(str: &String) -> Option<JyutPing> {
     })
 }
 
-fn parse_jyutping_component<T: FromStr>(start: usize, str: &String) -> Option<(T, usize)> {
+fn parse_jyutping_component<T: FromStr>(start: usize, str: &str) -> Option<(T, usize)> {
     get_slice(str, start..start + 2).and_then(|first_two| match T::from_str(first_two) {
         Ok(component) => Some((component, start + 2)),
         Err(_) => {
@@ -992,19 +992,19 @@ fn parse_jyutping_component<T: FromStr>(start: usize, str: &String) -> Option<(T
     })
 }
 
-fn parse_jyutping_initial(str: &String) -> Option<(JyutPingInitial, usize)> {
+fn parse_jyutping_initial(str: &str) -> Option<(JyutPingInitial, usize)> {
     parse_jyutping_component::<JyutPingInitial>(0, str)
 }
 
-fn parse_jyutping_nucleus(start: usize, str: &String) -> Option<(JyutPingNucleus, usize)> {
+fn parse_jyutping_nucleus(start: usize, str: &str) -> Option<(JyutPingNucleus, usize)> {
     parse_jyutping_component::<JyutPingNucleus>(start, str)
 }
 
-fn parse_jyutping_coda(start: usize, str: &String) -> Option<(JyutPingCoda, usize)> {
+fn parse_jyutping_coda(start: usize, str: &str) -> Option<(JyutPingCoda, usize)> {
     parse_jyutping_component::<JyutPingCoda>(start, str)
 }
 
-fn parse_jyutping_tone(start: usize, str: &String) -> Option<JyutPingTone> {
+fn parse_jyutping_tone(start: usize, str: &str) -> Option<JyutPingTone> {
     // println!("{} {} {}", str, start, str.len());
     get_slice(str, start..str.len()).and_then(|substr| match JyutPingTone::from_str(substr) {
         Ok(tone) => Some(tone),

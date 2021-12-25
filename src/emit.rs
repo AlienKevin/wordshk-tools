@@ -349,7 +349,7 @@ fn pr_match_to_score(m: PrMatch) -> usize {
     }
 }
 
-fn match_pr(seg: &String, pr: &str) -> PrMatch {
+fn match_pr(seg: &str, pr: &str) -> PrMatch {
     if seg.chars().count() != 1 {
         return PrMatch::Zero;
     }

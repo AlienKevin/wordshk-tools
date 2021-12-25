@@ -37,7 +37,7 @@ fn word_to_xml(word: &Word) -> String {
 }
 
 /// Escape '<' and '&' in an XML string
-fn xml_escape(s: &String) -> String {
+fn xml_escape(s: &str) -> String {
     s.replace("<", "&lt;").replace("&", "&amp;")
 }
 
@@ -55,7 +55,7 @@ fn word_segment_to_xml((seg_type, word): &WordSegment) -> String {
     }
 }
 
-fn link_to_xml(link: &String, word: &String) -> String {
+fn link_to_xml(link: &str, word: &str) -> String {
     format!(
         r#"<a href="x-dictionary:d:{}:{dict_id}">{}</a>"#,
         link,
@@ -139,7 +139,7 @@ fn pr_line_to_xml(variants: &Vec<&str>, (line, pr): &PrLine) -> String {
     }
 }
 
-fn to_xml_badge_helper(is_emphasized: bool, tag: &String) -> String {
+fn to_xml_badge_helper(is_emphasized: bool, tag: &str) -> String {
     format!(
         "<span class=\"badge{}\">{}</span>",
         if is_emphasized { "-em" } else { "-weak" },
@@ -147,11 +147,11 @@ fn to_xml_badge_helper(is_emphasized: bool, tag: &String) -> String {
     )
 }
 
-fn to_xml_badge_em(tag: &String) -> String {
+fn to_xml_badge_em(tag: &str) -> String {
     to_xml_badge_helper(true, tag)
 }
 
-fn to_xml_badge(tag: &String) -> String {
+fn to_xml_badge(tag: &str) -> String {
     to_xml_badge_helper(false, tag)
 }
 
@@ -241,8 +241,8 @@ pub fn dict_to_xml(dict: Dict) -> String {
                     .collect::<Vec<String>>()
                     .join("\n"),
                 tags = "<div class=\"tags\">\n".to_string()
-            + &(if entry.poses.len() > 0 { format!("<span>詞性：{}</span>\n", entry.poses.iter().map(to_xml_badge_em).collect::<Vec<String>>().join("，")) } else { "".to_string() })
-            + &(if entry.labels.len() > 0 { format!("<span> ｜ 標籤：{}</span>\n", entry.labels.iter().map(to_xml_badge).collect::<Vec<String>>().join("，")) } else { "".to_string() })
+            + &(if entry.poses.len() > 0 { format!("<span>詞性：{}</span>\n", entry.poses.iter().map(|pos| to_xml_badge_em(pos)).collect::<Vec<String>>().join("，")) } else { "".to_string() })
+            + &(if entry.labels.len() > 0 { format!("<span> ｜ 標籤：{}</span>\n", entry.labels.iter().map(|label| to_xml_badge(label)).collect::<Vec<String>>().join("，")) } else { "".to_string() })
             + &(if entry.sims.len() > 0 { format!("<span> ｜ 近義：{}</span>\n", entry.sims.join("，")) } else { "".to_string() })
             + &(if entry.ants.len() > 0 { format!("<span> ｜ 反義：{}</span>\n", entry.ants.join("，")) } else { "".to_string() })
             // TODO: add refs 
