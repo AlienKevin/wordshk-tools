@@ -313,12 +313,14 @@ pub fn variant_search(dict: &Dict, query: &str) -> BinaryHeap<VariantSearchResul
             .for_each(|(variant_index, variant)| {
                 let (occurrence_index, levenshtein_score) =
                     score_variant_query(&variant.word, query_safe);
-                results.push(VariantSearchResult {
-                    id: *id,
-                    variant_index,
-                    occurrence_index,
-                    levenshtein_score,
-                });
+                if occurrence_index < usize::MAX || levenshtein_score >= 80 {
+                    results.push(VariantSearchResult {
+                        id: *id,
+                        variant_index,
+                        occurrence_index,
+                        levenshtein_score,
+                    });
+                }
             });
     });
     results
