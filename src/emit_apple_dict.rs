@@ -1,8 +1,10 @@
 use super::emit::{
-    pr_to_string, pr_to_string_without_tone, prs_to_string,
-    to_yue_lang_name, word_to_string, RubySegment, TextStyle, Word, WordLine, WordSegment, RichDict, RichClause, RichLine
+    pr_to_string, pr_to_string_without_tone, prs_to_string, to_yue_lang_name, word_to_string,
 };
 use super::parse::{LaxJyutPingSegment, SegmentType};
+use super::rich_dict::{
+    RichClause, RichDict, RichLine, RubySegment, TextStyle, Word, WordLine, WordSegment,
+};
 
 use indoc::indoc;
 use std::fs;
@@ -78,8 +80,7 @@ fn word_line_to_xml(line: &WordLine) -> String {
     format!(
         "<div class=\"{}\">{}</div>",
         "pr-clause",
-        line
-            .iter()
+        line.iter()
             .map(word_segment_to_xml)
             .collect::<Vec<String>>()
             .join("")

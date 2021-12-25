@@ -1,5 +1,5 @@
-use super::emit::{Text, TextStyle, Word, WordSegment};
 use super::parse::*;
+use super::rich_dict::{Text, TextStyle, Word, WordSegment};
 use lip::assert_succeed;
 
 fn text(string: &'static str) -> Segment {
@@ -522,7 +522,7 @@ fn test_is_latin() {
 
 #[test]
 fn test_tokenize() {
-    use super::emit::tokenize;
+    use super::rich_dict::tokenize;
 
     assert_eq!(
         tokenize(&vec!["upgrade".into()], "我 upgrade 咗做 Win 10 之後"),
@@ -580,7 +580,7 @@ fn test_tokenize() {
 
 #[test]
 fn test_flatten_line() {
-    use super::emit::flatten_line;
+    use super::rich_dict::flatten_line;
 
     assert_eq!(
         flatten_line(
@@ -626,7 +626,7 @@ fn test_flatten_line() {
 
 #[test]
 fn test_match_ruby() {
-    use super::emit::{match_ruby, RubySegment::*};
+    use super::rich_dict::{match_ruby, RubySegment::*};
 
     assert_eq!(
         match_ruby(
