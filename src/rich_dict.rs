@@ -1,4 +1,4 @@
-use super::dict::{AltLang, Clause, Dict, Eg, Line, PrLine, Segment, SegmentType, Variants};
+use super::dict::{AltClause, Clause, Dict, Eg, Line, PrLine, Segment, SegmentType, Variants};
 use super::unicode;
 use lazy_static::lazy_static;
 use std::cmp;
@@ -24,21 +24,17 @@ pub struct RichEntry {
 
 #[derive(Debug, PartialEq)]
 pub struct RichDef {
-    pub yue: RichClause,
-    pub eng: Option<RichClause>,
-    pub alts: Vec<RichAltClause>,
+    pub yue: Clause,
+    pub eng: Option<Clause>,
+    pub alts: Vec<AltClause>,
     pub egs: Vec<RichEg>,
 }
-
-pub type RichClause = Vec<WordLine>;
-
-pub type RichAltClause = (AltLang, RichClause);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RichEg {
     pub zho: Option<RichLine>,
     pub yue: Option<RichLine>,
-    pub eng: Option<WordLine>,
+    pub eng: Option<Line>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -472,13 +468,9 @@ pub fn enrich_dict(dict: &Dict) -> RichDict {
                 .defs
                 .iter()
                 .map(|def| RichDef {
-                    yue: enrich_clause(variants, &def.yue),
-                    eng: def.eng.as_ref().map(|eng| enrich_clause(variants, &eng)),
-                    alts: def
-                        .alts
-                        .iter()
-                        .map(|(tag, alt)| (*tag, enrich_clause(variants, alt)))
-                        .collect::<Vec<RichAltClause>>(),
+                    yue: def.yue.clone(),
+                    eng: def.eng.clone(),
+                    alts: def.alts.clone(),
                     egs: def.egs.iter().map(|eg| enrich_eg(variants, eg)).collect(),
                 })
                 .collect();
@@ -500,13 +492,6 @@ pub fn enrich_dict(dict: &Dict) -> RichDict {
         .collect::<RichDict>()
 }
 
-pub fn enrich_clause(variants: &Vec<&str>, clause: &Clause) -> RichClause {
-    clause
-        .iter()
-        .map(|line| flatten_line(variants, line))
-        .collect()
-}
-
 pub fn enrich_pr_line(variants: &Vec<&str>, pr_line: &PrLine) -> RichLine {
     match pr_line {
         (line, Some(pr)) => RichLine::Ruby(match_ruby(variants, line, &unicode::to_words(pr))),
@@ -518,6 +503,6 @@ pub fn enrich_eg(variants: &Vec<&str>, eg: &Eg) -> RichEg {
     RichEg {
         zho: eg.zho.as_ref().map(|zho| enrich_pr_line(variants, &zho)),
         yue: eg.yue.as_ref().map(|yue| enrich_pr_line(variants, &yue)),
-        eng: eg.eng.as_ref().map(|eng| flatten_line(variants, &eng)),
+        eng: eg.eng.clone(),
     }
 }

@@ -1,7 +1,5 @@
-use super::dict::{LaxJyutPingSegment, SegmentType};
-use super::rich_dict::{
-    RichClause, RichDict, RichLine, RubySegment, TextStyle, Word, WordLine, WordSegment,
-};
+use super::dict::{Clause, LaxJyutPingSegment, Segment, SegmentType};
+use super::rich_dict::{RichDict, RichLine, RubySegment, TextStyle, Word, WordLine, WordSegment};
 
 use indoc::indoc;
 use std::fs;
@@ -56,7 +54,7 @@ fn link_to_xml(link: &str, word: &str) -> String {
     )
 }
 
-fn clause_to_xml_with_class_name(class_name: &str, clause: &RichClause) -> String {
+fn clause_to_xml_with_class_name(class_name: &str, clause: &Clause) -> String {
     format!(
         "<div class=\"{}\">{}</div>",
         class_name,
@@ -64,13 +62,20 @@ fn clause_to_xml_with_class_name(class_name: &str, clause: &RichClause) -> Strin
             .iter()
             .map(|line| {
                 line.iter()
-                    .map(word_segment_to_xml)
+                    .map(segment_to_xml)
                     .collect::<Vec<String>>()
                     .join("")
             })
             .collect::<Vec<String>>()
             .join("\n")
     )
+}
+
+fn segment_to_xml((seg_type, seg): &Segment) -> String {
+    match seg_type {
+        SegmentType::Text => xml_escape(seg),
+        SegmentType::Link => link_to_xml(&xml_escape(&seg), &xml_escape(&seg)),
+    }
 }
 
 // Convert a [WordLine] to XML, highlighting variants
@@ -86,7 +91,7 @@ fn word_line_to_xml(line: &WordLine) -> String {
 }
 
 /// Convert a [RichClause] to an Apple Dictionary XML string
-fn clause_to_xml(clause: &RichClause) -> String {
+fn clause_to_xml(clause: &Clause) -> String {
     clause_to_xml_with_class_name("clause", clause)
 }
 
