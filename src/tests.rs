@@ -1,3 +1,4 @@
+use super::dict::*;
 use super::parse::*;
 use super::rich_dict::{Text, TextStyle, Word, WordSegment};
 use lip::assert_succeed;

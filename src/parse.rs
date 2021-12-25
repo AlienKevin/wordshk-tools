@@ -11,6 +11,7 @@
 //! [`lip`]: https://github.com/AlienKevin/lip
 //!
 
+use super::dict::*;
 use super::unicode;
 
 use lip::ParseResult;
@@ -21,152 +22,6 @@ use std::error::Error;
 use std::io;
 use std::ops::Range;
 use std::str::FromStr;
-
-/// A dictionary is a list of entries
-pub type Dict = HashMap<usize, Entry>;
-
-/// An entry contains some information about a word.
-///
-/// \[id\] the word's unique identifier used by words.hk: 116878
-///
-/// \[variants\] variants of the word: 㗎:gaa3,咖:gaa3,𡃉:gaa3
-///
-/// \[pos\] grammaticall positions of the word: 動詞, 名詞, 形容詞
-///
-/// \[labels\] labels on the word: 術語, 俚語, 專名
-///
-/// \[sims\] synonyms of the word: 武士 is a synonym of 騎士
-///
-/// \[ants\] antonyms of the word: 放電 is an antonym of 充電
-///
-/// \[refs\] urls to references for this entry: <http://dictionary.reference.com/browse/tart?s=t>
-///
-/// \[imgs\] urls to images for this entry: <https://upload.wikimedia.org/wikipedia/commons/7/79/Naihuangbao.jpg>
-///
-/// \[defs\] a list of definitions for this word
-///
-#[derive(Debug, PartialEq)]
-pub struct Entry {
-    pub id: usize,
-    pub variants: Vec<Variant>,
-    pub poses: Vec<String>,
-    pub labels: Vec<String>,
-    pub sims: Vec<String>,
-    pub ants: Vec<String>,
-    pub refs: Vec<String>,
-    pub imgs: Vec<String>,
-    pub defs: Vec<Def>,
-}
-
-/// A variant of a \[word\] with \[prs\] (pronounciations)
-#[derive(Debug, Clone, PartialEq)]
-pub struct Variant {
-    pub word: String,
-    pub prs: Vec<LaxJyutPing>,
-}
-
-/// Two types of segments: text or link. See [Segment]
-///
-/// \[Text\] normal text
-///
-/// \[Link\] a link to another entry
-///
-#[derive(Debug, Clone, PartialEq)]
-pub enum SegmentType {
-    Text,
-    Link,
-}
-
-/// A segment can be a text or a link
-///
-/// Text: 非常鬆軟。（量詞：件／籠）
-///
-/// Link: A link to the entry 雞蛋 would be #雞蛋
-///
-pub type Segment = (SegmentType, String);
-
-/// A line consists of one or more [Segment]s
-///
-/// Empty line: `vec![(Text, "")]`
-///
-/// Simple line: `vec![(Text, "用嚟圍喺BB牀邊嘅布（量詞：塊）")]`
-///
-/// Mixed line: `vec![(Text, "一種加入"), (Link, "蝦籽"), (Text, "整嘅廣東麪")]`
-///
-pub type Line = Vec<Segment>;
-
-/// A clause consists of one or more [Line]s. Appears in explanations and example sentences
-///
-/// Single-line clause: `vec![vec![(Text, "一行白鷺上青天")]]`
-///
-/// Multi-line clause: `vec![vec![(Text, "一行白鷺上青天")], vec![(Text, "兩個黃鸝鳴翠柳")]]`
-///
-pub type Clause = Vec<Line>; // can be multiline
-
-/// A definition of a word
-///
-/// Here's an example of the definition of the word 年畫
-///
-/// \[yue\] Cantonese explanation of the word's meaning: 東亞民間慶祝#新春 嘅畫種（量詞：幅）
-///
-/// \[eng\] English explanation of the word's meaning: new year picture in East Asia
-///
-/// \[alts\] Word with similar meaning in other languages: jpn:年画；ねんが, kor:세화, vie:Tranh tết
-///
-/// \[egs\] Example sentences usually with Jyutping pronunciations and English translations
-///
-#[derive(Debug, PartialEq)]
-pub struct Def {
-    pub yue: Clause,
-    pub eng: Option<Clause>,
-    pub alts: Vec<AltClause>,
-    pub egs: Vec<Eg>,
-}
-
-/// A clause in an alternative language other than Cantonese and English
-///
-/// \[[AltLang]\] language tag
-///
-/// \[[Clause]\] A sequence of texts and links
-///
-pub type AltClause = (AltLang, Clause);
-
-/// Language tags for alternative languages other than Cantonese and English
-///
-/// From my observation, the tags seem to be alpha-3 codes in [ISO 639-2]
-///
-/// [ISO 639-2]: https://www.loc.gov/standards/iso639-2/php/code_list.php
-///
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum AltLang {
-    Jpn, // Japanese
-    Kor, // Korean
-    Por, // Portuguese
-    Vie, // Vietnamese
-    Lat, // Latin
-    Fra, // French
-}
-
-/// An example sentence in Mandarin, Cantonese, and/or English
-///
-/// \[zho\] Mandarin example with optional Jyutping pronunciation: 可否見面？ (ho2 fau2 gin3 min6?)
-///
-/// \[yue\] Cantonese example with optional Jyutping pronunciation: 可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
-///
-/// \[eng\] English example: Can we meet up?
-///
-#[derive(Debug, Clone, PartialEq)]
-pub struct Eg {
-    pub zho: Option<PrLine>,
-    pub yue: Option<PrLine>,
-    pub eng: Option<Line>,
-}
-
-/// An example sentence with optional Jyutping pronunciation
-///
-/// Eg: 可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
-///
-pub type PrLine = (Line, Option<String>);
 
 /// Parse the whole words.hk CSV database into a [Dict]
 pub fn parse_dict() -> Result<Dict, Box<dyn Error>> {
@@ -283,7 +138,8 @@ fn parse_br<'a>() -> lip::BoxedParser<'a, (), ()> {
 /// For example, here's an English line:
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_line, SegmentType::*};
+/// # use wordshk_tools::dict::{SegmentType::*};
+/// # use wordshk_tools::parse::{parse_line};
 /// # let source = indoc::indoc! {"
 /// My headphone cord was knotted.
 /// # "};
@@ -315,7 +171,8 @@ pub fn parse_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
 /// For example, here's an English line:
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_named_line, SegmentType::*};
+/// # use wordshk_tools::dict::{SegmentType::*};
+/// # use wordshk_tools::parse::{parse_named_line};
 /// # let source = indoc::indoc! {"
 /// eng:My headphone cord was knotted.
 /// # "};
@@ -343,7 +200,8 @@ pub fn parse_named_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()
 /// This function will parse everything up until the '(':
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_partial_pr_line, SegmentType::*};
+/// # use wordshk_tools::dict::{SegmentType::*};
+/// # use wordshk_tools::parse::{parse_partial_pr_line};
 /// # let source = indoc::indoc! {"
 /// 可唔可以見面？
 /// # "};
@@ -382,7 +240,8 @@ pub fn parse_partial_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Lin
 /// This function will parse everything up until the '(':
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_partial_pr_named_line, SegmentType::*};
+/// # use wordshk_tools::dict::{SegmentType::*};
+/// # use wordshk_tools::parse::{parse_partial_pr_named_line};
 /// # let source = indoc::indoc! {"
 /// yue:可唔可以見面？
 /// # "};
@@ -406,7 +265,8 @@ pub fn parse_partial_pr_named_line<'a>(name: &'static str) -> lip::BoxedParser<'
 /// For example, here's a Cantonese clause:
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_clause, SegmentType::*};
+/// # use wordshk_tools::dict::{SegmentType::*};
+/// # use wordshk_tools::parse::{parse_clause};
 /// # let source = indoc::indoc! {"
 /// 一行白鷺上青天
 ///
@@ -452,7 +312,8 @@ pub fn parse_clause<'a>(expecting: &'static str) -> lip::BoxedParser<'a, Clause,
 /// For example, here's a named Cantonese clause:
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_named_clause, SegmentType::*};
+/// # use wordshk_tools::dict::{SegmentType::*};
+/// # use wordshk_tools::parse::{parse_named_clause};
 /// # let source = indoc::indoc! {"
 /// yue:一行白鷺上青天
 ///
@@ -478,7 +339,8 @@ pub fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause
 /// For example, here's a Japanese clause:
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_alt_clause, AltLang, SegmentType::*};
+/// # use wordshk_tools::dict::{AltLang, SegmentType::*};
+/// # use wordshk_tools::parse::{parse_alt_clause};
 /// # let source = indoc::indoc! {"
 /// jpn:年画；ねんが
 /// # "};
@@ -522,7 +384,8 @@ pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
 /// For example, here's a Cantonese pronunciation line:
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_pr_line, SegmentType::*};
+/// # use wordshk_tools::dict::{SegmentType::*};
+/// # use wordshk_tools::parse::{parse_pr_line};
 /// # let source = indoc::indoc! {"
 /// yue:我個耳筒繑埋咗一嚿。 (ngo5 go3 ji5 tung2 kiu5 maai4 zo2 jat1 gau6.)
 /// # "};
@@ -554,7 +417,8 @@ pub fn parse_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, PrLine, ()>
 /// For example, here's an example for the word 便:
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_eg, Eg, SegmentType::*};
+/// # use wordshk_tools::dict::{Eg, SegmentType::*};
+/// # use wordshk_tools::parse::{parse_eg};
 /// # let source = indoc::indoc! {"
 /// <eg>
 /// zho:後邊 (hau6 bin6)
@@ -602,7 +466,8 @@ pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
 /// For example, here's part of the rich definition for the word 便:
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_rich_def, Def, Eg, SegmentType::*};
+/// # use wordshk_tools::dict::{Def, Eg, SegmentType::*};
+/// # use wordshk_tools::parse::{parse_rich_def};
 /// # let source = indoc::indoc! {"
 /// <explanation>
 /// yue:用於方位詞之後。書寫時，亦會用#邊 代替本字
@@ -664,7 +529,8 @@ pub fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
 /// For example, here's a simple definition for the word 奸爸爹
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_simple_def, Def, AltLang, SegmentType::*};
+/// # use wordshk_tools::dict::{Def, AltLang, SegmentType::*};
+/// # use wordshk_tools::parse::{parse_simple_def};
 /// # let source = indoc::indoc! {"
 /// yue:#加油
 /// eng:cheer up
@@ -707,7 +573,8 @@ pub fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
 /// For example, here's a series of definitions for the word 兄
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_defs, Def, Eg, SegmentType::*};
+/// # use wordshk_tools::dict::{Def, Eg, SegmentType::*};
+/// # use wordshk_tools::parse::{parse_defs};
 /// # let source = indoc::indoc! {"
 /// <explanation>
 /// yue:同父母或者同監護人，年紀比你大嘅男性
@@ -764,7 +631,8 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 /// For example, here's the content of the Entry for 奸爸爹
 ///
 /// ```
-/// # use wordshk_tools::parse::{parse_content, Def, Entry, Variant, AltLang, SegmentType::*};
+/// # use wordshk_tools::dict::{Def, Entry, Variant, AltLang, SegmentType::*};
+/// # use wordshk_tools::parse::{parse_content};
 /// # let source = indoc::indoc! {"
 /// (pos:語句)(label:外來語)(label:潮語)(label:香港)
 /// yue:#加油
@@ -825,17 +693,6 @@ pub fn parse_content<'a>(
     )
 }
 
-/// JyutPing encoding with initial, nucleus (required), coda, and tone
-///
-/// Phonetics info based on: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
-#[derive(Debug, Clone, PartialEq)]
-pub struct JyutPing {
-    pub initial: Option<JyutPingInitial>,
-    pub nucleus: JyutPingNucleus,
-    pub coda: Option<JyutPingCoda>,
-    pub tone: Option<JyutPingTone>,
-}
-
 pub fn jyutping_to_string(pr: &JyutPing) -> String {
     let pr = pr.clone();
     pr.initial.map(|i| i.to_string()).unwrap_or("".to_string())
@@ -849,101 +706,6 @@ pub fn jyutping_to_string_without_tone(pr: &JyutPing) -> String {
     pr.initial.map(|i| i.to_string()).unwrap_or("".to_string())
         + &pr.nucleus.to_string()
         + &pr.coda.map(|i| i.to_string()).unwrap_or("".to_string())
-}
-
-pub type LaxJyutPing = Vec<LaxJyutPingSegment>;
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum LaxJyutPingSegment {
-    Standard(JyutPing),
-    Nonstandard(String),
-}
-
-/// Initial segment of a JyutPing, optional
-///
-/// Eg: 's' in "sap6"
-///
-#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq)]
-#[strum(ascii_case_insensitive)]
-#[strum(serialize_all = "lowercase")]
-pub enum JyutPingInitial {
-    B,
-    P,
-    M,
-    F,
-    D,
-    T,
-    N,
-    L,
-    G,
-    K,
-    Ng,
-    H,
-    Gw,
-    Kw,
-    W,
-    Z,
-    C,
-    S,
-    J,
-}
-
-/// Nucleus segment of a Jyutping, always required
-///
-/// Eg: 'a' in "sap6"
-///
-#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq)]
-#[strum(ascii_case_insensitive)]
-#[strum(serialize_all = "lowercase")]
-pub enum JyutPingNucleus {
-    Aa,
-    I,
-    U,
-    E,
-    O,
-    Yu,
-    Oe,
-    A,
-    Eo,
-}
-
-/// Coda segment of a Jyutping, optional
-///
-/// Eg: 'p' in "sap6"
-///
-#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq)]
-#[strum(ascii_case_insensitive)]
-#[strum(serialize_all = "lowercase")]
-pub enum JyutPingCoda {
-    P,
-    T,
-    K, // stop
-    M,
-    N,
-    Ng, // nasal
-    I,
-    U, // vowel
-}
-
-/// Tone segment of a Jyutping, optional.
-/// Six tones from 1 to 6.
-///
-/// Eg: '6' in "sap6"
-///
-#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq)]
-pub enum JyutPingTone {
-    #[strum(serialize = "1")]
-    T1,
-    #[strum(serialize = "2")]
-    T2,
-    #[strum(serialize = "3")]
-    T3,
-    #[strum(serialize = "4")]
-    T4,
-    #[strum(serialize = "5")]
-    T5,
-    #[strum(serialize = "6")]
-    T6,
 }
 
 /// Parse [JyutPing] pronunciation

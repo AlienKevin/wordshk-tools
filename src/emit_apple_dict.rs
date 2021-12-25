@@ -1,7 +1,7 @@
 use super::emit::{
     pr_to_string, pr_to_string_without_tone, prs_to_string, to_yue_lang_name, word_to_string,
 };
-use super::parse::{LaxJyutPingSegment, SegmentType};
+use super::dict::{LaxJyutPingSegment, SegmentType};
 use super::rich_dict::{
     RichClause, RichDict, RichLine, RubySegment, TextStyle, Word, WordLine, WordSegment,
 };

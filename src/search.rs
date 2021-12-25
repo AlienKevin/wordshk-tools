@@ -1,7 +1,7 @@
-use super::parse::{
-    jyutping_to_string, Dict, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus,
-    LaxJyutPing, LaxJyutPingSegment,
+use super::dict::{
+    Dict, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing, LaxJyutPingSegment,
 };
+use super::parse::jyutping_to_string;
 use super::unicode;
 use lazy_static::lazy_static;
 use std::cmp::Ordering;
@@ -146,9 +146,9 @@ pub fn compare_jyutping(pr1: &JyutPing, pr2: &JyutPing) -> Score {
                 32 - 4
             } else {
                 32 - 3
-                - (if backness1 == backness2 { 0 } else { 4 })
-                - (if height1 == height2 { 0 } else { 4 })
-                - (if roundedness1 == roundedness2 { 0 } else { 3 })
+                    - (if backness1 == backness2 { 0 } else { 4 })
+                    - (if height1 == height2 { 0 } else { 4 })
+                    - (if roundedness1 == roundedness2 { 0 } else { 3 })
             }
         }) + (if pr1.coda == pr2.coda {
             24

@@ -1,7 +1,5 @@
-use super::parse::{
-    jyutping_to_string, jyutping_to_string_without_tone, AltLang, LaxJyutPing, LaxJyutPingSegment,
-    Variant,
-};
+use super::dict::{AltLang, LaxJyutPing, LaxJyutPingSegment, Variant};
+use super::parse::{jyutping_to_string, jyutping_to_string_without_tone};
 use super::rich_dict::Word;
 
 /// Convert [AltLang] to a language name in Cantonese

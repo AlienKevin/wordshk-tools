@@ -1,5 +1,5 @@
+use super::dict::{AltLang, Clause, Dict, Eg, Line, PrLine, Segment, SegmentType, Variant};
 use super::emit::{variants_to_words, word_to_string};
-use super::parse::{AltLang, Clause, Dict, Eg, Line, PrLine, Segment, SegmentType, Variant};
 use super::unicode;
 use lazy_static::lazy_static;
 use std::cmp;
