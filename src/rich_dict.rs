@@ -1,6 +1,8 @@
 use super::dict::{AltClause, Clause, Dict, Eg, Line, PrLine, Segment, SegmentType, Variants};
 use super::unicode;
 use lazy_static::lazy_static;
+use serde::Deserialize;
+use serde::Serialize;
 use std::cmp;
 use std::collections::HashMap;
 use std::fmt;
@@ -9,7 +11,7 @@ use std::io;
 
 pub type RichDict = HashMap<usize, RichEntry>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct RichEntry {
     pub id: usize,
     pub variants: Variants,
@@ -22,7 +24,7 @@ pub struct RichEntry {
     pub defs: Vec<RichDef>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct RichDef {
     pub yue: Clause,
     pub eng: Option<Clause>,
@@ -30,14 +32,14 @@ pub struct RichDef {
     pub egs: Vec<RichEg>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RichEg {
     pub zho: Option<RichLine>,
     pub yue: Option<RichLine>,
     pub eng: Option<Line>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum RichLine {
     Ruby(RubyLine),
     Text(WordLine),
@@ -52,7 +54,7 @@ pub enum RichLine {
 pub type Text = (TextStyle, String);
 
 /// Text styles, can be bold or normal
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum TextStyle {
     Bold,
     Normal,
@@ -68,7 +70,7 @@ pub type WordSegment = (SegmentType, Word);
 ///
 /// `vec![(TextStyle::Bold, "兩"), (TextStyle::Normal, "周")]`
 ///
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Word(pub Vec<Text>);
 
 impl fmt::Display for Word {
@@ -92,7 +94,7 @@ impl fmt::Display for Word {
 /// * or a [Word] with its pronunciations
 /// * or a linked segment with a series of [Word]s
 /// and their pronunciations
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum RubySegment {
     Punc(String),
     Word(Word, Vec<String>),
@@ -527,4 +529,16 @@ pub fn enrich_eg(variants: &Vec<&str>, eg: &Eg) -> RichEg {
         yue: eg.yue.as_ref().map(|yue| enrich_pr_line(variants, &yue)),
         eng: eg.eng.clone(),
     }
+}
+
+pub fn serialize_rich_dict(output_path: &str, dict: &RichDict) {
+    fs::write(output_path, serde_json::to_string(&dict).unwrap())
+        .expect("Unable to output serailized RichDict");
+}
+
+pub fn deserialize_rich_dict(input_path: &str) -> RichDict {
+    serde_json::from_str(
+        &fs::read_to_string(input_path).expect("Unable to read serialized RichDict"),
+    )
+    .unwrap()
 }

@@ -1,4 +1,6 @@
 use itertools::Itertools;
+use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -38,7 +40,7 @@ pub struct Entry {
     pub defs: Vec<Def>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Variants(pub Vec<Variant>);
 
 impl Variants {
@@ -48,7 +50,7 @@ impl Variants {
 }
 
 /// A variant of a \[word\] with \[prs\] (pronounciations)
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Variant {
     pub word: String,
     pub prs: LaxJyutPings,
@@ -60,7 +62,7 @@ pub struct Variant {
 ///
 /// \[Link\] a link to another entry
 ///
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SegmentType {
     Text,
     Link,
@@ -126,7 +128,7 @@ pub type AltClause = (AltLang, Clause);
 ///
 /// [ISO 639-2]: https://www.loc.gov/standards/iso639-2/php/code_list.php
 ///
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum AltLang {
     Jpn, // Japanese
     Kor, // Korean
@@ -172,7 +174,7 @@ pub struct Eg {
 ///
 pub type PrLine = (Line, Option<String>);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LaxJyutPings(pub Vec<LaxJyutPing>);
 
 impl fmt::Display for LaxJyutPings {
@@ -184,7 +186,7 @@ impl fmt::Display for LaxJyutPings {
 /// JyutPing encoding with initial, nucleus (required), coda, and tone
 ///
 /// Phonetics info based on: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct JyutPing {
     pub initial: Option<JyutPingInitial>,
     pub nucleus: JyutPingNucleus,
@@ -229,7 +231,7 @@ impl JyutPing {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LaxJyutPing(pub Vec<LaxJyutPingSegment>);
 
 impl fmt::Display for LaxJyutPing {
@@ -248,7 +250,7 @@ impl LaxJyutPing {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum LaxJyutPingSegment {
     Standard(JyutPing),
     Nonstandard(String),
@@ -280,7 +282,7 @@ impl LaxJyutPingSegment {
 ///
 /// Eg: 's' in "sap6"
 ///
-#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq)]
+#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[strum(ascii_case_insensitive)]
 #[strum(serialize_all = "lowercase")]
 pub enum JyutPingInitial {
@@ -309,7 +311,7 @@ pub enum JyutPingInitial {
 ///
 /// Eg: 'a' in "sap6"
 ///
-#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq)]
+#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[strum(ascii_case_insensitive)]
 #[strum(serialize_all = "lowercase")]
 pub enum JyutPingNucleus {
@@ -328,7 +330,7 @@ pub enum JyutPingNucleus {
 ///
 /// Eg: 'p' in "sap6"
 ///
-#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq)]
+#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[strum(ascii_case_insensitive)]
 #[strum(serialize_all = "lowercase")]
 pub enum JyutPingCoda {
@@ -347,7 +349,7 @@ pub enum JyutPingCoda {
 ///
 /// Eg: '6' in "sap6"
 ///
-#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq)]
+#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum JyutPingTone {
     #[strum(serialize = "1")]
     T1,

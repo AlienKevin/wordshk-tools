@@ -5,11 +5,11 @@ use wordshk_tools::dict::{
 };
 use wordshk_tools::emit_apple_dict::rich_dict_to_xml;
 use wordshk_tools::parse::parse_dict;
-use wordshk_tools::rich_dict::enrich_dict;
+use wordshk_tools::rich_dict::{deserialize_rich_dict, enrich_dict, serialize_rich_dict};
 use wordshk_tools::search::{pr_search, variant_search, PrSearchResult, VariantSearchResult};
 
 fn main() {
-    generated_apple_dict();
+    serde_rich_dict();
 }
 
 fn do_variant_search() {
@@ -115,6 +115,22 @@ fn generated_apple_dict() {
         }
         Ok(dict) => {
             print!("{}", rich_dict_to_xml(enrich_dict(&dict)));
+        }
+    }
+}
+
+fn serde_rich_dict() {
+    match parse_dict() {
+        Err(err) => {
+            println!("error reading csv file: {}", err);
+            process::exit(1);
+        }
+        Ok(dict) => {
+            let rich_dict = enrich_dict(&dict);
+            let path = "./dict.json";
+            serialize_rich_dict(path, &rich_dict);
+            let deserialized_rich_dict = deserialize_rich_dict(path);
+            assert_eq!(rich_dict, deserialized_rich_dict);
         }
     }
 }
