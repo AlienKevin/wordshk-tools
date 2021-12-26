@@ -49,6 +49,10 @@ div.def-yue, div.def-eng, div.def-alt, div.pr-clause, div.eg-clause {
 	display: flex;
 }
 
+a {
+	color: #FF8C00;
+}
+
 div.clause {
 	flex: 1;
 }
@@ -75,8 +79,8 @@ span.badge-weak {
 }
 
 div.def-head {
-	font-weight: 500;
     margin-bottom: 1em;
+	color: #0073ff;
 }
 
 div.def-eng, div.def-alt {
