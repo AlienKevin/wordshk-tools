@@ -530,15 +530,3 @@ pub fn enrich_eg(variants: &Vec<&str>, eg: &Eg) -> RichEg {
         eng: eg.eng.clone(),
     }
 }
-
-pub fn serialize_rich_dict(output_path: &str, dict: &RichDict) {
-    fs::write(output_path, serde_json::to_string(&dict).unwrap())
-        .expect("Unable to output serailized RichDict");
-}
-
-pub fn deserialize_rich_dict(input_path: &str) -> RichDict {
-    serde_json::from_str(
-        &fs::read_to_string(input_path).expect("Unable to read serialized RichDict"),
-    )
-    .unwrap()
-}

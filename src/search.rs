@@ -1,6 +1,7 @@
 use super::dict::{
     Dict, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing, LaxJyutPingSegment,
 };
+use super::rich_dict::RichDict;
 use super::unicode;
 use lazy_static::lazy_static;
 use std::cmp::Ordering;
@@ -210,7 +211,7 @@ fn score_pr_query(entry_pr: &LaxJyutPing, query: &LaxJyutPing) -> (Score, Index)
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub struct PrSearchResult {
+pub struct PrSearchRank {
     pub id: usize,
     pub variant_index: Index,
     pub pr_index: Index,
@@ -218,7 +219,7 @@ pub struct PrSearchResult {
     pub pr_start_index: Index,
 }
 
-impl Ord for PrSearchResult {
+impl Ord for PrSearchRank {
     fn cmp(&self, other: &Self) -> Ordering {
         self.score
             .cmp(&other.score)
@@ -226,14 +227,14 @@ impl Ord for PrSearchResult {
     }
 }
 
-impl PartialOrd for PrSearchResult {
+impl PartialOrd for PrSearchRank {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-pub fn pr_search(dict: &Dict, query: &LaxJyutPing) -> BinaryHeap<PrSearchResult> {
-    let mut results = BinaryHeap::new();
+pub fn pr_search(dict: &RichDict, query: &LaxJyutPing) -> BinaryHeap<PrSearchRank> {
+    let mut ranks = BinaryHeap::new();
     dict.iter().for_each(|(id, entry)| {
         entry
             .variants
@@ -253,7 +254,7 @@ pub fn pr_search(dict: &Dict, query: &LaxJyutPing) -> BinaryHeap<PrSearchResult>
                     },
                 );
                 if score >= 80 {
-                    results.push(PrSearchResult {
+                    ranks.push(PrSearchRank {
                         id: *id,
                         variant_index,
                         pr_index,
@@ -263,7 +264,7 @@ pub fn pr_search(dict: &Dict, query: &LaxJyutPing) -> BinaryHeap<PrSearchResult>
                 }
             });
     });
-    results
+    ranks
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -324,7 +325,7 @@ fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
 
 pub fn variant_search(dict: &Dict, query: &str) -> BinaryHeap<VariantSearchResult> {
     let query_safe = &convert_to_hk_safe_variant(query);
-    let mut results = BinaryHeap::new();
+    let mut ranks = BinaryHeap::new();
     dict.iter().for_each(|(id, entry)| {
         entry
             .variants
@@ -335,7 +336,7 @@ pub fn variant_search(dict: &Dict, query: &str) -> BinaryHeap<VariantSearchResul
                 let (occurrence_index, levenshtein_score) =
                     score_variant_query(&variant.word, query_safe);
                 if occurrence_index < usize::MAX || levenshtein_score >= 80 {
-                    results.push(VariantSearchResult {
+                    ranks.push(VariantSearchResult {
                         id: *id,
                         variant_index,
                         occurrence_index,
@@ -344,7 +345,7 @@ pub fn variant_search(dict: &Dict, query: &str) -> BinaryHeap<VariantSearchResul
                 }
             });
     });
-    results
+    ranks
 }
 
 lazy_static! {
