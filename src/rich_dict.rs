@@ -11,7 +11,7 @@ use std::io;
 
 pub type RichDict = HashMap<usize, RichEntry>;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct RichEntry {
     pub id: usize,
     pub variants: Variants,
@@ -24,7 +24,7 @@ pub struct RichEntry {
     pub defs: Vec<RichDef>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct RichDef {
     pub yue: Clause,
     pub eng: Option<Clause>,

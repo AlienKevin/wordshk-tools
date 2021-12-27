@@ -1,6 +1,6 @@
 use super::dict::LaxJyutPing;
 use super::parse::parse_dict;
-use super::rich_dict::{enrich_dict, RichDict};
+use super::rich_dict::{enrich_dict, RichDict, RichEntry};
 use super::search;
 use chrono::{DateTime, Utc};
 use flate2::read::GzDecoder;
@@ -57,6 +57,10 @@ impl Api {
 
     pub fn variant_search(&self, capacity: usize, query: &str) -> Vec<VariantSearchResult> {
         variant_search_helper(capacity, &self.dict, query)
+    }
+
+    pub fn get_entry(&self, id: usize) -> RichEntry {
+        (*self.dict.get(&id).unwrap()).clone()
     }
 
     fn get_new_dict<P: AsRef<Path>>(api_path: &P) -> Api {
