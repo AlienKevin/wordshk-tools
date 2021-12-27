@@ -268,14 +268,14 @@ pub fn pr_search(dict: &RichDict, query: &LaxJyutPing) -> BinaryHeap<PrSearchRan
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub struct VariantSearchResult {
+pub struct VariantSearchRank {
     pub id: usize,
     pub variant_index: Index,
     pub occurrence_index: Index,
     pub levenshtein_score: Score,
 }
 
-impl Ord for VariantSearchResult {
+impl Ord for VariantSearchRank {
     fn cmp(&self, other: &Self) -> Ordering {
         other
             .occurrence_index
@@ -284,7 +284,7 @@ impl Ord for VariantSearchResult {
     }
 }
 
-impl PartialOrd for VariantSearchResult {
+impl PartialOrd for VariantSearchRank {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -323,7 +323,7 @@ fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
     (occurrence_index, levenshtein_score)
 }
 
-pub fn variant_search(dict: &Dict, query: &str) -> BinaryHeap<VariantSearchResult> {
+pub fn variant_search(dict: &RichDict, query: &str) -> BinaryHeap<VariantSearchRank> {
     let query_safe = &convert_to_hk_safe_variant(query);
     let mut ranks = BinaryHeap::new();
     dict.iter().for_each(|(id, entry)| {
@@ -336,7 +336,7 @@ pub fn variant_search(dict: &Dict, query: &str) -> BinaryHeap<VariantSearchResul
                 let (occurrence_index, levenshtein_score) =
                     score_variant_query(&variant.word, query_safe);
                 if occurrence_index < usize::MAX || levenshtein_score >= 80 {
-                    ranks.push(VariantSearchResult {
+                    ranks.push(VariantSearchRank {
                         id: *id,
                         variant_index,
                         occurrence_index,

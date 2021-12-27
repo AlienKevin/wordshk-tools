@@ -12,25 +12,24 @@ use wordshk_tools::rich_dict::enrich_dict;
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    do_pr_search();
+    do_variant_search();
 }
 
-// fn do_variant_search() {
-//     let api = Api::new(APP_TMP_DIR);
-//     // 說 is a variant that does not appear in dictionary variant data
-//     // Two words contains 說明: 說明 and 説明書
-//     let mut results = api::variant_search("說明");
-//     let mut i = 0;
-//     while results.len() > 0 && i < 10 {
-//         let VariantSearchResult {
-//             id, variant_index, ..
-//         } = results.pop().unwrap();
-//         let entry = dict.get(&id).unwrap();
-//         let variant = &entry.variants.0[variant_index];
-//         println!("{} {}", variant.word, &variant.prs.to_string());
-//         i += 1;
-//     }
-// }
+fn do_variant_search() {
+    let api = Api::new(APP_TMP_DIR);
+    // 說 is a variant that does not appear in dictionary variant data
+    // Two words contains 說明: 說明 and 説明書
+    let queries = vec!["說明"];
+
+    let max_num_of_results = 10;
+    queries.iter().for_each(|query| {
+        println!("{}\n", query.to_string());
+        api.variant_search(max_num_of_results, query)
+            .iter()
+            .for_each(|result| println!("{}", result.variant,));
+        println!("\n----\n");
+    });
+}
 
 fn do_pr_search() {
     let api = Api::new(APP_TMP_DIR);

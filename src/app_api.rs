@@ -55,6 +55,10 @@ impl Api {
         pr_search_helper(capacity, &self.dict, query)
     }
 
+    pub fn variant_search(&self, capacity: usize, query: &str) -> Vec<VariantSearchResult> {
+        variant_search_helper(capacity, &self.dict, query)
+    }
+
     fn get_new_dict<P: AsRef<Path>>(api_path: &P) -> Api {
         let new_release_time = Utc::now();
         let csv_url = "https://words.hk/static/all.csv.gz";
@@ -99,6 +103,34 @@ fn pr_search_helper(capacity: usize, dict: &RichDict, query: &LaxJyutPing) -> Ve
             id,
             variant: variant.word.clone(),
             pr: variant.prs.0[pr_index].to_string(),
+        });
+        i += 1;
+    }
+    results
+}
+
+pub struct VariantSearchResult {
+    pub id: usize,
+    pub variant: String,
+}
+
+fn variant_search_helper(
+    capacity: usize,
+    dict: &RichDict,
+    query: &str,
+) -> Vec<VariantSearchResult> {
+    let mut ranks = search::variant_search(dict, query);
+    let mut results = vec![];
+    let mut i = 0;
+    while ranks.len() > 0 && i < capacity {
+        let search::VariantSearchRank {
+            id, variant_index, ..
+        } = ranks.pop().unwrap();
+        let entry = dict.get(&id).unwrap();
+        let variant = &entry.variants.0[variant_index];
+        results.push(VariantSearchResult {
+            id,
+            variant: variant.word.clone(),
         });
         i += 1;
     }
