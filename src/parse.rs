@@ -47,28 +47,14 @@ pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
                                     &(|c: &char| c != &':' && c != &','),
                                     "jyutping",
                                 ))
-                                .map(|pr_str| {
-                                    LaxJyutPing(
-                                        pr_str
-                                            .split_whitespace()
-                                            .map(|pr_seg| {
-                                                match parse_jyutping(&pr_seg.to_string()) {
-                                                    Some(pr) => LaxJyutPingSegment::Standard(pr),
-                                                    None => LaxJyutPingSegment::Nonstandard(
-                                                        pr_seg.to_string(),
-                                                    ),
-                                                }
-                                            })
-                                            .collect(),
-                                    )
-                                }),
+                                .map(|pr_str| parse_pr(&pr_str)),
                             ),
                             ":",
                             space0(),
                             "",
                             Trailing::Forbidden,
                         )
-                        .map(|prs| LaxJyutPings(prs)),
+                        .map(|prs: Vec<LaxJyutPing>| LaxJyutPings(prs)),
                     ),
                 ",",
                 space0(),
@@ -700,6 +686,18 @@ pub fn parse_content<'a>(id: usize, variants: Variants) -> lip::BoxedParser<'a, 
     )
 }
 
+/// Parse [LaxJyutPing] pronunciation
+pub fn parse_pr(str: &str) -> LaxJyutPing {
+    LaxJyutPing(
+        str.split_whitespace()
+            .map(|pr_seg| match parse_jyutping(pr_seg) {
+                Some(pr) => LaxJyutPingSegment::Standard(pr),
+                None => LaxJyutPingSegment::Nonstandard(pr_seg.to_string()),
+            })
+            .collect(),
+    )
+}
+
 /// Parse [JyutPing] pronunciation
 pub fn parse_jyutping(str: &str) -> Option<JyutPing> {
     let mut start = 0;
@@ -737,14 +735,14 @@ pub fn parse_jyutping(str: &str) -> Option<JyutPing> {
 fn parse_jyutping_component<T: FromStr>(start: usize, str: &str) -> Option<(T, usize)> {
     get_slice(str, start..start + 2)
         .and_then(|first_two| match T::from_str(first_two) {
-        Ok(component) => Some((component, start + 2)),
+            Ok(component) => Some((component, start + 2)),
             Err(_) => get_slice(str, start..start + 1).and_then(|first_one| {
                 match T::from_str(first_one) {
-                Ok(component) => Some((component, start + 1)),
-                Err(_) => None,
-        }
+                    Ok(component) => Some((component, start + 1)),
+                    Err(_) => None,
+                }
             }),
-    })
+        })
         .or(
             get_slice(str, start..start + 1).and_then(|first_one| match T::from_str(first_one) {
                 Ok(component) => Some((component, start + 1)),
