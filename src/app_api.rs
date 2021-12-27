@@ -1,5 +1,5 @@
 use super::dict::LaxJyutPing;
-use super::parse::parse_dict;
+use super::parse::{parse_dict, parse_pr};
 use super::rich_dict::{enrich_dict, RichDict, RichEntry};
 use super::search;
 use chrono::{DateTime, Utc};
@@ -51,8 +51,8 @@ impl Api {
         }
     }
 
-    pub fn pr_search(&self, capacity: usize, query: &LaxJyutPing) -> Vec<PrSearchResult> {
-        pr_search_helper(capacity, &self.dict, query)
+    pub fn pr_search(&self, capacity: usize, query: &str) -> Vec<PrSearchResult> {
+        pr_search_helper(capacity, &self.dict, &parse_pr(query))
     }
 
     pub fn variant_search(&self, capacity: usize, query: &str) -> Vec<VariantSearchResult> {

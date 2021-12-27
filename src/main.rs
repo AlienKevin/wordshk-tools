@@ -12,7 +12,7 @@ use wordshk_tools::rich_dict::enrich_dict;
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    do_variant_search();
+    do_pr_search();
 }
 
 fn do_variant_search() {
@@ -33,42 +33,7 @@ fn do_variant_search() {
 
 fn do_pr_search() {
     let api = Api::new(APP_TMP_DIR);
-    let queries = vec![
-        (
-            "麪包",
-            LaxJyutPing(vec![
-                LaxJyutPingSegment::Standard(JyutPing {
-                    initial: Some(JyutPingInitial::M),
-                    nucleus: JyutPingNucleus::I,
-                    coda: Some(JyutPingCoda::Ng),
-                    tone: None,
-                }),
-                LaxJyutPingSegment::Standard(JyutPing {
-                    initial: Some(JyutPingInitial::B),
-                    nucleus: JyutPingNucleus::Aa,
-                    coda: Some(JyutPingCoda::U),
-                    tone: None,
-                }),
-            ]),
-        ),
-        (
-            "學生",
-            LaxJyutPing(vec![
-                LaxJyutPingSegment::Standard(JyutPing {
-                    initial: Some(JyutPingInitial::H),
-                    nucleus: JyutPingNucleus::O,
-                    coda: Some(JyutPingCoda::K),
-                    tone: Some(JyutPingTone::T6),
-                }),
-                LaxJyutPingSegment::Standard(JyutPing {
-                    initial: Some(JyutPingInitial::S),
-                    nucleus: JyutPingNucleus::Aa,
-                    coda: Some(JyutPingCoda::Ng),
-                    tone: None,
-                }),
-            ]),
-        ),
-    ];
+    let queries = vec![("麪包", "ming baau"), ("學生", "hok6 saang")];
     let max_num_of_results = 10;
     queries.iter().for_each(|(intended, query)| {
         println!("{}\t{}\n", intended, query.to_string());
