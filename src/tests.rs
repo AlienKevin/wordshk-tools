@@ -778,12 +778,32 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
+        parse_jyutping(&"a".to_string()),
+        Some(JyutPing {
+            initial: None,
+            nucleus: JyutPingNucleus::A,
+            coda: None,
+            tone: None,
+        })
+    );
+
+    assert_eq!(
         parse_jyutping(&"seoi5".to_string()),
         Some(JyutPing {
             initial: Some(JyutPingInitial::S),
             nucleus: JyutPingNucleus::Eo,
             coda: Some(JyutPingCoda::I),
             tone: Some(JyutPingTone::T5)
+        })
+    );
+
+    assert_eq!(
+        parse_jyutping(&"baau".to_string()),
+        Some(JyutPing {
+            initial: Some(JyutPingInitial::B),
+            nucleus: JyutPingNucleus::Aa,
+            coda: Some(JyutPingCoda::U),
+            tone: None,
         })
     );
 }

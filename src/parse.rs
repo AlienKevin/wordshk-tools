@@ -735,15 +735,22 @@ pub fn parse_jyutping(str: &str) -> Option<JyutPing> {
 }
 
 fn parse_jyutping_component<T: FromStr>(start: usize, str: &str) -> Option<(T, usize)> {
-    get_slice(str, start..start + 2).and_then(|first_two| match T::from_str(first_two) {
+    get_slice(str, start..start + 2)
+        .and_then(|first_two| match T::from_str(first_two) {
         Ok(component) => Some((component, start + 2)),
-        Err(_) => {
+            Err(_) => get_slice(str, start..start + 1).and_then(|first_one| {
+                match T::from_str(first_one) {
+                Ok(component) => Some((component, start + 1)),
+                Err(_) => None,
+        }
+            }),
+    })
+        .or(
             get_slice(str, start..start + 1).and_then(|first_one| match T::from_str(first_one) {
                 Ok(component) => Some((component, start + 1)),
                 Err(_) => None,
-            })
-        }
-    })
+            }),
+        )
 }
 
 fn parse_jyutping_initial(str: &str) -> Option<(JyutPingInitial, usize)> {
