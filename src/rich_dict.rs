@@ -478,9 +478,8 @@ fn match_ruby_backtrack(
 
 lazy_static! {
     static ref CHARLIST: CharList = {
-        let charlist_file = fs::File::open("charlist.json").unwrap();
-        let charlist_reader = io::BufReader::new(charlist_file);
-        serde_json::from_reader(charlist_reader).unwrap()
+        let charlist = include_bytes!("charlist.json");
+        serde_json::from_slice(charlist).unwrap()
     };
 }
 
