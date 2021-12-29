@@ -1,5 +1,7 @@
 use super::dict::{Clause, LaxJyutPingSegment, Segment, SegmentType};
-use super::rich_dict::{RichDict, RichLine, RubySegment, TextStyle, Word, WordLine, WordSegment};
+use super::rich_dict::{
+    RichDef, RichDict, RichEntry, RichLine, RubySegment, TextStyle, Word, WordLine, WordSegment,
+};
 
 use indoc::indoc;
 use std::fs;
@@ -149,28 +151,63 @@ fn to_xml_badge(tag: &str) -> String {
     to_xml_badge_helper(false, tag)
 }
 
-/// Convert a [RichDict] to Apple Dictionary XML format
-pub fn rich_dict_to_xml(dict: RichDict) -> String {
-    let front_back_matter_filename = "apple_dict/front_back_matter.html";
-    let front_back_matter = fs::read_to_string(front_back_matter_filename).expect(&format!(
-        "Something went wrong when I tried to read {}",
-        front_back_matter_filename
-    ));
-
-    let header = format!(
-        r#"<?xml version="1.0" encoding="UTF-8"?>
-<d:dictionary xmlns="http://www.w3.org/1999/xhtml" xmlns:d="http://www.apple.com/DTDs/DictionaryService-1.0.rng">
-<d:entry id="front_back_matter" d:title="Front/Back Matter">
-{}
-</d:entry>
-"#,
-        front_back_matter
-    );
-
-    let entries = dict
+fn rich_defs_to_xml(defs: &Vec<RichDef>) -> String {
+    "<ol>\n".to_string() + &defs
         .iter()
-        .map(|(_id, entry)| {
-            let entry_str = format!(
+        .map(|def| {
+            "<li>\n".to_string()
+                + "<div class=\"def-head\">\n"
+                + &format!("<div class=\"def-yue\"> <div>【粵】</div> {} </div>\n", clause_to_xml(&def.yue))
+                + &def.eng.clone().map_or("".to_string(), |eng| {
+                    format!("<div class=\"def-eng\"> <div>【英】</div> {} </div>\n", clause_to_xml(&eng))
+                })
+                + &def
+                    .alts
+                    .iter()
+                    .map(|(lang, clause)| {
+                        format!(
+                            "<div class=\"def-alt\"> <div>【{lang_name}】</div> {clause} </div>\n",
+                            lang_name = lang.to_yue_name(),
+                            clause = clause_to_xml(clause)
+                        )
+                    })
+                    .collect::<Vec<String>>()
+                    .join("")
+                + "</div>\n"
+                + &def
+                    .egs
+                    .iter()
+                    .map(|eg| {
+                        "<div class=\"eg\">\n".to_string()
+                        + &eg.zho.clone().map_or("".to_string(), |zho| {
+                            let clause = rich_line_to_xml(&zho);
+                            format!(
+                                "<div class=\"eg-clause\"> <div class=\"lang-tag-ch\">（中）</div> {} </div>\n",
+                                clause
+                            )
+                        }) + &eg.yue.clone().map_or("".to_string(), |yue| {
+                            let clause = rich_line_to_xml(&yue);
+                            format!(
+                                "<div class=\"eg-clause\"> <div class=\"lang-tag-ch\">（粵）</div> {} </div>\n",
+                                clause
+                            )
+                        }) + &eg.eng.clone().map_or("".to_string(), |eng| {
+                            format!("<div class=\"eg-clause\"> <div>（英）</div> <div class=\"eng-eg\">{}</div> </div>\n", clause_to_xml(&vec![eng]))
+                        })
+                        + "</div>"
+                    })
+                    .collect::<Vec<String>>()
+                    .join("\n")
+                + "</li>\n"
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
+    + "</ol>"
+}
+
+fn rich_entry_to_xml(entry: &RichEntry) -> String {
+    {
+        let entry_str = format!(
                 indoc! {r#"
                 <d:entry id="{id}" d:title="{variant_0_word}">
                 <div class="entry">
@@ -241,63 +278,33 @@ pub fn rich_dict_to_xml(dict: RichDict) -> String {
             // TODO: add refs 
             // TODO: add imgs
             + "</div>",
-                defs = "<ol>\n".to_string()
-                    + &entry
-                        .defs
-                        .iter()
-                        .map(|def| {
-                            "<li>\n".to_string()
-                                + "<div class=\"def-head\">\n"
-                                + &format!("<div class=\"def-yue\"> <div>【粵】</div> {} </div>\n", clause_to_xml(&def.yue))
-                                + &def.eng.clone().map_or("".to_string(), |eng| {
-                                    format!("<div class=\"def-eng\"> <div>【英】</div> {} </div>\n", clause_to_xml(&eng))
-                                })
-                                + &def
-                                    .alts
-                                    .iter()
-                                    .map(|(lang, clause)| {
-                                        format!(
-                                            "<div class=\"def-alt\"> <div>【{lang_name}】</div> {clause} </div>\n",
-                                            lang_name = lang.to_yue_name(),
-                                            clause = clause_to_xml(clause)
-                                        )
-                                    })
-                                    .collect::<Vec<String>>()
-                                    .join("")
-                                + "</div>\n"
-                                + &def
-                                    .egs
-                                    .iter()
-                                    .map(|eg| {
-                                        "<div class=\"eg\">\n".to_string()
-                                        + &eg.zho.clone().map_or("".to_string(), |zho| {
-                                            let clause = rich_line_to_xml(&zho);
-                                            format!(
-                                                "<div class=\"eg-clause\"> <div class=\"lang-tag-ch\">（中）</div> {} </div>\n",
-                                                clause
-                                            )
-                                        }) + &eg.yue.clone().map_or("".to_string(), |yue| {
-                                            let clause = rich_line_to_xml(&yue);
-                                            format!(
-                                                "<div class=\"eg-clause\"> <div class=\"lang-tag-ch\">（粵）</div> {} </div>\n",
-                                                clause
-                                            )
-                                        }) + &eg.eng.clone().map_or("".to_string(), |eng| {
-                                            format!("<div class=\"eg-clause\"> <div>（英）</div> <div class=\"eng-eg\">{}</div> </div>\n", clause_to_xml(&vec![eng]))
-                                        })
-                                        + "</div>"
-                                    })
-                                    .collect::<Vec<String>>()
-                                    .join("\n")
-                                + "</li>\n"
-                        })
-                        .collect::<Vec<String>>()
-                        .join("\n")
-                    + "</ol>"
+                defs = rich_defs_to_xml(&entry.defs)
             );
+        entry_str
+    }
+}
 
-            entry_str
-        })
+/// Convert a [RichDict] to Apple Dictionary XML format
+pub fn rich_dict_to_xml(dict: RichDict) -> String {
+    let front_back_matter_filename = "apple_dict/front_back_matter.html";
+    let front_back_matter = fs::read_to_string(front_back_matter_filename).expect(&format!(
+        "Something went wrong when I tried to read {}",
+        front_back_matter_filename
+    ));
+
+    let header = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<d:dictionary xmlns="http://www.w3.org/1999/xhtml" xmlns:d="http://www.apple.com/DTDs/DictionaryService-1.0.rng">
+<d:entry id="front_back_matter" d:title="Front/Back Matter">
+{}
+</d:entry>
+"#,
+        front_back_matter
+    );
+
+    let entries = dict
+        .iter()
+        .map(|(_id, entry)| rich_entry_to_xml(entry))
         .collect::<Vec<String>>()
         .join("\n\n");
     header.to_string() + &entries + "\n</d:dictionary>\n"
