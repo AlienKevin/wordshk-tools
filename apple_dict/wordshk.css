@@ -50,7 +50,7 @@ div.def-yue, div.def-eng, div.def-alt, div.pr-clause, div.eg-clause {
 }
 
 a {
-	color: #d8959f;
+	color: #6b80aa;
 }
 
 div.clause {
@@ -80,7 +80,6 @@ span.badge-weak {
 
 div.def-head {
     margin-bottom: 1em;
-	color: #6b80aa;
 }
 
 div.def-eng, div.def-alt {
