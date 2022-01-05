@@ -42,7 +42,6 @@ ol {
 	list-style-type: none;
 	margin-left: -0.5em;
 	padding-left: 0;
-	white-space: pre-wrap;
 }
 
 div.def-yue, div.def-eng, div.def-alt, div.pr-clause, div.eg-clause {
