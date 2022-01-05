@@ -60,7 +60,7 @@ fn generated_apple_dict() {
 fn generate_html() {
     use std::fs;
     let api = Api::new(APP_TMP_DIR);
-    let test_id = 80623; // test entry id for 麪包
+    let test_id = 100000; // test entry id for 呢 ne1 助詞
     let html = format!(
         "<html>\n<head>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
 <link rel=\"stylesheet\" href=\"test_entry.css\"></head>\n<body>\n{}\n</body>\n</html>\n",
