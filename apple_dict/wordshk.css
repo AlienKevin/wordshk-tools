@@ -29,7 +29,7 @@ div.tags {
 	--dark: black;
 }
 
-.pr-clause {
+.pr-clause, .word-clause {
 	font-size: 200%;
 }
 

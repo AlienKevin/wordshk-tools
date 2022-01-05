@@ -84,7 +84,7 @@ fn segment_to_xml((seg_type, seg): &Segment) -> String {
 fn word_line_to_xml(line: &WordLine) -> String {
     format!(
         "<div class=\"{}\">{}</div>",
-        "pr-clause",
+        "word-clause",
         line.iter()
             .map(word_segment_to_xml)
             .collect::<Vec<String>>()
