@@ -10,9 +10,10 @@ use wordshk_tools::parse::parse_dict;
 use wordshk_tools::rich_dict::enrich_dict;
 
 const APP_TMP_DIR: &str = "./app_tmp";
+const ENTRY_HTML_TEST_PATH: &str = "./app_tmp/test_entry.html";
 
 fn main() {
-    do_pr_search();
+    generate_html();
 }
 
 fn do_variant_search() {
@@ -54,4 +55,16 @@ fn generated_apple_dict() {
             print!("{}", rich_dict_to_xml(enrich_dict(&dict)));
         }
     }
+}
+
+fn generate_html() {
+    use std::fs;
+    let api = Api::new(APP_TMP_DIR);
+    let test_id = 80623; // test entry id for 麪包
+    let html = format!(
+        "<html>\n<head>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+<link rel=\"stylesheet\" href=\"test_entry.css\"></head>\n<body>\n{}\n</body>\n</html>\n",
+        api.get_entry_html(test_id)
+    );
+    fs::write(ENTRY_HTML_TEST_PATH, html).expect("Unable to write test entry HTML");
 }

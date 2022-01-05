@@ -1,6 +1,7 @@
 use super::dict::LaxJyutPing;
+use super::emit_html::rich_entry_to_xml;
 use super::parse::{parse_dict, parse_pr};
-use super::rich_dict::{enrich_dict, RichDict, RichEntry};
+use super::rich_dict::{enrich_dict, RichDict};
 use super::search;
 use chrono::{DateTime, Utc};
 use flate2::read::GzDecoder;
@@ -59,8 +60,8 @@ impl Api {
         variant_search_helper(capacity, &self.dict, query)
     }
 
-    pub fn get_entry(&self, id: usize) -> RichEntry {
-        (*self.dict.get(&id).unwrap()).clone()
+    pub fn get_entry_html(&self, id: usize) -> String {
+        rich_entry_to_xml(self.dict.get(&id).unwrap())
     }
 
     fn get_new_dict<P: AsRef<Path>>(api_path: &P) -> Api {
