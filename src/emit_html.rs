@@ -94,24 +94,24 @@ fn rich_line_to_xml(line: &RichLine) -> String {
                     let mut word_str = String::new();
                     pairs.iter().for_each(|(word, prs)| {
                         ruby += &format!(
-                            "\n<rb>{}</rb>\n<rt>{}</rt>",
+                            "\n{}<rt>{}</rt>",
                             word_to_xml(word),
                             prs.join(" ")
                         );
                         word_str += &word.to_string();
                     });
                     ruby += "\n</ruby>";
-                    output += &format!("<rb>{}</rb><rt></rt>", &link_to_xml(&word_str, &ruby));
+                    output += &format!("{}<rt></rt>", &link_to_xml(&word_str, &ruby));
                 }
                 RubySegment::Word(word, prs) => {
                     output += &format!(
-                        "\n<rb>{}</rb>\n<rt>{}</rt>",
+                        "\n{}<rt>{}</rt>",
                         word_to_xml(word),
                         prs.join(" ")
                     );
                 }
                 RubySegment::Punc(punc) => {
-                    output += &format!("\n<rb>{}</rb>\n<rt></rt>", punc);
+                    output += &format!("\n{}<rt></rt>", punc);
                 }
             });
             output += "\n</ruby>";
