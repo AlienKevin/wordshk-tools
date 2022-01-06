@@ -161,9 +161,9 @@ fn rich_defs_to_xml(defs: &Vec<RichDef>) -> String {
                 let mut egs_iter = def.egs.iter();
                 "<li>\n".to_string()
                     + "<div class=\"def-head\">\n"
-                    + &format!("<div>【粵】{}\n</div>", clause_to_xml(&def.yue))
+                    + &format!("<div>【粵】{}</div>\n", clause_to_xml(&def.yue))
                     + &def.eng.clone().map_or("".to_string(), |eng| {
-                        format!("<div>【英】{}\n</div>", clause_to_xml(&eng))
+                        format!("<div>【英】{}</div>\n", clause_to_xml(&eng))
                     })
                     + &def
                         .alts
