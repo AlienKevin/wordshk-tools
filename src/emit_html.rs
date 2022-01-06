@@ -34,6 +34,14 @@ fn word_to_xml(word: &Word) -> String {
         .join("")
 }
 
+fn word_to_xml_plain(word: &Word) -> String {
+    word.0
+        .iter()
+        .map(|(_style, seg)| xml_escape(seg))
+        .collect::<Vec<String>>()
+        .join("")
+}
+
 /// Escape '<' and '&' in an XML string
 fn xml_escape(s: &str) -> String {
     s.replace("<", "&lt;").replace("&", "&amp;")
@@ -90,25 +98,14 @@ fn rich_line_to_xml(line: &RichLine) -> String {
             let mut output = "<ruby class=\"pr-clause\">".to_string();
             ruby_line.iter().for_each(|seg| match seg {
                 RubySegment::LinkedWord(pairs) => {
-                    let mut ruby = "<ruby>".to_string();
                     let mut word_str = String::new();
                     pairs.iter().for_each(|(word, prs)| {
-                        ruby += &format!(
-                            "\n{}<rt>{}</rt>",
-                            word_to_xml(word),
-                            prs.join(" ")
-                        );
+                        output += &format!("\n{}<rt>{}</rt>", word_to_xml_plain(word), prs.join(" "));
                         word_str += &word.to_string();
                     });
-                    ruby += "\n</ruby>";
-                    output += &format!("{}<rt></rt>", &link_to_xml(&word_str, &ruby));
                 }
                 RubySegment::Word(word, prs) => {
-                    output += &format!(
-                        "\n{}<rt>{}</rt>",
-                        word_to_xml(word),
-                        prs.join(" ")
-                    );
+                    output += &format!("\n{}<rt>{}</rt>", word_to_xml_plain(word), prs.join(" "));
                 }
                 RubySegment::Punc(punc) => {
                     output += &format!("\n{}<rt></rt>", punc);
