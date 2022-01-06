@@ -50,23 +50,6 @@ fn link_to_xml(link: &str, word: &str) -> String {
     format!(r#"<a href="{}">{}</a>"#, link, word,)
 }
 
-fn clause_to_xml_with_class_name(class_name: &str, clause: &Clause) -> String {
-    format!(
-        "<div class=\"{}\">{}</div>",
-        class_name,
-        clause
-            .iter()
-            .map(|line| {
-                line.iter()
-                    .map(segment_to_xml)
-                    .collect::<Vec<String>>()
-                    .join("")
-            })
-            .collect::<Vec<String>>()
-            .join("\n")
-    )
-}
-
 fn segment_to_xml((seg_type, seg): &Segment) -> String {
     match seg_type {
         SegmentType::Text => xml_escape(seg),
@@ -88,7 +71,16 @@ fn word_line_to_xml(line: &WordLine) -> String {
 
 /// Convert a [RichClause] to an Apple Dictionary XML string
 fn clause_to_xml(clause: &Clause) -> String {
-    clause_to_xml_with_class_name("clause", clause)
+    clause
+        .iter()
+        .map(|line| {
+            line.iter()
+                .map(segment_to_xml)
+                .collect::<Vec<String>>()
+                .join("")
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
 }
 
 /// Convert a [RichLine] to an Apple Dictionary XML string
@@ -149,23 +141,14 @@ fn rich_eg_to_xml(eg: &RichEg) -> String {
     "<div class=\"eg\">\n".to_string()
         + &eg.zho.clone().map_or("".to_string(), |zho| {
             let clause = rich_line_to_xml(&zho);
-            format!(
-                "<div class=\"eg-clause\"> <div class=\"lang-tag-ch\">（中）</div> {} </div>\n",
-                clause
-            )
+            format!("<div>（中）{}</div>\n", clause)
         })
         + &eg.yue.clone().map_or("".to_string(), |yue| {
             let clause = rich_line_to_xml(&yue);
-            format!(
-                "<div class=\"eg-clause\"> <div class=\"lang-tag-ch\">（粵）</div> {} </div>\n",
-                clause
-            )
+            format!("<div>（粵）{}</div>\n", clause)
         })
         + &eg.eng.clone().map_or("".to_string(), |eng| {
-            format!(
-            "<div class=\"eg-clause\"> <div>（英）</div> <div class=\"eng-eg\">{}</div> </div>\n",
-            clause_to_xml(&vec![eng])
-        )
+            format!("<div>（英）{}</div>\n", clause_to_xml(&vec![eng]))
         })
         + "</div>"
 }
@@ -178,25 +161,19 @@ fn rich_defs_to_xml(defs: &Vec<RichDef>) -> String {
                 let mut egs_iter = def.egs.iter();
                 "<li>\n".to_string()
                     + "<div class=\"def-head\">\n"
-                    + &format!(
-                        "<div class=\"def-yue\"> <div>【粵】</div> {} </div>\n",
-                        clause_to_xml(&def.yue)
-                    )
+                    + &format!("<div>【粵】{}\n</div>", clause_to_xml(&def.yue))
                     + &def.eng.clone().map_or("".to_string(), |eng| {
-                        format!(
-                            "<div class=\"def-eng\"> <div>【英】</div> {} </div>\n",
-                            clause_to_xml(&eng)
-                        )
+                        format!("<div>【英】{}\n</div>", clause_to_xml(&eng))
                     })
                     + &def
                         .alts
                         .iter()
                         .map(|(lang, clause)| {
                             format!(
-                            "<div class=\"def-alt\"> <div>【{lang_name}】</div> {clause} </div>\n",
-                            lang_name = lang.to_yue_name(),
-                            clause = clause_to_xml(clause)
-                        )
+                                "<div>【{lang_name}】{clause}</div>\n",
+                                lang_name = lang.to_yue_name(),
+                                clause = clause_to_xml(clause)
+                            )
                         })
                         .collect::<Vec<String>>()
                         .join("")
