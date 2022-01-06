@@ -49,7 +49,8 @@ div.def-yue, div.def-eng, div.def-alt, div.pr-clause, div.eg-clause {
 }
 
 a {
-	color: #6b80aa;
+	color: rgb(35, 92, 151);
+	text-decoration: none;
 }
 
 div.clause {
