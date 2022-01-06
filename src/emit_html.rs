@@ -158,16 +158,16 @@ fn rich_defs_to_xml(defs: &Vec<RichDef>) -> String {
                 let mut egs_iter = def.egs.iter();
                 "<li>\n".to_string()
                     + "<div class=\"def-head\">\n"
-                    + &format!("<div>【粵】{}</div>\n", clause_to_xml(&def.yue))
+                    + &format!("【粵】{}\n", clause_to_xml(&def.yue))
                     + &def.eng.clone().map_or("".to_string(), |eng| {
-                        format!("<div>【英】{}</div>\n", clause_to_xml(&eng))
+                        format!("<br>【英】{}\n", clause_to_xml(&eng))
                     })
                     + &def
                         .alts
                         .iter()
                         .map(|(lang, clause)| {
                             format!(
-                                "<div>【{lang_name}】{clause}</div>\n",
+                                "<br>【{lang_name}】{clause}\n",
                                 lang_name = lang.to_yue_name(),
                                 clause = clause_to_xml(clause)
                             )
@@ -208,14 +208,12 @@ pub fn rich_entry_to_xml(entry: &RichEntry) -> String {
     {
         let entry_str = format!(
             indoc! {r#"
-                <div class="entry">
                 <div class ="entry-head">
                 {variants_word_pr}
                 {tags}
                 </div>
                 <div>
                 {defs}
-                </div>
                 </div>"#},
             variants_word_pr = entry
                 .variants
