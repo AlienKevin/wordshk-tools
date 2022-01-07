@@ -100,7 +100,8 @@ fn rich_line_to_xml(line: &RichLine) -> String {
                 RubySegment::LinkedWord(pairs) => {
                     let mut word_str = String::new();
                     pairs.iter().for_each(|(word, prs)| {
-                        output += &format!("\n{}<rt>{}</rt>", word_to_xml_plain(word), prs.join(" "));
+                        output +=
+                            &format!("\n{}<rt>{}</rt>", word_to_xml_plain(word), prs.join(" "));
                         word_str += &word.to_string();
                     });
                 }
@@ -156,25 +157,24 @@ fn rich_defs_to_xml(defs: &Vec<RichDef>) -> String {
             .iter()
             .map(|def| {
                 let mut egs_iter = def.egs.iter();
-                "<li>\n".to_string()
-                    + "<div class=\"def-head\">\n"
-                    + &format!("【粵】{}\n", clause_to_xml(&def.yue))
+                "<li>".to_string()
+                    + &format!("【粵】{}", clause_to_xml(&def.yue))
                     + &def.eng.clone().map_or("".to_string(), |eng| {
-                        format!("<br>【英】{}\n", clause_to_xml(&eng))
+                        format!("<br>【英】{}", clause_to_xml(&eng))
                     })
                     + &def
                         .alts
                         .iter()
                         .map(|(lang, clause)| {
                             format!(
-                                "<br>【{lang_name}】{clause}\n",
+                                "<br>【{lang_name}】{clause}",
                                 lang_name = lang.to_yue_name(),
                                 clause = clause_to_xml(clause)
                             )
                         })
                         .collect::<Vec<String>>()
                         .join("")
-                    + "</div>\n"
+                    + "\n"
                     + &egs_iter
                         .next()
                         .map(rich_eg_to_xml)
@@ -212,9 +212,7 @@ pub fn rich_entry_to_xml(entry: &RichEntry) -> String {
                 {variants_word_pr}
                 {tags}
                 </div>
-                <div>
-                {defs}
-                </div>"#},
+                {defs}"#},
             variants_word_pr = entry
                 .variants
                 .0
