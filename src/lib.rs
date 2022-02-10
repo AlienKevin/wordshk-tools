@@ -7,4 +7,5 @@ pub mod emit_html;
 pub mod parse;
 pub mod rich_dict;
 pub mod search;
+pub mod lean_rich_dict;
 mod unicode;

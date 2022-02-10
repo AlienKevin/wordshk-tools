@@ -11,6 +11,7 @@ use wordshk_tools::rich_dict::enrich_dict;
 
 const APP_TMP_DIR: &str = "./app_tmp";
 const ENTRY_HTML_TEST_PATH: &str = "./app_tmp/test_entry.html";
+const ENTRY_JSON_TEST_PATH: &str = "./app_tmp/test_entry.json";
 
 fn main() {
     generate_html();
@@ -60,11 +61,14 @@ fn generated_apple_dict() {
 fn generate_html() {
     use std::fs;
     let api = Api::new(APP_TMP_DIR);
-    let test_id = 100000; // test entry id for 呢 ne1 助詞
-    let html = format!(
-        "<html>\n<head>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-<link rel=\"stylesheet\" href=\"test_entry.css\"></head>\n<body>\n{}\n</body>\n</html>\n",
-        api.get_entry_html(test_id)
-    );
-    fs::write(ENTRY_HTML_TEST_PATH, html).expect("Unable to write test entry HTML");
+    // let test_id = 100000; // test entry id for 呢 ne1 助詞
+    let test_id = 56534; // test entry id for 命
+//     let html = format!(
+//         "<html>\n<head>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+// <link rel=\"stylesheet\" href=\"test_entry.css\"></head>\n<body>\n{}\n</body>\n</html>\n",
+//         api.get_entry_html(test_id)
+//     );
+//     fs::write(ENTRY_HTML_TEST_PATH, html).expect("Unable to write test entry HTML");
+    let json = api.get_entry_json(test_id);
+    fs::write(ENTRY_JSON_TEST_PATH, json).expect("Unable to write test entry JSON");
 }
