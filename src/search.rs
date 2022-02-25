@@ -253,15 +253,13 @@ pub fn pr_search(dict: &RichDict, query: &LaxJyutPing) -> BinaryHeap<PrSearchRan
                         }
                     },
                 );
-                if score >= 80 {
-                    ranks.push(PrSearchRank {
-                        id: *id,
-                        variant_index,
-                        pr_index,
-                        score,
-                        pr_start_index,
-                    });
-                }
+                ranks.push(PrSearchRank {
+                    id: *id,
+                    variant_index,
+                    pr_index,
+                    score,
+                    pr_start_index,
+                });
             });
     });
     ranks
