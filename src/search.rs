@@ -137,11 +137,9 @@ pub fn compare_jyutping(pr1: &JyutPing, pr2: &JyutPing) -> Score {
             0
         }) + (if pr1.nucleus == pr2.nucleus {
             32
-        } else {
-            let ((backness1, height1, roundedness1), (backness2, height2, roundedness2)) = (
-                classify_nucleus(&pr1.nucleus),
-                classify_nucleus(&pr2.nucleus),
-            );
+        } else if let (Some(n1), Some(n2)) = (pr1.nucleus.as_ref(), pr2.nucleus.as_ref()) {
+            let ((backness1, height1, roundedness1), (backness2, height2, roundedness2)) =
+                (classify_nucleus(&n1), classify_nucleus(&n2));
             if backness1 == backness2 && height1 == height2 && roundedness1 == roundedness2 {
                 32 - 4
             } else {
@@ -150,6 +148,8 @@ pub fn compare_jyutping(pr1: &JyutPing, pr2: &JyutPing) -> Score {
                     - (if height1 == height2 { 0 } else { 4 })
                     - (if roundedness1 == roundedness2 { 0 } else { 3 })
             }
+        } else {
+            0
         }) + (if pr1.coda == pr2.coda {
             24
         } else if let (Some(i1), Some(i2)) = (pr1.coda.as_ref(), pr2.coda.as_ref()) {

@@ -707,16 +707,11 @@ pub fn parse_jyutping(str: &str) -> Option<JyutPing> {
         _initial
     });
 
-    let nucleus: JyutPingNucleus;
-    match parse_jyutping_nucleus(start, str) {
-        Some((_nucleus, _start)) => {
-            nucleus = _nucleus;
+    let nucleus: Option<JyutPingNucleus> =
+        parse_jyutping_nucleus(start, str).map(|(_nucleus, _start)| {
             start = _start;
-        }
-        None => {
-            return None;
-        }
-    };
+            _nucleus
+        });
 
     let coda: Option<JyutPingCoda> = parse_jyutping_coda(start, str).map(|(_coda, _start)| {
         start = _start;

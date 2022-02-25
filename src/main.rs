@@ -14,7 +14,7 @@ const ENTRY_HTML_TEST_PATH: &str = "./app_tmp/test_entry.html";
 const ENTRY_JSON_TEST_PATH: &str = "./app_tmp/test_entry.json";
 
 fn main() {
-    generate_html();
+    do_pr_search();
 }
 
 fn do_variant_search() {
@@ -35,7 +35,7 @@ fn do_variant_search() {
 
 fn do_pr_search() {
     let api = Api::new(APP_TMP_DIR);
-    let queries = vec![("麪包", "ming baau"), ("學生", "hok6 saang")];
+    let queries = vec![("五", "ng")];
     let max_num_of_results = 10;
     queries.iter().for_each(|(intended, query)| {
         println!("{}\t{}\n", intended, query.to_string());

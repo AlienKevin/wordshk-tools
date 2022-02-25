@@ -183,13 +183,13 @@ impl fmt::Display for LaxJyutPings {
     }
 }
 
-/// JyutPing encoding with initial, nucleus (required), coda, and tone
+/// JyutPing encoding with initial, nucleus, coda, and tone
 ///
 /// Phonetics info based on: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct JyutPing {
     pub initial: Option<JyutPingInitial>,
-    pub nucleus: JyutPingNucleus,
+    pub nucleus: Option<JyutPingNucleus>,
     pub coda: Option<JyutPingCoda>,
     pub tone: Option<JyutPingTone>,
 }
@@ -201,7 +201,11 @@ impl fmt::Display for JyutPing {
                 .as_ref()
                 .map(|i| i.to_string())
                 .unwrap_or("".to_string())
-                + &self.nucleus.to_string()
+                + &self
+                    .nucleus
+                    .as_ref()
+                    .map(|i| i.to_string())
+                    .unwrap_or("".to_string())
                 + &self
                     .coda
                     .as_ref()
@@ -222,7 +226,11 @@ impl JyutPing {
             .as_ref()
             .map(|i| i.to_string())
             .unwrap_or("".to_string())
-            + &self.nucleus.to_string()
+            + &self
+                .nucleus
+                .as_ref()
+                .map(|i| i.to_string())
+                .unwrap_or("".to_string())
             + &self
                 .coda
                 .as_ref()
@@ -307,7 +315,7 @@ pub enum JyutPingInitial {
     J,
 }
 
-/// Nucleus segment of a Jyutping, always required
+/// Nucleus segment of a Jyutping, not required in case of /ng/ and /m/
 ///
 /// Eg: 'a' in "sap6"
 ///
