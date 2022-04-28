@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 /// A dictionary is a list of entries
@@ -46,6 +46,13 @@ pub struct Variants(pub Vec<Variant>);
 impl Variants {
     pub fn to_words(&self) -> Vec<&str> {
         self.0.iter().map(|variant| &variant.word[..]).collect()
+    }
+    pub fn to_words_set(&self) -> HashSet<&str> {
+        self.0
+            .iter()
+            .map(|variant| &variant.word[..])
+            .into_iter()
+            .collect()
     }
 }
 

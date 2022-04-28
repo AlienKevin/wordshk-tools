@@ -1,8 +1,8 @@
 use super::dict::LaxJyutPing;
 use super::emit_html::rich_entry_to_xml;
+use super::lean_rich_dict::to_lean_rich_entry;
 use super::parse::{parse_dict, parse_pr};
 use super::rich_dict::{enrich_dict, RichDict};
-use super::lean_rich_dict::{to_lean_rich_entry};
 use super::search;
 use chrono::{DateTime, Utc};
 use flate2::read::GzDecoder;
@@ -68,6 +68,14 @@ impl Api {
     pub fn get_entry_json(&self, id: usize) -> String {
         let rich_entry = self.dict.get(&id).unwrap();
         serde_json::to_string(&to_lean_rich_entry(rich_entry)).unwrap()
+    }
+
+    pub fn get_entry_group_json(&self, id: usize) -> Vec<String> {
+        let rich_entry_group = search::get_entry_group(&self.dict, &id);
+        rich_entry_group
+            .iter()
+            .map(|entry| serde_json::to_string(&to_lean_rich_entry(entry)).unwrap())
+            .collect()
     }
 
     fn get_new_dict<P: AsRef<Path>>(api_path: &P) -> Api {

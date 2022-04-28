@@ -1,7 +1,7 @@
 use super::dict::{
     Dict, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing, LaxJyutPingSegment,
 };
-use super::rich_dict::RichDict;
+use super::rich_dict::{RichDict, RichEntry};
 use super::unicode;
 use lazy_static::lazy_static;
 use std::cmp::Ordering;
@@ -231,6 +231,25 @@ impl PartialOrd for PrSearchRank {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
+}
+
+pub fn get_entry_group(dict: &RichDict, id: &usize) -> Vec<RichEntry> {
+    let query_entry = dict.get(&id).unwrap();
+    dict.iter()
+        .filter_map(|(_, entry)| {
+            if query_entry
+                .variants
+                .to_words_set()
+                .intersection(&entry.variants.to_words_set())
+                .next()
+                != None
+            {
+                Some(entry.clone())
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 pub fn pr_search(dict: &RichDict, query: &LaxJyutPing) -> BinaryHeap<PrSearchRank> {
