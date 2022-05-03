@@ -18,19 +18,27 @@ pub fn is_punc(c: char) -> bool {
 
 /// Test whether a character is a Chinese punctuation
 pub fn is_chinese_punc(c: char) -> bool {
-    CHINESE_PUNCS.union(&SHARED_PUNCS).copied().collect::<HashSet<char>>().contains(&c)
+    CHINESE_PUNCS
+        .union(&SHARED_PUNCS)
+        .copied()
+        .collect::<HashSet<char>>()
+        .contains(&c)
 }
 
 /// Test whether a character is an English punctuation
 pub fn is_english_punc(c: char) -> bool {
-    ENGLISH_PUNCS.union(&SHARED_PUNCS).copied().collect::<HashSet<char>>().contains(&c)
+    ENGLISH_PUNCS
+        .union(&SHARED_PUNCS)
+        .copied()
+        .collect::<HashSet<char>>()
+        .contains(&c)
 }
 
 /// Test if a character is latin small or capital letter
 pub fn is_latin(c: char) -> bool {
     if let Some(name) = unicode_names2::name(c) {
         let name = format!("{}", name);
-        name.starts_with("LATIN SMALL LETTER") || name.starts_with("LATIN CAPITAL LETTER")
+        name.contains("LATIN SMALL LETTER ") || name.contains("LATIN CAPITAL LETTER ")
     } else {
         false
     }

@@ -518,6 +518,7 @@ fn test_is_latin() {
     assert!(is_latin('Ņ'));
     assert!(is_latin('Ō'));
     assert!(is_latin('Ƽ'));
+    assert!(is_latin('Ｉ'));
 
     assert!(!is_latin('ĳ')); // no ligatures
     assert!(!is_latin('Ω')); // no greek
@@ -776,6 +777,19 @@ fn test_match_ruby() {
             Word(normal_word("日"), vec!["jat6".into()]),
             Word(normal_word("子"), vec!["zi2".into()]),
             Punc("。".into())
+        ]
+    );
+
+    assert_eq!(
+        match_ruby(
+            &vec!["II".into()],
+            &vec![text("個ＩＩ，")],
+            &vec!["go3", "aai1", "aai1"]
+        ),
+        vec![
+            Word(normal_word("個"), vec!["go3".into()]),
+            Word(normal_word("ＩＩ"), vec!["aai1".into(), "aai1".into()]),
+            Punc("，".into())
         ]
     );
 }
