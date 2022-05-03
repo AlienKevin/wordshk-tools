@@ -311,7 +311,7 @@ pub fn match_ruby(variants: &Vec<&str>, line: &Line, prs: &Vec<&str>) -> RubyLin
             Some(j) => create_ruby_segment(seg_type, word, &prs[*j..j + 1]),
             None => {
                 let word_str = word.to_string();
-                if unicode::test_g(unicode::is_punctuation, &word_str) {
+                if unicode::test_g(unicode::is_punc, &word_str) {
                     RubySegment::Punc(word_str)
                 } else {
                     let start = {

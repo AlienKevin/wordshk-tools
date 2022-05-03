@@ -12,8 +12,18 @@ pub fn to_words(s: &str) -> Vec<&str> {
 }
 
 /// Test whether a character is a Chinese/English punctuation
-pub fn is_punctuation(c: char) -> bool {
-    PUNCTUATIONS.contains(&c)
+pub fn is_punc(c: char) -> bool {
+    PUNCS.contains(&c)
+}
+
+/// Test whether a character is a Chinese punctuation
+pub fn is_chinese_punc(c: char) -> bool {
+    CHINESE_PUNCS.union(&SHARED_PUNCS).copied().collect::<HashSet<char>>().contains(&c)
+}
+
+/// Test whether a character is an English punctuation
+pub fn is_english_punc(c: char) -> bool {
+    ENGLISH_PUNCS.union(&SHARED_PUNCS).copied().collect::<HashSet<char>>().contains(&c)
 }
 
 /// Test if a character is latin small or capital letter
@@ -48,16 +58,27 @@ pub fn test_g(f: fn(char) -> bool, g: &str) -> bool {
 }
 
 lazy_static! {
-    static ref PUNCTUATIONS: HashSet<char> = {
+    static ref PUNCS: HashSet<char> = {
+        SHARED_PUNCS.union(&ENGLISH_PUNCS).copied().collect::<HashSet<char>>().union(&CHINESE_PUNCS).copied().collect()
+    };
+
+    static ref SHARED_PUNCS: HashSet<char> = {
         HashSet::from([
-            // Shared punctuations
-            '@', '#', '$', '%', '^', '&', '*',
-            // English punctuations
-            '~', '`', '!',  '(', ')', '-', '_', '{', '}', '[', ']', '|', '\\', ':', ';',
-            '"', '\'', '<', '>', ',', '.', '?', '/',
-            // Chinese punctuations
-            '～', '·', '！', '：', '；', '“', '”', '‘', '’', '【', '】', '（', '）',
-            '「', '」', '《', '》', '？', '，', '。', '、', '／', '＋'
+            '@', '#', '$', '%', '^', '&', '*', '·', '…', '‥', '—', '～'
         ])
+    };
+
+    static ref ENGLISH_PUNCS: HashSet<char> = {
+        HashSet::from(['~', '`', '!',  '(', ')', '-', '_', '{', '}', '[', ']', '|', '\\', ':', ';',
+            '"', '\'', '<', '>', ',', '.', '?', '/'])
+    };
+
+    static ref CHINESE_PUNCS: HashSet<char> = {
+        HashSet::from([
+            '！', '：', '；', '“', '”', '‘', '’', '【', '】', '（', '）',
+            '「', '」', '﹁', '﹂', '『','』', '《', '》', '？', '，', '。', '、', '／', '＋',
+            '〈','〉', '︿', '﹀', '［', '］', '‧',
+            // Small Form Variants for Chinese National Standard CNS 11643
+            '﹐', '﹑','﹒', '﹔', '﹕', '﹖', '﹗', '﹘', '﹙', '﹚', '﹛', '﹜', '﹝', '﹞', '﹟'])
     };
 }

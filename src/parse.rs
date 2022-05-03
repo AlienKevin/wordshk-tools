@@ -150,7 +150,7 @@ pub fn parse_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
             succeed!(|string| (SegmentType::Link, string))
                 .skip(token("#"))
                 .keep(take_chomped(chomp_while1c(
-                    &(|c: &char| !unicode::is_punctuation(*c) && !c.is_whitespace()),
+                    &(|c: &char| !unicode::is_punc(*c) && !c.is_whitespace()),
                     name
                 )))
                 .skip(optional("", token(" "))),
@@ -213,7 +213,7 @@ pub fn parse_partial_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Lin
             succeed!(|string: String| (SegmentType::Link, string.trim_end().to_string()))
                 .skip(token("#"))
                 .keep(take_chomped(chomp_while1c(
-                    &(|c: &char| !unicode::is_punctuation(*c) && !c.is_whitespace() && *c != '('),
+                    &(|c: &char| !unicode::is_punc(*c) && !c.is_whitespace() && *c != '('),
                     name
                 )))
                 .skip(optional("", token(" "))),
