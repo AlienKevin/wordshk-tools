@@ -737,7 +737,7 @@ fn test_match_ruby() {
     assert_eq!(
         match_ruby(
             &vec!["volt".into()],
-            &vec![text("筆芯電嘅電壓係1.5 volt")],
+            &vec![text("筆芯電嘅電壓係1.5 volt。")],
             &vec![
                 "bat1", "sam1", "din6", "ge3", "din6", "aat3", "hai6", "jat1", "dim2", "ng5",
                 "wuk1"
@@ -755,6 +755,27 @@ fn test_match_ruby() {
                 rich_dict::Word(vec![normal("1.5 "), bold("volt")]),
                 vec!["jat1".into(), "dim2".into(), "ng5".into(), "wuk1".into()]
             ),
+            Punc("。".into())
+        ]
+    );
+
+    assert_eq!(
+        match_ruby(
+            &vec!["懷春".into()],
+            &vec![text("能曾經有懷春嘅日子。")],
+            &vec!["nan4", "can4", "ging1", "jau5", "waai4", "ceon1", "ge3", "jat6", "zi2"]
+        ),
+        vec![
+            Word(normal_word("能"), vec!["nan4".into()]),
+            Word(normal_word("曾"), vec!["can4".into()]),
+            Word(normal_word("經"), vec!["ging1".into()]),
+            Word(normal_word("有"), vec!["jau5".into()]),
+            Word(bold_word("懷"), vec!["waai4".into()]),
+            Word(bold_word("春"), vec!["ceon1".into()]),
+            Word(normal_word("嘅"), vec!["ge3".into()]),
+            Word(normal_word("日"), vec!["jat6".into()]),
+            Word(normal_word("子"), vec!["zi2".into()]),
+            Punc("。".into())
         ]
     );
 }

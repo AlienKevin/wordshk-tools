@@ -367,13 +367,15 @@ fn unflatten_ruby_line(line: &RubyLine) -> RubyLine {
 enum PrMatch {
     Full,
     Half,
+    ChineseChar, // a Chinese character that doesn't match the pr in CHARLIST in ful or half
     Zero,
 }
 
 fn pr_match_to_score(m: PrMatch) -> usize {
     match m {
-        PrMatch::Full => 2,
-        PrMatch::Half => 1,
+        PrMatch::Full => 4,
+        PrMatch::Half => 2,
+        PrMatch::ChineseChar => 1,
         PrMatch::Zero => 0,
     }
 }
@@ -383,36 +385,42 @@ fn match_pr(seg: &str, pr: &str) -> PrMatch {
         return PrMatch::Zero;
     }
     let c = seg.chars().next().unwrap();
-    match CHARLIST.get(&c) {
-        Some(c_prs) => {
-            match c_prs.get(pr) {
-                Some(_) => PrMatch::Full,
-                None => {
-                    // try half pr (without tones), to accommodate for tone changes
-                    let half_c_prs = c_prs
-                        .keys()
-                        .map(|pr| {
-                            if let Some(tail) = pr.chars().last() {
-                                if tail.is_digit(10) {
-                                    &pr[0..pr.len() - 1]
+    if unicode::is_chinese_punc(c) {
+        return PrMatch::Zero;
+    } else {
+        match CHARLIST.get(&c) {
+            Some(c_prs) => {
+                match c_prs.get(pr) {
+                    Some(_) => PrMatch::Full,
+                    None => {
+                        // try half pr (without tones), to accommodate for tone changes
+                        let half_c_prs = c_prs
+                            .keys()
+                            .map(|pr| {
+                                if let Some(tail) = pr.chars().last() {
+                                    if tail.is_digit(10) {
+                                        &pr[0..pr.len() - 1]
+                                    } else {
+                                        pr
+                                    }
                                 } else {
                                     pr
                                 }
-                            } else {
-                                pr
-                            }
-                        })
-                        .collect::<Vec<&str>>();
-                    // found the half pr
-                    if half_c_prs.contains(&&pr[..]) {
-                        PrMatch::Half
-                    } else {
-                        PrMatch::Zero
+                            })
+                            .collect::<Vec<&str>>();
+                        // found the half pr
+                        if half_c_prs.contains(&&pr[..]) {
+                            PrMatch::Half
+                        } else if unicode::is_cjk(c) {
+                            PrMatch::ChineseChar
+                        } else {
+                            PrMatch::Zero
+                        }
                     }
                 }
             }
+            None => PrMatch::Zero,
         }
-        None => PrMatch::Zero,
     }
 }
 
@@ -427,7 +435,7 @@ fn match_ruby_construct_table(line: &WordLine, prs: &Vec<&str>) -> Vec<Vec<usize
             let (_, word) = &line[i - 1];
             let cell_pr_match = match_pr(&word.to_string(), prs[j - 1]);
             match cell_pr_match {
-                PrMatch::Full | PrMatch::Half => {
+                PrMatch::Full | PrMatch::Half | PrMatch::ChineseChar => {
                     pr_scores[i][j] = pr_scores[i - 1][j - 1] + pr_match_to_score(cell_pr_match);
                 }
                 PrMatch::Zero => {
@@ -454,7 +462,7 @@ fn match_ruby_backtrack(
         // println!("i: {}, j: {}", i, j);
         let (_, word) = &line[i - 1];
         match match_pr(&word.to_string(), &prs[j - 1]) {
-            PrMatch::Full | PrMatch::Half => {
+            PrMatch::Full | PrMatch::Half | PrMatch::ChineseChar => {
                 pr_map.insert(i - 1, j - 1);
                 // backtrack to the top left
                 i -= 1;
