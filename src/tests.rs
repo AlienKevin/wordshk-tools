@@ -794,8 +794,25 @@ fn test_match_ruby() {
         ),
         vec![
             Word(normal_word("個"), vec!["go3".into()]),
-            Word(normal_word("ＩＩ"), vec!["aai1".into(), "aai1".into()]),
+            Word(bold_word("ＩＩ"), vec!["aai1".into(), "aai1".into()]),
             Punc("，".into())
+        ]
+    );
+
+    assert_eq!(
+        match_ruby(
+            &vec!["hello".into(), "哈佬".into()],
+            &vec![text("Hello，好耐冇見。")],
+            &vec!["haa1", "lou3", "hou2", "noi6", "mou5", "gin3"]
+        ),
+        vec![
+            Word(bold_word("Hello"), vec!["haa1".into(), "lou3".into()]),
+            Punc("，".into()),
+            Word(normal_word("好"), vec!["hou2".into()]),
+            Word(normal_word("耐"), vec!["noi6".into()]),
+            Word(normal_word("冇"), vec!["mou5".into()]),
+            Word(normal_word("見"), vec!["gin3".into()]),
+            Punc("。".into())
         ]
     );
 }

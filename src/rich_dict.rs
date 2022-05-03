@@ -110,15 +110,16 @@ pub type WordLine = Vec<WordSegment>;
 type CharList = HashMap<char, HashMap<String, usize>>;
 
 // source: https://stackoverflow.com/a/35907071/6798201
-fn find_subsequences<T>(haystack: &[T], needle: &[T]) -> Vec<(usize, usize)>
-where
-    for<'a> &'a [T]: PartialEq,
-{
+// Important: strings are normalized before comparison
+// This ensures that "Hello" in an <eg> can be identified as the variant "hello"
+fn find_variants(haystack: &[&str], needle: &[&str]) -> Vec<(usize, usize)> {
     haystack
         .windows(needle.len())
         .enumerate()
         .filter_map(|(i, window)| {
-            if window == needle {
+            if unicode::normalize(&window.join(""))
+                == unicode::normalize(&needle.join(""))
+            {
                 Some((i, i + needle.len() - 1))
             } else {
                 None
@@ -134,7 +135,7 @@ pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
     let mut start_end_pairs: Vec<(usize, usize)> = vec![];
     variants.iter().for_each(|variant| {
         let variant = unicode::to_graphemes(variant);
-        find_subsequences(&gs, &variant)
+        find_variants(&gs, &variant)
             .iter()
             .for_each(|(start_index, end_index)| {
                 // filter out short variants
