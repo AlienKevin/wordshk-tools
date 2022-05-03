@@ -1,6 +1,6 @@
 use super::dict::*;
 use super::parse::*;
-use super::rich_dict::{Text, TextStyle, Word, WordSegment};
+use super::rich_dict;
 use lip::assert_succeed;
 
 fn text(string: &'static str) -> Segment {
@@ -11,11 +11,11 @@ fn link(string: &'static str) -> Segment {
     (SegmentType::Link, string.to_string())
 }
 
-fn text_word(word: Word) -> WordSegment {
+fn text_word(word: rich_dict::Word) -> rich_dict::WordSegment {
     (SegmentType::Text, word)
 }
 
-fn link_word(word: Word) -> WordSegment {
+fn link_word(word: rich_dict::Word) -> rich_dict::WordSegment {
     (SegmentType::Link, word)
 }
 
@@ -27,20 +27,20 @@ fn simple_clause(string: &'static str) -> Clause {
     vec![simple_line(string)]
 }
 
-fn bold(string: &'static str) -> Text {
-    (TextStyle::Bold, string.to_string())
+fn bold(string: &'static str) -> rich_dict::Text {
+    (rich_dict::TextStyle::Bold, string.to_string())
 }
 
-fn normal(string: &'static str) -> Text {
-    (TextStyle::Normal, string.to_string())
+fn normal(string: &'static str) -> rich_dict::Text {
+    (rich_dict::TextStyle::Normal, string.to_string())
 }
 
-fn bold_word(string: &'static str) -> Word {
-    Word(vec![bold(string)])
+fn bold_word(string: &'static str) -> rich_dict::Word {
+    rich_dict::Word(vec![bold(string)])
 }
 
-fn normal_word(string: &'static str) -> Word {
-    Word(vec![normal(string)])
+fn normal_word(string: &'static str) -> rich_dict::Word {
+    rich_dict::Word(vec![normal(string)])
 }
 
 #[cfg(test)]
@@ -732,6 +732,30 @@ fn test_match_ruby() {
             (bold_word("經"), vec!["ging".into()]),
             (bold_word("理"), vec!["lei".into()])
         ])]
+    );
+
+    assert_eq!(
+        match_ruby(
+            &vec!["volt".into()],
+            &vec![text("筆芯電嘅電壓係1.5 volt")],
+            &vec![
+                "bat1", "sam1", "din6", "ge3", "din6", "aat3", "hai6", "jat1", "dim2", "ng5",
+                "wuk1"
+            ]
+        ),
+        vec![
+            Word(normal_word("筆"), vec!["bat1".into()]),
+            Word(normal_word("芯"), vec!["sam1".into()]),
+            Word(normal_word("電"), vec!["din6".into()]),
+            Word(normal_word("嘅"), vec!["ge3".into()]),
+            Word(normal_word("電"), vec!["din6".into()]),
+            Word(normal_word("壓"), vec!["aat3".into()]),
+            Word(normal_word("係"), vec!["hai6".into()]),
+            Word(
+                rich_dict::Word(vec![normal("1.5 "), bold("volt")]),
+                vec!["jat1".into(), "dim2".into(), "ng5".into(), "wuk1".into()]
+            ),
+        ]
     );
 }
 

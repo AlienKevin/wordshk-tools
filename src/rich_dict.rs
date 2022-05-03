@@ -180,9 +180,12 @@ pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
             let mut bold_start_index = None;
             let mut bold_end_index = None;
             let mut word = vec![];
+            // a segment can be an alphanumeric char followed by any number of alphanumeric chars,
+            // whitespace, and decimal points.
             while j < gs.len()
                 && (unicode::test_g(unicode::is_alphanumeric, gs[j])
-                    || (unicode::test_g(char::is_whitespace, gs[j])))
+                    || unicode::test_g(char::is_whitespace, gs[j])
+                    || unicode::test_g(|c| c == '.', gs[j]))
             {
                 if start_end_pairs.iter().any(|(start, _)| start == &j) {
                     bold_start_index = Some(j);
@@ -385,7 +388,7 @@ fn match_pr(seg: &str, pr: &str) -> PrMatch {
             match c_prs.get(pr) {
                 Some(_) => PrMatch::Full,
                 None => {
-                    // try half pr (without tones), to accomodate for tone changes
+                    // try half pr (without tones), to accommodate for tone changes
                     let half_c_prs = c_prs
                         .keys()
                         .map(|pr| {
