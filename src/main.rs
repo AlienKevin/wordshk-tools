@@ -14,14 +14,14 @@ const ENTRY_HTML_TEST_PATH: &str = "./app_tmp/test_entry.html";
 const ENTRY_JSON_TEST_PATH: &str = "./app_tmp/test_entry.json";
 
 fn main() {
-    do_pr_search();
+    do_variant_search();
 }
 
 fn do_variant_search() {
     let api = Api::new(APP_TMP_DIR);
     // 說 is a variant that does not appear in dictionary variant data
     // Two words contains 說明: 說明 and 説明書
-    let queries = vec!["說明"];
+    let queries = vec!["說明", "ii"];
 
     let max_num_of_results = 10;
     queries.iter().for_each(|query| {

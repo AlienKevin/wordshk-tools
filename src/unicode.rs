@@ -3,6 +3,11 @@ use std::collections::HashSet;
 use unicode_names2;
 use unicode_segmentation::UnicodeSegmentation;
 
+pub fn normalize(s: &str) -> String {
+    use unicode_normalization::UnicodeNormalization;
+    s.nfkc().collect::<String>()
+}
+
 pub fn to_graphemes(s: &str) -> Vec<&str> {
     UnicodeSegmentation::graphemes(s, true).collect::<Vec<&str>>()
 }

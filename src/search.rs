@@ -329,19 +329,25 @@ where
 }
 
 fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
+    let entry_variant_normalized = &unicode::normalize(entry_variant).to_lowercase()[..];
+    let query_normalized =
+        &convert_to_hk_safe_variant(&unicode::normalize(query)).to_lowercase()[..];
     let variant_graphemes =
-        UnicodeSegmentation::graphemes(entry_variant, true).collect::<Vec<&str>>();
-    let query_graphemes = UnicodeSegmentation::graphemes(query, true).collect::<Vec<&str>>();
+        UnicodeSegmentation::graphemes(entry_variant_normalized, true).collect::<Vec<&str>>();
+    let query_graphemes =
+        UnicodeSegmentation::graphemes(query_normalized, true).collect::<Vec<&str>>();
     let occurrence_index = match find_subsequence(&variant_graphemes, &query_graphemes) {
         Some(i) => i,
         None => usize::MAX,
     };
-    let levenshtein_score = normalize_score(normalized_unicode_levenshtein(entry_variant, query));
+    let levenshtein_score = normalize_score(normalized_unicode_levenshtein(
+        entry_variant_normalized,
+        query_normalized,
+    ));
     (occurrence_index, levenshtein_score)
 }
 
 pub fn variant_search(dict: &RichDict, query: &str) -> BinaryHeap<VariantSearchRank> {
-    let query_safe = &convert_to_hk_safe_variant(query);
     let mut ranks = BinaryHeap::new();
     dict.iter().for_each(|(id, entry)| {
         entry
@@ -351,7 +357,7 @@ pub fn variant_search(dict: &RichDict, query: &str) -> BinaryHeap<VariantSearchR
             .enumerate()
             .for_each(|(variant_index, variant)| {
                 let (occurrence_index, levenshtein_score) =
-                    score_variant_query(&variant.word, query_safe);
+                    score_variant_query(&variant.word, query);
                 if occurrence_index < usize::MAX || levenshtein_score >= 80 {
                     ranks.push(VariantSearchRank {
                         id: *id,

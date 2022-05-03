@@ -1186,6 +1186,7 @@ dependencies = [
  "serde_json",
  "strsim",
  "strum",
+ "unicode-normalization",
  "unicode-segmentation",
  "unicode_names2",
 ]

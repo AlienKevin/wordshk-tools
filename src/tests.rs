@@ -506,6 +506,12 @@ yue:「#仆街」嘅代名詞",
 }
 
 #[test]
+fn test_normalize() {
+    use super::unicode::normalize;
+    assert_eq!(normalize("Ｉ"), "I");
+}
+
+#[test]
 fn test_is_latin() {
     use super::unicode::is_latin;
 
