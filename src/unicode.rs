@@ -5,7 +5,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 pub fn normalize(s: &str) -> String {
     use unicode_normalization::UnicodeNormalization;
-    s.nfkc().collect::<String>()
+    s.nfkc().collect::<String>().to_lowercase()
 }
 
 pub fn to_graphemes(s: &str) -> Vec<&str> {
