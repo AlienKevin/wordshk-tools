@@ -588,6 +588,20 @@ fn test_tokenize() {
             normal_word("。")
         ]
     );
+    assert_eq!(
+        tokenize(&vec!["hi-fi".into()], "佢屋企套hi-fi值幾十萬"),
+        vec![
+            normal_word("佢"),
+            normal_word("屋"),
+            normal_word("企"),
+            normal_word("套"),
+            bold_word("hi-fi"),
+            normal_word("值"),
+            normal_word("幾"),
+            normal_word("十"),
+            normal_word("萬")
+        ]
+    );
 }
 
 #[test]
@@ -632,6 +646,20 @@ fn test_flatten_line() {
             link_word(normal_word("東")),
             link_word(normal_word("話")),
             text_word(normal_word("。"))
+        ]
+    );
+    assert_eq!(
+        flatten_line(&vec!["hi-fi".into()], &vec![text("佢屋企套hi-fi值幾十萬")]),
+        vec![
+            text_word(normal_word("佢")),
+            text_word(normal_word("屋")),
+            text_word(normal_word("企")),
+            text_word(normal_word("套")),
+            text_word(bold_word("hi-fi")),
+            text_word(normal_word("值")),
+            text_word(normal_word("幾")),
+            text_word(normal_word("十")),
+            text_word(normal_word("萬"))
         ]
     );
 }
@@ -741,6 +769,7 @@ fn test_match_ruby() {
         ])]
     );
 
+    // decimal number "1.5"
     assert_eq!(
         match_ruby(
             &vec!["volt".into()],
@@ -766,6 +795,7 @@ fn test_match_ruby() {
         ]
     );
 
+    // typo in jyutping "能" nan4 should be nang4, "曾" can4 should be cang4
     assert_eq!(
         match_ruby(
             &vec!["懷春".into()],
@@ -786,6 +816,7 @@ fn test_match_ruby() {
         ]
     );
 
+    // normalization of "Ｉ" FULLWIDTH LATIN CAPITAL LETTER I into "i" LATIN SMALL LETTER I
     assert_eq!(
         match_ruby(
             &vec!["II".into()],
@@ -799,6 +830,7 @@ fn test_match_ruby() {
         ]
     );
 
+    // Normalization of uppercase "H" into lowercase "h"
     assert_eq!(
         match_ruby(
             &vec!["hello".into(), "哈佬".into()],
@@ -813,6 +845,28 @@ fn test_match_ruby() {
             Word(normal_word("冇"), vec!["mou5".into()]),
             Word(normal_word("見"), vec!["gin3".into()]),
             Punc("。".into())
+        ]
+    );
+
+    // "-" HYPHEN-MINUS in the middle of a word
+    assert_eq!(
+        match_ruby(
+            &vec!["hi-fi".into()],
+            &vec![text("佢屋企套hi-fi值幾十萬")],
+            &vec![
+                "keoi5", "uk1", "kei2", "tou3", "haai1", "faai1", "zik6", "gei2", "sap6", "maan6"
+            ]
+        ),
+        vec![
+            Word(normal_word("佢"), vec!["keoi5".into()]),
+            Word(normal_word("屋"), vec!["uk1".into()]),
+            Word(normal_word("企"), vec!["kei2".into()]),
+            Word(normal_word("套"), vec!["tou3".into()]),
+            Word(bold_word("hi-fi"), vec!["haai1".into(), "faai1".into()]),
+            Word(normal_word("值"), vec!["zik6".into()]),
+            Word(normal_word("幾"), vec!["gei2".into()]),
+            Word(normal_word("十"), vec!["sap6".into()]),
+            Word(normal_word("萬"), vec!["maan6".into()])
         ]
     );
 }

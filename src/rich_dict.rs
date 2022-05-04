@@ -117,9 +117,7 @@ fn find_variants(haystack: &[&str], needle: &[&str]) -> Vec<(usize, usize)> {
         .windows(needle.len())
         .enumerate()
         .filter_map(|(i, window)| {
-            if unicode::normalize(&window.join(""))
-                == unicode::normalize(&needle.join(""))
-            {
+            if unicode::normalize(&window.join("")) == unicode::normalize(&needle.join("")) {
                 Some((i, i + needle.len() - 1))
             } else {
                 None
@@ -183,11 +181,7 @@ pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
             let mut word = vec![];
             // a segment can be an alphanumeric char followed by any number of alphanumeric chars,
             // whitespace, and decimal points.
-            while j < gs.len()
-                && (unicode::test_g(unicode::is_alphanumeric, gs[j])
-                    || unicode::test_g(char::is_whitespace, gs[j])
-                    || unicode::test_g(|c| c == '.', gs[j]))
-            {
+            while j < gs.len() && !unicode::test_g(unicode::is_cjk, gs[j]) {
                 if start_end_pairs.iter().any(|(start, _)| start == &j) {
                     bold_start_index = Some(j);
                     is_bolded = true;
@@ -211,9 +205,17 @@ pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
                 }
                 j += 1;
             }
+            let mut word_end = j;
+            while word_end >= 1 {
+                if unicode::test_g(unicode::is_alphanumeric, gs[word_end - 1]) {
+                    break;
+                } else {
+                    word_end -= 1;
+                }
+            }
             if let Some(bold_end) = prev_bold_end_index {
-                if bold_end + 1 < j {
-                    let rest = gs[bold_end + 1..j].join("").trim_end().to_string();
+                if bold_end + 1 < word_end {
+                    let rest = gs[bold_end + 1..word_end].join("").trim_end().to_string();
                     if rest.len() > 0 {
                         word.push((TextStyle::Normal, rest));
                     }
@@ -221,12 +223,22 @@ pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
             } else if let Some(bold_start) = bold_start_index {
                 word.push((
                     TextStyle::Bold,
-                    gs[bold_start..j].join("").trim_end().into(),
+                    gs[bold_start..word_end].join("").trim_end().into(),
                 ));
             } else {
-                word.push((TextStyle::Normal, gs[i..j].join("").trim_end().into()));
+                word.push((
+                    TextStyle::Normal,
+                    gs[i..word_end].join("").trim_end().into(),
+                ));
             }
             words.push(Word(word));
+            // push the punctuations after the word into words
+            while word_end < j {
+                if !unicode::test_g(char::is_whitespace, gs[word_end]) {
+                    words.push(Word(vec![(TextStyle::Normal, gs[word_end].to_string())]));
+                }
+                word_end += 1;
+            }
             i = j;
         } else {
             // a punctuation or space
