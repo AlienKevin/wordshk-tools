@@ -1301,3 +1301,79 @@ fn test_compare_jyutping() {
         )
     );
 }
+
+#[test]
+fn test_to_lean_rich_dict() {
+    use super::lean_rich_dict::{to_lean_rich_entry, LeanRichEntry, LeanVariant};
+    {
+        let id = 103022;
+        let variants = Variants(vec![
+            Variant {
+                word: "zip".to_string(),
+                prs: LaxJyutPings(vec![
+                    LaxJyutPing(vec![LaxJyutPingSegment::Standard(JyutPing {
+                        initial: Some(JyutPingInitial::Z),
+                        nucleus: Some(JyutPingNucleus::I),
+                        coda: Some(JyutPingCoda::P),
+                        tone: Some(JyutPingTone::T4),
+                    })]),
+                    LaxJyutPing(vec![LaxJyutPingSegment::Nonstandard("!".into())]),
+                ]),
+            },
+            Variant {
+                word: "jip".to_string(),
+                prs: LaxJyutPings(vec![LaxJyutPing(vec![
+                    LaxJyutPingSegment::Nonstandard("!".into()),
+                    LaxJyutPingSegment::Standard(JyutPing {
+                        initial: Some(JyutPingInitial::Z),
+                        nucleus: Some(JyutPingNucleus::I),
+                        coda: Some(JyutPingCoda::P),
+                        tone: Some(JyutPingTone::T4),
+                    }),
+                ])]),
+            },
+        ]);
+        let lean_variants = vec![
+            LeanVariant {
+                word: "zip".into(),
+                prs: "zip4, !".into(),
+            },
+            LeanVariant {
+                word: "jip".into(),
+                prs: "! zip4".into(),
+            },
+        ];
+        let entry = rich_dict::RichEntry {
+            id,
+            variants,
+            poses: vec!["動詞".to_string(), "擬聲詞".to_string()],
+            labels: vec![],
+            sims: vec![],
+            ants: vec![],
+            refs: vec![],
+            imgs: vec![],
+            defs: vec![rich_dict::RichDef {
+                yue: simple_clause("表現不屑而發出嘅聲音"),
+                eng: Some(simple_clause("tsk")),
+                alts: vec![],
+                egs: vec![],
+            }],
+        };
+
+        let lean_entry = LeanRichEntry {
+            id,
+            variants: lean_variants,
+            poses: vec!["動詞".to_string(), "擬聲詞".to_string()],
+            labels: vec![],
+            sims: vec![],
+            ants: vec![],
+            defs: vec![rich_dict::RichDef {
+                yue: simple_clause("表現不屑而發出嘅聲音"),
+                eng: Some(simple_clause("tsk")),
+                alts: vec![],
+                egs: vec![],
+            }],
+        };
+        assert_eq!(lean_entry, to_lean_rich_entry(&entry));
+    }
+}
