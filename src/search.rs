@@ -18,7 +18,7 @@ const MAX_SCORE: Score = 100;
 
 type Index = usize;
 
-type VariantsList = Vec<(usize, Variants)>;
+pub type VariantsList = Vec<(usize, Variants)>;
 
 /// Manners of articulation of initials
 ///
