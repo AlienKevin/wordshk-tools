@@ -243,9 +243,9 @@ impl PartialOrd for PrSearchRank {
     }
 }
 
-pub fn get_entry_id(dict: &RichDict, query: &str) -> Option<usize> {
-    dict.iter().find_map(|(id, entry)| {
-        if entry.variants.to_words_set().contains(query) {
+pub fn get_entry_id(variants_map: &VariantsMap, query: &str) -> Option<usize> {
+    variants_map.iter().find_map(|(id, variants)| {
+        if variants.to_words_set().contains(query) {
             Some(*id)
         } else {
             None
