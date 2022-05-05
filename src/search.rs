@@ -20,6 +20,12 @@ type Index = usize;
 
 pub type VariantsList = Vec<(usize, Variants)>;
 
+pub fn rich_dict_to_variants_list(dict: &RichDict) -> VariantsList {
+    dict.iter()
+        .map(|(id, entry)| (*id, entry.variants.clone()))
+        .collect()
+}
+
 /// Manners of articulation of initials
 ///
 /// source: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
