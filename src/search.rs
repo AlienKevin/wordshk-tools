@@ -2,6 +2,7 @@ use super::dict::{
     JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing, LaxJyutPingSegment,
     Variants,
 };
+use super::parse;
 use super::rich_dict::{RichDict, RichEntry};
 use super::unicode;
 use lazy_static::lazy_static;
@@ -265,32 +266,32 @@ pub fn pr_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<PrSearch
     let mut ranks = BinaryHeap::new();
     if query.is_ascii() {
         let query = parse::parse_pr(query);
-    variants_map.iter().for_each(|(id, variants)| {
-        variants
-            .0
-            .iter()
-            .enumerate()
-            .for_each(|(variant_index, variant)| {
-                let (score, pr_start_index, pr_index) = variant.prs.0.iter().enumerate().fold(
-                    (0, 0, 0),
-                    |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
+        variants_map.iter().for_each(|(id, variants)| {
+            variants
+                .0
+                .iter()
+                .enumerate()
+                .for_each(|(variant_index, variant)| {
+                    let (score, pr_start_index, pr_index) = variant.prs.0.iter().enumerate().fold(
+                        (0, 0, 0),
+                        |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
                             let (score, pr_start_index) = score_pr_query(pr, &query);
-                        if score > max_score {
-                            (score, pr_start_index, pr_index)
-                        } else {
-                            (max_score, max_pr_start_index, max_pr_index)
-                        }
-                    },
-                );
-                ranks.push(PrSearchRank {
-                    id: *id,
-                    variant_index,
-                    pr_index,
-                    score,
-                    pr_start_index,
+                            if score > max_score {
+                                (score, pr_start_index, pr_index)
+                            } else {
+                                (max_score, max_pr_start_index, max_pr_index)
+                            }
+                        },
+                    );
+                    ranks.push(PrSearchRank {
+                        id: *id,
+                        variant_index,
+                        pr_index,
+                        score,
+                        pr_start_index,
+                    });
                 });
-            });
-    });
+        });
     }
     ranks
 }
@@ -378,6 +379,65 @@ pub fn variant_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<Var
             });
     });
     ranks
+}
+
+pub fn combined_search(
+    variants_map: &VariantsMap,
+    query: &str,
+) -> (BinaryHeap<VariantSearchRank>, BinaryHeap<PrSearchRank>) {
+    let mut variants_ranks = BinaryHeap::new();
+    let mut pr_ranks = BinaryHeap::new();
+    let pr_query = if query.is_ascii() {
+        Some(parse::parse_pr(query))
+    } else {
+        None
+    };
+    variants_map.iter().for_each(|(id, variants)| {
+        variants
+            .0
+            .iter()
+            .enumerate()
+            .for_each(|(variant_index, variant)| {
+                let (occurrence_index, levenshtein_score) =
+                    score_variant_query(&variant.word, query);
+                if occurrence_index < usize::MAX || levenshtein_score >= 80 {
+                    variants_ranks.push(VariantSearchRank {
+                        id: *id,
+                        variant_index,
+                        occurrence_index,
+                        levenshtein_score,
+                    });
+                }
+
+                match &pr_query {
+                    Some(query) => {
+                        let (score, pr_start_index, pr_index) =
+                            variant.prs.0.iter().enumerate().fold(
+                                (0, 0, 0),
+                                |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
+                                    let (score, pr_start_index) = score_pr_query(pr, query);
+                                    if score > max_score {
+                                        (score, pr_start_index, pr_index)
+                                    } else {
+                                        (max_score, max_pr_start_index, max_pr_index)
+                                    }
+                                },
+                            );
+                        pr_ranks.push(PrSearchRank {
+                            id: *id,
+                            variant_index,
+                            pr_index,
+                            score,
+                            pr_start_index,
+                        });
+                    }
+                    None => {
+                        // do nothing
+                    }
+                }
+            });
+    });
+    (variants_ranks, pr_ranks)
 }
 
 lazy_static! {
