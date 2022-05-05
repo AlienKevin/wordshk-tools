@@ -228,6 +228,12 @@ impl fmt::Display for JyutPing {
 }
 
 impl JyutPing {
+    pub fn is_empty(&self) -> bool {
+        self.initial.is_none()
+            && self.nucleus.is_none()
+            && self.coda.is_none()
+            && self.tone.is_none()
+    }
     pub fn to_string_without_tone(&self) -> String {
         self.initial
             .as_ref()

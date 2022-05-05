@@ -64,7 +64,7 @@ fn test_parse_clause() {
 }
 
 #[test]
-fn test_parse_pr() {
+fn test_parse_pr_line() {
     assert_succeed(
         parse_pr_line("yue"),
         "yue:《飛狐外傳》 (fei1 wu4 ngoi6 zyun2)",
@@ -991,6 +991,98 @@ fn test_parse_jyutping() {
             coda: None,
             tone: Some(JyutPingTone::T4)
         })
+    );
+
+    // nonstandard jyutping (simple)
+    assert_eq!(
+        parse_jyutping(&"!".to_string()),
+        Some(JyutPing {
+            initial: None,
+            nucleus: None,
+            coda: None,
+            tone: None
+        })
+    );
+
+    // nonstandard jyutping (complex)
+    assert_eq!(
+        parse_jyutping(&"!sdet6".to_string()),
+        Some(JyutPing {
+            initial: None,
+            nucleus: None,
+            coda: None,
+            tone: None
+        })
+    );
+}
+
+#[test]
+fn test_parse_pr() {
+    assert_eq!(
+        parse_pr(&"seoi5 ng".to_string()),
+        LaxJyutPing(vec![
+            LaxJyutPingSegment::Standard(JyutPing {
+                initial: Some(JyutPingInitial::S),
+                nucleus: Some(JyutPingNucleus::Eo),
+                coda: Some(JyutPingCoda::I),
+                tone: Some(JyutPingTone::T5)
+            }),
+            LaxJyutPingSegment::Standard(JyutPing {
+                initial: Some(JyutPingInitial::Ng),
+                nucleus: None,
+                coda: None,
+                tone: None
+            })
+        ])
+    );
+
+    assert_eq!(
+        parse_pr(&"! sap6".to_string()),
+        LaxJyutPing(vec![
+            LaxJyutPingSegment::Nonstandard("!".into()),
+            LaxJyutPingSegment::Standard(JyutPing {
+                initial: Some(JyutPingInitial::S),
+                nucleus: Some(JyutPingNucleus::A),
+                coda: Some(JyutPingCoda::P),
+                tone: Some(JyutPingTone::T6)
+            })
+        ]),
+    );
+
+    assert_eq!(
+        parse_pr(&"sap6 !".to_string()),
+        LaxJyutPing(vec![
+            LaxJyutPingSegment::Standard(JyutPing {
+                initial: Some(JyutPingInitial::S),
+                nucleus: Some(JyutPingNucleus::A),
+                coda: Some(JyutPingCoda::P),
+                tone: Some(JyutPingTone::T6)
+            }),
+            LaxJyutPingSegment::Nonstandard("!".into()),
+        ]),
+    );
+
+    assert_eq!(
+        parse_pr(&"sap6 !sdet6".to_string()),
+        LaxJyutPing(vec![
+            LaxJyutPingSegment::Standard(JyutPing {
+                initial: Some(JyutPingInitial::S),
+                nucleus: Some(JyutPingNucleus::A),
+                coda: Some(JyutPingCoda::P),
+                tone: Some(JyutPingTone::T6)
+            }),
+            LaxJyutPingSegment::Nonstandard("!sdet6".into()),
+        ]),
+    );
+
+    assert_eq!(
+        parse_pr(&"!".to_string()),
+        LaxJyutPing(vec![LaxJyutPingSegment::Nonstandard("!".into())]),
+    );
+
+    assert_eq!(
+        parse_pr(&"!sdet6".to_string()),
+        LaxJyutPing(vec![LaxJyutPingSegment::Nonstandard("!sdet6".into())]),
     );
 }
 

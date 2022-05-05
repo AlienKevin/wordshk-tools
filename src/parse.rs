@@ -691,7 +691,10 @@ pub fn parse_pr(str: &str) -> LaxJyutPing {
     LaxJyutPing(
         str.split_whitespace()
             .map(|pr_seg| match parse_jyutping(pr_seg) {
-                Some(pr) => LaxJyutPingSegment::Standard(pr),
+                Some(pr) => if pr.is_empty() {
+                    LaxJyutPingSegment::Nonstandard(pr_seg.to_string())
+                } else {LaxJyutPingSegment::Standard(pr)
+                },
                 None => LaxJyutPingSegment::Nonstandard(pr_seg.to_string()),
             })
             .collect(),
