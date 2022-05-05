@@ -243,6 +243,16 @@ impl PartialOrd for PrSearchRank {
     }
 }
 
+pub fn get_entry_id(dict: &RichDict, query: &str) -> Option<usize> {
+    dict.iter().find_map(|(id, entry)| {
+        if entry.variants.to_words_set().contains(query) {
+            Some(*id)
+        } else {
+            None
+        }
+    })
+}
+
 pub fn get_entry_group(dict: &RichDict, id: &usize) -> Vec<RichEntry> {
     let query_entry = dict.get(&id).unwrap();
     dict.iter()
