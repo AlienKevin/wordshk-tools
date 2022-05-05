@@ -1,5 +1,6 @@
 use super::dict::{
-    Dict, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing, LaxJyutPingSegment,
+    JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing, LaxJyutPingSegment,
+    Variants,
 };
 use super::rich_dict::{RichDict, RichEntry};
 use super::unicode;
@@ -16,6 +17,8 @@ type Score = usize;
 const MAX_SCORE: Score = 100;
 
 type Index = usize;
+
+type VariantsList = Vec<(usize, Variants)>;
 
 /// Manners of articulation of initials
 ///
@@ -252,11 +255,10 @@ pub fn get_entry_group(dict: &RichDict, id: &usize) -> Vec<RichEntry> {
         .collect()
 }
 
-pub fn pr_search(dict: &RichDict, query: &LaxJyutPing) -> BinaryHeap<PrSearchRank> {
+pub fn pr_search(variants_list: &VariantsList, query: &LaxJyutPing) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
-    dict.iter().for_each(|(id, entry)| {
-        entry
-            .variants
+    variants_list.iter().for_each(|(id, variants)| {
+        variants
             .0
             .iter()
             .enumerate()
@@ -330,8 +332,7 @@ where
 
 fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
     let entry_variant_normalized = &unicode::normalize(entry_variant)[..];
-    let query_normalized =
-        &convert_to_hk_safe_variant(&unicode::normalize(query))[..];
+    let query_normalized = &convert_to_hk_safe_variant(&unicode::normalize(query))[..];
     let variant_graphemes =
         UnicodeSegmentation::graphemes(entry_variant_normalized, true).collect::<Vec<&str>>();
     let query_graphemes =
@@ -347,11 +348,10 @@ fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
     (occurrence_index, levenshtein_score)
 }
 
-pub fn variant_search(dict: &RichDict, query: &str) -> BinaryHeap<VariantSearchRank> {
+pub fn variant_search(variants_list: &VariantsList, query: &str) -> BinaryHeap<VariantSearchRank> {
     let mut ranks = BinaryHeap::new();
-    dict.iter().for_each(|(id, entry)| {
-        entry
-            .variants
+    variants_list.iter().for_each(|(id, variants)| {
+        variants
             .0
             .iter()
             .enumerate()

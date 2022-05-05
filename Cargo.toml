@@ -2,7 +2,7 @@
 name = "wordshk_tools"
 description = "A combination of parsers and other tools for words.hk (粵典)"
 repository = "https://github.com/AlienKevin/wordshk-tools"
-version = "1.0.2"
+version = "2.0.0-beta"
 edition = "2018"
 license = "MIT"
 
