@@ -18,9 +18,9 @@ const MAX_SCORE: Score = 100;
 
 type Index = usize;
 
-pub type VariantsList = Vec<(usize, Variants)>;
+pub type VariantsMap = HashMap<usize, Variants>;
 
-pub fn rich_dict_to_variants_list(dict: &RichDict) -> VariantsList {
+pub fn rich_dict_to_variants_list(dict: &RichDict) -> VariantsMap {
     dict.iter()
         .map(|(id, entry)| (*id, entry.variants.clone()))
         .collect()
@@ -261,7 +261,7 @@ pub fn get_entry_group(dict: &RichDict, id: &usize) -> Vec<RichEntry> {
         .collect()
 }
 
-pub fn pr_search(variants_list: &VariantsList, query: &LaxJyutPing) -> BinaryHeap<PrSearchRank> {
+pub fn pr_search(variants_list: &VariantsMap, query: &LaxJyutPing) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
     variants_list.iter().for_each(|(id, variants)| {
         variants
@@ -354,7 +354,7 @@ fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
     (occurrence_index, levenshtein_score)
 }
 
-pub fn variant_search(variants_list: &VariantsList, query: &str) -> BinaryHeap<VariantSearchRank> {
+pub fn variant_search(variants_list: &VariantsMap, query: &str) -> BinaryHeap<VariantSearchRank> {
     let mut ranks = BinaryHeap::new();
     variants_list.iter().for_each(|(id, variants)| {
         variants
