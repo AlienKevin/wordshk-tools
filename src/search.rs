@@ -261,8 +261,10 @@ pub fn get_entry_group(dict: &RichDict, id: &usize) -> Vec<RichEntry> {
         .collect()
 }
 
-pub fn pr_search(variants_map: &VariantsMap, query: &LaxJyutPing) -> BinaryHeap<PrSearchRank> {
+pub fn pr_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
+    if query.is_ascii() {
+        let query = parse::parse_pr(query);
     variants_map.iter().for_each(|(id, variants)| {
         variants
             .0
@@ -272,7 +274,7 @@ pub fn pr_search(variants_map: &VariantsMap, query: &LaxJyutPing) -> BinaryHeap<
                 let (score, pr_start_index, pr_index) = variant.prs.0.iter().enumerate().fold(
                     (0, 0, 0),
                     |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
-                        let (score, pr_start_index) = score_pr_query(pr, query);
+                            let (score, pr_start_index) = score_pr_query(pr, &query);
                         if score > max_score {
                             (score, pr_start_index, pr_index)
                         } else {
@@ -289,6 +291,7 @@ pub fn pr_search(variants_map: &VariantsMap, query: &LaxJyutPing) -> BinaryHeap<
                 });
             });
     });
+    }
     ranks
 }
 
