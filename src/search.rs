@@ -20,7 +20,7 @@ type Index = usize;
 
 pub type VariantsMap = HashMap<usize, Variants>;
 
-pub fn rich_dict_to_variants_list(dict: &RichDict) -> VariantsMap {
+pub fn rich_dict_to_variants_map(dict: &RichDict) -> VariantsMap {
     dict.iter()
         .map(|(id, entry)| (*id, entry.variants.clone()))
         .collect()
@@ -261,9 +261,9 @@ pub fn get_entry_group(dict: &RichDict, id: &usize) -> Vec<RichEntry> {
         .collect()
 }
 
-pub fn pr_search(variants_list: &VariantsMap, query: &LaxJyutPing) -> BinaryHeap<PrSearchRank> {
+pub fn pr_search(variants_map: &VariantsMap, query: &LaxJyutPing) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
-    variants_list.iter().for_each(|(id, variants)| {
+    variants_map.iter().for_each(|(id, variants)| {
         variants
             .0
             .iter()
@@ -354,9 +354,9 @@ fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
     (occurrence_index, levenshtein_score)
 }
 
-pub fn variant_search(variants_list: &VariantsMap, query: &str) -> BinaryHeap<VariantSearchRank> {
+pub fn variant_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<VariantSearchRank> {
     let mut ranks = BinaryHeap::new();
-    variants_list.iter().for_each(|(id, variants)| {
+    variants_map.iter().for_each(|(id, variants)| {
         variants
             .0
             .iter()
