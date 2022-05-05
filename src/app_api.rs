@@ -52,32 +52,7 @@ impl Api {
             None => Api::get_new_dict(&api_path),
         }
     }
-
-    pub fn pr_search(&self, capacity: usize, query: &str) -> Vec<PrSearchResult> {
-        pr_search_helper(capacity, &self.dict, &parse_pr(query))
-    }
-
-    pub fn variant_search(&self, capacity: usize, query: &str) -> Vec<VariantSearchResult> {
-        variant_search_helper(capacity, &self.dict, query)
-    }
-
-    pub fn get_entry_html(&self, id: usize) -> String {
-        rich_entry_to_xml(self.dict.get(&id).unwrap())
-    }
-
-    pub fn get_entry_json(&self, id: usize) -> String {
-        let rich_entry = self.dict.get(&id).unwrap();
-        serde_json::to_string(&to_lean_rich_entry(rich_entry)).unwrap()
-    }
-
-    pub fn get_entry_group_json(&self, id: usize) -> Vec<String> {
-        let rich_entry_group = search::get_entry_group(&self.dict, &id);
-        rich_entry_group
-            .iter()
-            .map(|entry| serde_json::to_string(&to_lean_rich_entry(entry)).unwrap())
-            .collect()
-    }
-
+    
     fn get_new_dict<P: AsRef<Path>>(api_path: &P) -> Api {
         let new_release_time = Utc::now();
         let csv_url = "https://words.hk/static/all.csv.gz";
@@ -97,61 +72,4 @@ impl Api {
         serialize_api(api_path, &new_api);
         new_api
     }
-}
-
-pub struct PrSearchResult {
-    pub id: usize,
-    pub variant: String,
-    pub pr: String,
-}
-
-fn pr_search_helper(capacity: usize, dict: &RichDict, query: &LaxJyutPing) -> Vec<PrSearchResult> {
-    let mut ranks = search::pr_search(dict, query);
-    let mut results = vec![];
-    let mut i = 0;
-    while ranks.len() > 0 && i < capacity {
-        let search::PrSearchRank {
-            id,
-            variant_index,
-            pr_index,
-            ..
-        } = ranks.pop().unwrap();
-        let entry = dict.get(&id).unwrap();
-        let variant = &entry.variants.0[variant_index];
-        results.push(PrSearchResult {
-            id,
-            variant: variant.word.clone(),
-            pr: variant.prs.0[pr_index].to_string(),
-        });
-        i += 1;
-    }
-    results
-}
-
-pub struct VariantSearchResult {
-    pub id: usize,
-    pub variant: String,
-}
-
-fn variant_search_helper(
-    capacity: usize,
-    dict: &RichDict,
-    query: &str,
-) -> Vec<VariantSearchResult> {
-    let mut ranks = search::variant_search(dict, query);
-    let mut results = vec![];
-    let mut i = 0;
-    while ranks.len() > 0 && i < capacity {
-        let search::VariantSearchRank {
-            id, variant_index, ..
-        } = ranks.pop().unwrap();
-        let entry = dict.get(&id).unwrap();
-        let variant = &entry.variants.0[variant_index];
-        results.push(VariantSearchResult {
-            id,
-            variant: variant.word.clone(),
-        });
-        i += 1;
-    }
-    results
 }
