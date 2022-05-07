@@ -1,3 +1,4 @@
+use super::hk_variant_map_safe::HONG_KONG_VARIANT_MAP_SAFE;
 use lazy_static::lazy_static;
 use std::collections::HashSet;
 use unicode_names2;
@@ -68,6 +69,31 @@ pub fn test_g(f: fn(char) -> bool, g: &str) -> bool {
     } else {
         false
     }
+}
+
+/// Returns a 'HK variant' of the characters of the input text. The input is
+/// assumed to be Chinese traditional. This variant list confirms to most
+/// expectations of how characters should be written in Hong Kong, but does not
+/// necessarily conform to any rigid standard. It may be fine tuned by editors
+/// of words.hk. This is the "safe" version that is probably less controversial.
+pub fn to_hk_safe_variant(str: &str) -> String {
+    to_graphemes(str)
+        .iter()
+        .map(|g| {
+            if test_g(is_cjk, g) {
+                if g.chars().count() == 1 {
+                    if let Some(c) = g.chars().next() {
+                        return match HONG_KONG_VARIANT_MAP_SAFE.get(&c) {
+                            Some(s) => s.to_string(),
+                            None => g.to_string(),
+                        };
+                    }
+                }
+            }
+            return g.to_string();
+        })
+        .collect::<Vec<String>>()
+        .join("")
 }
 
 lazy_static! {

@@ -10,7 +10,6 @@ use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use strsim::{generic_levenshtein, normalized_levenshtein};
 use unicode_segmentation::UnicodeSegmentation;
-use super::hk_variant_map_safe::{HONG_KONG_VARIANT_MAP_SAFE};
 
 /// Max score is 100
 type Score = usize;
@@ -352,7 +351,7 @@ where
 
 fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
     let entry_variant_normalized = &unicode::normalize(entry_variant)[..];
-    let query_normalized = &convert_to_hk_safe_variant(&unicode::normalize(query))[..];
+    let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
     let variant_graphemes =
         UnicodeSegmentation::graphemes(entry_variant_normalized, true).collect::<Vec<&str>>();
     let query_graphemes =
@@ -448,29 +447,4 @@ pub fn combined_search(
             });
     });
     (variants_ranks, pr_ranks)
-}
-
-/// Returns a 'HK variant' of the characters of the input text. The input is
-/// assumed to be Chinese traditional. This variant list confirms to most
-/// expectations of how characters should be written in Hong Kong, but does not
-/// necessarily conform to any rigid standard. It may be fine tuned by editors
-/// of words.hk. This is the "safe" version that is probably less controversial.
-fn convert_to_hk_safe_variant(variant: &str) -> String {
-    unicode::to_graphemes(variant)
-        .iter()
-        .map(|g| {
-            if unicode::test_g(unicode::is_cjk, g) {
-                if g.chars().count() == 1 {
-                    if let Some(c) = g.chars().next() {
-                        return match HONG_KONG_VARIANT_MAP_SAFE.get(&c) {
-                            Some(s) => s.to_string(),
-                            None => g.to_string(),
-                        };
-                    }
-                }
-            }
-            return g.to_string();
-        })
-        .collect::<Vec<String>>()
-        .join("")
 }

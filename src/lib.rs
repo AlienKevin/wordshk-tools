@@ -9,4 +9,5 @@ pub mod lean_rich_dict;
 pub mod parse;
 pub mod rich_dict;
 pub mod search;
+mod simp_to_trad;
 mod unicode;
