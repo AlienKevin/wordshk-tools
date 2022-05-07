@@ -295,7 +295,16 @@ fn sort_entry_group(entry_group: Vec<RichEntry>) -> Vec<RichEntry> {
 }
 
 fn sort_entries_by_frequency(entries: &mut Vec<&RichEntry>) {
-    entries.sort_by_cached_key(|entry| WORD_FREQUENCIES.get(&(entry.id as u32)).unwrap_or(&50));
+    entries.sort_by(|a, b| {
+        get_entry_frequency(a.id)
+            .cmp(&get_entry_frequency(b.id))
+            .reverse()
+            .then(a.defs.len().cmp(&b.defs.len()).reverse())
+    });
+}
+
+fn get_entry_frequency(entry_id: usize) -> u8 {
+    *WORD_FREQUENCIES.get(&(entry_id as u32)).unwrap_or(&50)
 }
 
 pub fn pr_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<PrSearchRank> {
