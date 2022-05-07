@@ -11,3 +11,4 @@ pub mod rich_dict;
 pub mod search;
 mod simp_to_trad;
 mod unicode;
+mod word_frequencies;

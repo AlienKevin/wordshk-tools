@@ -5,6 +5,7 @@ use super::dict::{
 use super::parse;
 use super::rich_dict::{RichDict, RichEntry};
 use super::unicode;
+use super::word_frequencies::WORD_FREQUENCIES;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
@@ -254,21 +255,47 @@ pub fn get_entry_id(variants_map: &VariantsMap, query: &str) -> Option<usize> {
 
 pub fn get_entry_group(dict: &RichDict, id: &usize) -> Vec<RichEntry> {
     let query_entry = dict.get(&id).unwrap();
-    dict.iter()
-        .filter_map(|(_, entry)| {
-            if query_entry
-                .variants
-                .to_words_set()
-                .intersection(&entry.variants.to_words_set())
-                .next()
-                != None
-            {
-                Some(entry.clone())
-            } else {
-                None
-            }
-        })
-        .collect()
+    sort_entry_group(
+        dict.iter()
+            .filter_map(|(_, entry)| {
+                if query_entry
+                    .variants
+                    .to_words_set()
+                    .intersection(&entry.variants.to_words_set())
+                    .next()
+                    != None
+                {
+                    Some(entry.clone())
+                } else {
+                    None
+                }
+            })
+            .collect(),
+    )
+}
+
+fn sort_entry_group(entry_group: Vec<RichEntry>) -> Vec<RichEntry> {
+    let mut general = vec![];
+    let mut vulgar = vec![];
+
+    entry_group.iter().for_each(|entry| {
+        if entry.labels.contains(&"粗俗".to_string()) || entry.labels.contains(&"俚語".to_string())
+        {
+            vulgar.push(entry);
+        } else {
+            general.push(entry);
+        }
+    });
+
+    sort_entries_by_frequency(&mut general);
+    sort_entries_by_frequency(&mut vulgar);
+
+    general.append(&mut vulgar);
+    general.iter().map(|entry| (*entry).clone()).collect()
+}
+
+fn sort_entries_by_frequency(entries: &mut Vec<&RichEntry>) {
+    entries.sort_by_cached_key(|entry| WORD_FREQUENCIES.get(&(entry.id as u32)).unwrap_or(&50));
 }
 
 pub fn pr_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<PrSearchRank> {
