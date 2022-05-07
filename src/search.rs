@@ -351,7 +351,8 @@ where
 
 fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
     let entry_variant_normalized = &unicode::normalize(entry_variant)[..];
-    let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
+    let query_normalized =
+        &unicode::to_traditional(&unicode::to_hk_safe_variant(&unicode::normalize(query)))[..];
     let variant_graphemes =
         UnicodeSegmentation::graphemes(entry_variant_normalized, true).collect::<Vec<&str>>();
     let query_graphemes =
