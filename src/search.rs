@@ -1,8 +1,8 @@
-use super::dict::{
-    JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing, LaxJyutPingSegment,
-    Variants,
+use super::dict::Variants;
+use super::jyutping::{
+    parse_pr, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing,
+    LaxJyutPingSegment,
 };
-use super::parse;
 use super::rich_dict::{RichDict, RichEntry};
 use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
@@ -310,7 +310,7 @@ fn get_entry_frequency(entry_id: usize) -> u8 {
 pub fn pr_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
     if query.is_ascii() {
-        let query = parse::parse_pr(query);
+        let query = parse_pr(query);
         variants_map.iter().for_each(|(id, variants)| {
             variants
                 .0
@@ -434,7 +434,7 @@ pub fn combined_search(
     let mut variants_ranks = BinaryHeap::new();
     let mut pr_ranks = BinaryHeap::new();
     let pr_query = if query.is_ascii() {
-        Some(parse::parse_pr(query))
+        Some(parse_pr(query))
     } else {
         None
     };

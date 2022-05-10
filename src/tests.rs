@@ -1,4 +1,5 @@
 use super::dict::*;
+use super::jyutping::*;
 use super::parse::*;
 use super::rich_dict;
 use lip::assert_succeed;
@@ -139,45 +140,6 @@ fn test_parse_clause() {
 }
 
 #[test]
-fn test_partial_pr_line() {
-    assert_succeed(
-        parse_partial_pr_line("eng"),
-        "particle #喇 laa3 before the particles #喎  wo3, #噃 bo3 or #可 ho2 (...PR NOT SHOWN HERE...)",
-        vec![
-            text("particle "),
-            link("喇"),
-            text(" laa3 before the particles "),
-            link("喎"),
-            text(" wo3, "),
-            link("噃"),
-            text(" bo3 or "),
-            link("可"),
-            text(" ho2"),
-        ],
-    );
-
-    assert_succeed(
-        parse_partial_pr_line("yue"),
-        "eg. #咁 gam3, #勁 ging6 or #最 zeoi3 (...PR NOT SHOWN HERE...)",
-        vec![
-            text("eg. "),
-            link("咁"),
-            text(" gam3, "),
-            link("勁"),
-            text(" ging6 or "),
-            link("最"),
-            text(" zeoi3"),
-        ],
-    );
-
-    assert_succeed(
-        parse_partial_pr_line("yue"),
-        "#質素 同 #數量 嘅合稱 (...PR NOT SHOWN HERE...)",
-        vec![link("質素"), text("同"), link("數量"), text("嘅合稱")],
-    );
-}
-
-#[test]
 fn test_parse_pr_line() {
     assert_succeed(
         parse_pr_line("yue"),
@@ -198,6 +160,62 @@ fn test_parse_pr_line() {
         ),
     );
     assert_succeed(parse_pr_line("yue"), "yue:條八婆好扮嘢㗎，連嗌個叉飯都要講英文。 (tiu4 baat3 po4 hou2 baan6 je5 gaa3, lin4 aai3 go3 caa1 faan6 dou1 jiu3 gong2 jing1 man2.)", (simple_line("條八婆好扮嘢㗎，連嗌個叉飯都要講英文。"), Some("tiu4 baat3 po4 hou2 baan6 je5 gaa3, lin4 aai3 go3 caa1 faan6 dou1 jiu3 gong2 jing1 man2.".to_string())));
+
+    // Test parentheses detection
+    // i.e. check whether the content in the parentheses
+    // is actually jyutping
+    assert_succeed(
+        parse_pr_line("yue"),
+        "yue:p分別為聖。(約翰福音 17:19)",
+        (simple_line("p分別為聖。(約翰福音 17:19)"), None),
+    );
+
+    assert_succeed(
+        parse_pr_line("yue"),
+        "yue:#質素 同 #數量 嘅合稱 (this is an side note with jyut6 ping3, not a pr)",
+        (
+            vec![
+                link("質素"),
+                text("同"),
+                link("數量"),
+                text("嘅合稱 (this is an side note with jyut6 ping3, not a pr)"),
+            ],
+            None,
+        ),
+    );
+
+    assert_succeed(
+        parse_pr_line("eng"),
+        "eng:particle #喇 laa3 before the particles #喎  wo3, #噃 bo3 or #可 ho2(this is an side note, not a pr)",
+        (vec![
+            text("particle "),
+            link("喇"),
+            text(" laa3 before the particles "),
+            link("喎"),
+            text(" wo3, "),
+            link("噃"),
+            text(" bo3 or "),
+            link("可"),
+            text(" ho2(this is an side note, not a pr)"),
+        ], None),
+    );
+
+    assert_succeed(
+        parse_pr_line("yue"),
+        "yue:eg. #咁 gam3, #勁 ging6 or #最 zeoi3(this is an side note, not a pr)",
+        (
+            vec![
+                text("eg. "),
+                link("咁"),
+                text(" gam3, "),
+                link("勁"),
+                text(" ging6 or "),
+                link("最"),
+                text(" zeoi3(this is an side note, not a pr)"),
+            ],
+            None,
+        ),
+    );
 }
 
 #[test]
@@ -1023,6 +1041,43 @@ fn test_match_ruby() {
             Word(normal_word("幾"), vec!["gei2".into()]),
             Word(normal_word("十"), vec!["sap6".into()]),
             Word(normal_word("萬"), vec!["maan6".into()])
+        ]
+    );
+
+    // one Chinese character two prs
+    assert_eq!(
+        match_ruby(
+            &vec!["卅".into()],
+            &vec![text("卅幾")],
+            &vec!["saa1", "aa6", "gei2"]
+        ),
+        vec![
+            Word(bold_word("卅"), vec!["saa1".into(), "aa6".into()]),
+            Word(normal_word("幾"), vec!["gei2".into()]),
+        ]
+    );
+
+    assert_eq!(
+        match_ruby(
+            &vec!["卅".into()],
+            &vec![link("年卅晚")],
+            &vec!["nin4", "saa1", "aa6", "maan5"]
+        ),
+        vec![LinkedWord(vec![
+            (normal_word("年"), vec!["nin4".into()]),
+            (bold_word("卅"), vec!["saa1".into(), "aa6".into()]),
+            (normal_word("晚"), vec!["maan5".into()])
+        ])]
+    );
+    assert_eq!(
+        match_ruby(
+            &vec!["卌".into()],
+            &vec![text("卌二")],
+            &vec!["se3", "aa6", "ji6"]
+        ),
+        vec![
+            Word(bold_word("卌"), vec!["se3".into(), "aa6".into()]),
+            Word(normal_word("二"), vec!["ji6".into()]),
         ]
     );
 

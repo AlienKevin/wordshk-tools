@@ -1,9 +1,5 @@
-use super::dict::LaxJyutPing;
-use super::emit_html::rich_entry_to_xml;
-use super::lean_rich_dict::to_lean_rich_entry;
-use super::parse::{parse_dict, parse_pr};
+use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, RichDict};
-use super::search;
 use chrono::{DateTime, Utc};
 use flate2::read::GzDecoder;
 use reqwest;
@@ -52,7 +48,7 @@ impl Api {
             None => Api::get_new_dict(&api_path),
         }
     }
-    
+
     fn get_new_dict<P: AsRef<Path>>(api_path: &P) -> Api {
         let new_release_time = Utc::now();
         let csv_url = "https://words.hk/static/all.csv.gz";

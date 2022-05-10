@@ -12,6 +12,7 @@
 //!
 
 use super::dict::*;
+use super::jyutping::*;
 use super::unicode;
 
 use lip::ParseResult;
@@ -20,8 +21,6 @@ use std::collections::HashMap;
 use std::convert::identity;
 use std::error::Error;
 use std::io;
-use std::ops::Range;
-use std::str::FromStr;
 
 /// Parse the whole words.hk CSV database into a [Dict]
 pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
@@ -241,74 +240,6 @@ pub fn parse_named_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()
         .keep(parse_line(name))
 }
 
-/// Parse a partial pronunciation [Line], until the opening paren of Jyutping pronunciations
-///
-/// For the following pronunciation line:
-///
-/// 可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
-///
-/// This function will parse everything up until the '(':
-///
-/// ```
-/// # use wordshk_tools::dict::{SegmentType::*};
-/// # use wordshk_tools::parse::{parse_partial_pr_line};
-/// # let source = indoc::indoc! {"
-/// 可唔可以見面？
-/// # "};
-///
-/// // which parses to:
-///
-/// # lip::assert_succeed(parse_partial_pr_line("yue"), source,
-/// vec![(Text, "可唔可以見面？".into())]
-/// # );
-/// ```
-///
-pub fn parse_partial_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
-    succeed!(remove_extra_spaces_around_link).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
-            succeed!(|string: String| (SegmentType::Link, string))
-                .skip(token("#"))
-                .keep(take_chomped(chomp_while1c(
-                    &(|c: &char| !unicode::is_punc(*c) && !c.is_whitespace() && *c != '('),
-                    name
-                ))),
-            succeed!(|string: String| (SegmentType::Text, string)).keep(
-                take_chomped(chomp_while1c(
-                    &(|c: &char| *c != '#' && *c != '\n' && *c != '\r' && *c != '('),
-                    name
-                ))
-            )
-        ))))
-}
-
-/// Parse a partial *named* pronunciation [Line], until the opening paren of Jyutping pronunciations
-///
-/// For the following *named* pronunciation line:
-///
-/// yue:可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
-///
-/// This function will parse everything up until the '(':
-///
-/// ```
-/// # use wordshk_tools::dict::{SegmentType::*};
-/// # use wordshk_tools::parse::{parse_partial_pr_named_line};
-/// # let source = indoc::indoc! {"
-/// yue:可唔可以見面？
-/// # "};
-///
-/// // which parses to:
-///
-/// # lip::assert_succeed(parse_partial_pr_named_line("yue"), source,
-/// vec![(Text, "可唔可以見面？".into())]
-/// # );
-/// ```
-///
-pub fn parse_partial_pr_named_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
-    succeed!(identity)
-        .skip(token(name))
-        .skip(token(":"))
-        .keep(parse_partial_pr_line(name))
-}
-
 /// Parse a [Clause] (can be single or multiline)
 ///
 /// For example, here's a Cantonese clause:
@@ -447,18 +378,37 @@ pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
 /// ```
 ///
 pub fn parse_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, PrLine, ()> {
-    succeed!(|line, pr| (line, pr))
-        .keep(parse_partial_pr_named_line(name))
-        .keep(optional(
-            None,
-            succeed!(Some)
-                .skip(token("("))
-                .keep(take_chomped(chomp_while1c(
-                    &|c: &char| *c != ')',
-                    "jyutping",
-                )))
-                .skip(token(")")),
-        ))
+    (succeed!(|line: String| {
+        let open_paren_index = line.rfind('(');
+        // println!("open_paren_index: {:?}", open_paren_index);
+        // println!("line.chars().next_back(): {:?}", line.chars().next_back());
+        if open_paren_index.is_some() && line.chars().next_back() == Some(')') {
+            let open_paren = open_paren_index.unwrap();
+            let paren_segment = &line[open_paren + 1..line.len() - 1];
+            // println!("paren_segment: {:?}", paren_segment);
+            if looks_like_pr(&paren_segment) {
+                // println!("Found pr line with pr: {paren_segment}");
+                return (
+                    (&line[0..open_paren]).to_string(),
+                    Some(paren_segment.to_string()),
+                );
+            }
+        }
+        return (line.to_string(), None);
+    })
+    .skip(token(name))
+    .skip(token(":"))
+    .keep(take_chomped(chomp_while1c(
+        &(|c: &char| c != &'\n' && c != &'\r'),
+        "line",
+    ))))
+    .map(move |(line, pr)| match parse_line(name).run(&line, ()) {
+        ParseResult::Ok { output, .. } => (output, pr),
+        ParseResult::Err { message, .. } => {
+            println!("Error in parse_line inside parse_pr_line: {:?}", message);
+            (vec![], pr)
+        }
+    })
 }
 
 /// Parse an example for a word
@@ -680,7 +630,8 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 /// For example, here's the content of the Entry for 奸爸爹
 ///
 /// ```
-/// # use wordshk_tools::dict::{Def, Entry, Variants, Variant, LaxJyutPings, AltLang, SegmentType::*};
+/// # use wordshk_tools::dict::{Def, Entry, Variants, Variant, AltLang, SegmentType::*};
+/// # use wordshk_tools::jyutping::LaxJyutPings;
 /// # use wordshk_tools::parse::{parse_content};
 /// # let source = indoc::indoc! {"
 /// (pos:語句)(label:外來語)(label:潮語)(label:香港)
@@ -738,98 +689,4 @@ pub fn parse_content<'a>(id: usize, variants: Variants) -> lip::BoxedParser<'a, 
         .keep(parse_defs()),
         succeed!(|_| None).keep(token("未有內容 NO DATA"))
     )
-}
-
-/// Parse [LaxJyutPing] pronunciation
-pub fn parse_pr(str: &str) -> LaxJyutPing {
-    LaxJyutPing(
-        str.split_whitespace()
-            .map(|pr_seg| match parse_jyutping(pr_seg) {
-                Some(pr) => {
-                    if pr.is_empty() {
-                        LaxJyutPingSegment::Nonstandard(pr_seg.to_string())
-                    } else {
-                        LaxJyutPingSegment::Standard(pr)
-                    }
-                }
-                None => LaxJyutPingSegment::Nonstandard(pr_seg.to_string()),
-            })
-            .collect(),
-    )
-}
-
-/// Parse [JyutPing] pronunciation
-pub fn parse_jyutping(str: &str) -> Option<JyutPing> {
-    let mut start = 0;
-
-    let initial: Option<JyutPingInitial> = parse_jyutping_initial(str).map(|(_initial, _start)| {
-        start = _start;
-        _initial
-    });
-
-    let nucleus: Option<JyutPingNucleus> =
-        parse_jyutping_nucleus(start, str).map(|(_nucleus, _start)| {
-            start = _start;
-            _nucleus
-        });
-
-    let coda: Option<JyutPingCoda> = parse_jyutping_coda(start, str).map(|(_coda, _start)| {
-        start = _start;
-        _coda
-    });
-    let tone: Option<JyutPingTone> = parse_jyutping_tone(start, str);
-
-    Some(JyutPing {
-        initial,
-        nucleus,
-        coda,
-        tone,
-    })
-}
-
-fn parse_jyutping_component<T: FromStr>(start: usize, str: &str) -> Option<(T, usize)> {
-    get_slice(str, start..start + 2)
-        .and_then(|first_two| match T::from_str(first_two) {
-            Ok(component) => Some((component, start + 2)),
-            Err(_) => get_slice(str, start..start + 1).and_then(|first_one| {
-                match T::from_str(first_one) {
-                    Ok(component) => Some((component, start + 1)),
-                    Err(_) => None,
-                }
-            }),
-        })
-        .or(
-            get_slice(str, start..start + 1).and_then(|first_one| match T::from_str(first_one) {
-                Ok(component) => Some((component, start + 1)),
-                Err(_) => None,
-            }),
-        )
-}
-
-fn parse_jyutping_initial(str: &str) -> Option<(JyutPingInitial, usize)> {
-    parse_jyutping_component::<JyutPingInitial>(0, str)
-}
-
-fn parse_jyutping_nucleus(start: usize, str: &str) -> Option<(JyutPingNucleus, usize)> {
-    parse_jyutping_component::<JyutPingNucleus>(start, str)
-}
-
-fn parse_jyutping_coda(start: usize, str: &str) -> Option<(JyutPingCoda, usize)> {
-    parse_jyutping_component::<JyutPingCoda>(start, str)
-}
-
-fn parse_jyutping_tone(start: usize, str: &str) -> Option<JyutPingTone> {
-    // println!("{} {} {}", str, start, str.len());
-    get_slice(str, start..str.len()).and_then(|substr| match JyutPingTone::from_str(substr) {
-        Ok(tone) => Some(tone),
-        Err(_) => None,
-    })
-}
-
-fn get_slice(s: &str, range: Range<usize>) -> Option<&str> {
-    if s.len() > range.start && s.len() >= range.end {
-        Some(&s[range])
-    } else {
-        None
-    }
 }

@@ -6,8 +6,6 @@ use serde::Serialize;
 use std::cmp;
 use std::collections::HashMap;
 use std::fmt;
-use std::fs;
-use std::io;
 
 pub type RichDict = HashMap<usize, RichEntry>;
 
@@ -355,13 +353,42 @@ pub fn match_ruby(variants: &Vec<&str>, line: &Line, prs: &Vec<&str>) -> RubyLin
                             None => prs.len(),
                         }
                     };
-                    if end - start >= 2 && unicode::test_g(unicode::is_cjk, &word_str) {
-                        consecutive_cjk_index += 1;
-                        create_ruby_segment(
-                            seg_type,
-                            word,
-                            &prs[start + consecutive_cjk_index - 1..start + consecutive_cjk_index],
-                        )
+                    // Check for consecutive Chinese characters with inaccurate jyutpings.
+                    // Handles edge cases like 卅 saa1 aa6 and 卌 sei3 aa6
+                    if end - start >= 2 &&
+                    // current char is a Chinese character
+                    unicode::test_g(unicode::is_cjk, &word_str)
+                    {
+                        let next_char_is_inaccurate_cjk = line
+                                .iter()
+                                .nth(i + 1)
+                                .map(|(_segment_type, word)| {
+                                    unicode::test_g(unicode::is_cjk, &word.to_string())
+                                })
+                                .unwrap_or(false) // next char is also a Chinese character
+                                // next char also has inaccurate jyutping
+                            && pr_map.get(&(i + 1)).is_none();
+                        let prev_char_is_inaccurate_cjk = i >= 1 && line
+                                .iter()
+                                .nth(i - 1)
+                                .map(|(_segment_type, word)| {
+                                    unicode::test_g(unicode::is_cjk, &word.to_string())
+                                })
+                                .unwrap_or(false) // prev char is also a Chinese character
+                                // prev char also has inaccurate jyutping
+                            && pr_map.get(&(i - 1)).is_none();
+                        if prev_char_is_inaccurate_cjk || next_char_is_inaccurate_cjk {
+                            consecutive_cjk_index += 1;
+                            create_ruby_segment(
+                                seg_type,
+                                word,
+                                &prs[start + consecutive_cjk_index - 1
+                                    ..start + consecutive_cjk_index],
+                            )
+                        } else {
+                            consecutive_cjk_index = 0;
+                            create_ruby_segment(seg_type, word, &prs[start..end])
+                        }
                     } else {
                         consecutive_cjk_index = 0;
                         create_ruby_segment(seg_type, word, &prs[start..end])
