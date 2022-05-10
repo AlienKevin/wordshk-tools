@@ -99,6 +99,12 @@ fn test_parse_line() {
     );
 
     assert_succeed(
+        parse_line("eng"),
+        "as a variant of #1 with a weaker",
+        vec![text("as a variant of "), link("1"), text(" with a weaker")],
+    );
+
+    assert_succeed(
         parse_line("yue"),
         "eg. #咁 gam3, #勁 ging6 or #最 zeoi3",
         vec![
