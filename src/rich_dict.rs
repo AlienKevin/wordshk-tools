@@ -316,15 +316,23 @@ pub fn match_ruby(variants: &Vec<&str>, line: &Line, prs: &Vec<&str>) -> RubyLin
     let line = flatten_line(variants, line);
     let pr_scores = match_ruby_construct_table(&line, prs);
     let pr_map = match_ruby_backtrack(&line, prs, &pr_scores);
-    // println!("{:?}", pr_map);
+    // if variants[0] == "大家噉話" {
+    //     println!("{:?}", pr_map);
+    // }
+    // index into consecutive cjk characters with inaccurate jyutping ruby annotation
+    let mut consecutive_cjk_index = 0;
     let flattened_ruby_line = line
         .iter()
         .enumerate()
         .map(|(i, (seg_type, word))| match pr_map.get(&i) {
-            Some(j) => create_ruby_segment(seg_type, word, &prs[*j..j + 1]),
+            Some(j) => {
+                consecutive_cjk_index = 0;
+                create_ruby_segment(seg_type, word, &prs[*j..j + 1])
+            }
             None => {
                 let word_str = word.to_string();
                 if unicode::test_g(unicode::is_punc, &word_str) {
+                    consecutive_cjk_index = 0;
                     RubySegment::Punc(word_str)
                 } else {
                     let start = {
@@ -347,7 +355,17 @@ pub fn match_ruby(variants: &Vec<&str>, line: &Line, prs: &Vec<&str>) -> RubyLin
                             None => prs.len(),
                         }
                     };
-                    create_ruby_segment(seg_type, word, &prs[start..end])
+                    if end - start >= 2 && unicode::test_g(unicode::is_cjk, &word_str) {
+                        consecutive_cjk_index += 1;
+                        create_ruby_segment(
+                            seg_type,
+                            word,
+                            &prs[start + consecutive_cjk_index - 1..start + consecutive_cjk_index],
+                        )
+                    } else {
+                        consecutive_cjk_index = 0;
+                        create_ruby_segment(seg_type, word, &prs[start..end])
+                    }
                 }
             }
         })
@@ -380,7 +398,6 @@ fn unflatten_ruby_line(line: &RubyLine) -> RubyLine {
 enum PrMatch {
     Full,
     Half,
-    ChineseChar, // a Chinese character that doesn't match the pr in CHARLIST in ful or half
     Zero,
 }
 
@@ -388,7 +405,6 @@ fn pr_match_to_score(m: PrMatch) -> usize {
     match m {
         PrMatch::Full => 4,
         PrMatch::Half => 2,
-        PrMatch::ChineseChar => 1,
         PrMatch::Zero => 0,
     }
 }
@@ -424,8 +440,6 @@ fn match_pr(seg: &str, pr: &str) -> PrMatch {
                         // found the half pr
                         if half_c_prs.contains(&&pr[..]) {
                             PrMatch::Half
-                        } else if unicode::is_cjk(c) {
-                            PrMatch::ChineseChar
                         } else {
                             PrMatch::Zero
                         }
@@ -448,13 +462,14 @@ fn match_ruby_construct_table(line: &WordLine, prs: &Vec<&str>) -> Vec<Vec<usize
             let (_, word) = &line[i - 1];
             let cell_pr_match = match_pr(&word.to_string(), prs[j - 1]);
             match cell_pr_match {
-                PrMatch::Full | PrMatch::Half | PrMatch::ChineseChar => {
+                PrMatch::Full | PrMatch::Half => {
                     pr_scores[i][j] = pr_scores[i - 1][j - 1] + pr_match_to_score(cell_pr_match);
                 }
                 PrMatch::Zero => {
                     let top_pr_score = pr_scores[i - 1][j];
                     let left_pr_score = pr_scores[i][j - 1];
-                    pr_scores[i][j] = cmp::max(top_pr_score, left_pr_score);
+                    pr_scores[i][j] =
+                        cmp::max(top_pr_score, left_pr_score) + pr_match_to_score(cell_pr_match);
                 }
             }
         }
@@ -475,7 +490,7 @@ fn match_ruby_backtrack(
         // println!("i: {}, j: {}", i, j);
         let (_, word) = &line[i - 1];
         match match_pr(&word.to_string(), &prs[j - 1]) {
-            PrMatch::Full | PrMatch::Half | PrMatch::ChineseChar => {
+            PrMatch::Full | PrMatch::Half => {
                 pr_map.insert(i - 1, j - 1);
                 // backtrack to the top left
                 i -= 1;

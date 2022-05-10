@@ -134,7 +134,7 @@ fn test_parse_clause() {
 
 #[test]
 fn test_partial_pr_line() {
-assert_succeed(
+    assert_succeed(
         parse_partial_pr_line("eng"),
         "particle #喇 laa3 before the particles #喎  wo3, #噃 bo3 or #可 ho2 (...PR NOT SHOWN HERE...)",
         vec![
@@ -903,6 +903,48 @@ fn test_match_ruby() {
         ]
     );
 
+    // typo in jyutping "能" nan4 should be nang4
+    assert_eq!(
+        match_ruby(
+            &vec!["懷春".into()],
+            &vec![text("能曾經有懷春嘅日子。")],
+            &vec!["nan4", "cang4", "ging1", "jau5", "waai4", "ceon1", "ge3", "jat6", "zi2"]
+        ),
+        vec![
+            Word(normal_word("能"), vec!["nan4".into()]),
+            Word(normal_word("曾"), vec!["cang4".into()]),
+            Word(normal_word("經"), vec!["ging1".into()]),
+            Word(normal_word("有"), vec!["jau5".into()]),
+            Word(bold_word("懷"), vec!["waai4".into()]),
+            Word(bold_word("春"), vec!["ceon1".into()]),
+            Word(normal_word("嘅"), vec!["ge3".into()]),
+            Word(normal_word("日"), vec!["jat6".into()]),
+            Word(normal_word("子"), vec!["zi2".into()]),
+            Punc("。".into())
+        ]
+    );
+
+    // typo in jyutping "曾" can4 should be cang4
+    assert_eq!(
+        match_ruby(
+            &vec!["懷春".into()],
+            &vec![text("能曾經有懷春嘅日子。")],
+            &vec!["nang4", "can4", "ging1", "jau5", "waai4", "ceon1", "ge3", "jat6", "zi2"]
+        ),
+        vec![
+            Word(normal_word("能"), vec!["nang4".into()]),
+            Word(normal_word("曾"), vec!["can4".into()]),
+            Word(normal_word("經"), vec!["ging1".into()]),
+            Word(normal_word("有"), vec!["jau5".into()]),
+            Word(bold_word("懷"), vec!["waai4".into()]),
+            Word(bold_word("春"), vec!["ceon1".into()]),
+            Word(normal_word("嘅"), vec!["ge3".into()]),
+            Word(normal_word("日"), vec!["jat6".into()]),
+            Word(normal_word("子"), vec!["zi2".into()]),
+            Punc("。".into())
+        ]
+    );
+
     // typo in jyutping "能" nan4 should be nang4, "曾" can4 should be cang4
     assert_eq!(
         match_ruby(
@@ -975,6 +1017,112 @@ fn test_match_ruby() {
             Word(normal_word("幾"), vec!["gei2".into()]),
             Word(normal_word("十"), vec!["sap6".into()]),
             Word(normal_word("萬"), vec!["maan6".into()])
+        ]
+    );
+
+    // Q&A-style without ruby annotations for 甲 and 乙
+    assert_eq!(
+        match_ruby(
+            &vec!["大家噉話"],
+            &vec![text("甲：「身體健康！」乙：「大家噉話！」")],
+            &vec!["san1", "tai2", "gin6", "hong1", "daai6", "gaa1", "gam2", "waa6"]
+        ),
+        vec![
+            Word(normal_word("甲"), vec![]),
+            Punc("：".into()),
+            Punc("「".into()),
+            Word(normal_word("身"), vec!["san1".into()]),
+            Word(normal_word("體"), vec!["tai2".into()]),
+            Word(normal_word("健"), vec!["gin6".into()]),
+            Word(normal_word("康"), vec!["hong1".into()]),
+            Punc("！".into()),
+            Punc("」".into()),
+            Word(normal_word("乙"), vec![]),
+            Punc("：".into()),
+            Punc("「".into()),
+            Word(bold_word("大"), vec!["daai6".into()],),
+            Word(bold_word("家"), vec!["gaa1".into()],),
+            Word(bold_word("噉"), vec!["gam2".into()],),
+            Word(bold_word("話"), vec!["waa6".into()],),
+            Punc("！".into()),
+            Punc("」".into()),
+        ]
+    );
+
+    // Q&A-style with ruby annotations for 甲 and 乙
+    assert_eq!(
+        match_ruby(
+            &vec!["囉"],
+            &vec![
+                text("甲：「"),
+                link("方丈"),
+                text("真係好小器呀！」乙：「係囉！」")
+            ],
+            &vec![
+                "gaap3", "fong1", "zoeng6", "zan1", "hai6", "hou2", "siu2", "hei3", "aa3", "jyut6",
+                "hai6", "lo1"
+            ]
+        ),
+        vec![
+            Word(normal_word("甲"), vec!["gaap3".into()]),
+            Punc("：".into()),
+            Punc("「".into()),
+            LinkedWord(vec![
+                (normal_word("方"), vec!["fong1".into()]),
+                (normal_word("丈"), vec!["zoeng6".into()])
+            ]),
+            Word(normal_word("真"), vec!["zan1".into()]),
+            Word(normal_word("係"), vec!["hai6".into()]),
+            Word(normal_word("好"), vec!["hou2".into()]),
+            Word(normal_word("小"), vec!["siu2".into()]),
+            Word(normal_word("器"), vec!["hei3".into()]),
+            Word(normal_word("呀"), vec!["aa3".into()]),
+            Punc("！".into()),
+            Punc("」".into()),
+            Word(normal_word("乙"), vec!["jyut6".into()]),
+            Punc("：".into()),
+            Punc("「".into()),
+            Word(normal_word("係"), vec!["hai6".into()],),
+            Word(bold_word("囉"), vec!["lo1".into()],),
+            Punc("！".into()),
+            Punc("」".into()),
+        ]
+    );
+
+    // Q&A-style without ruby annotations for 甲 and 乙
+    assert_eq!(
+        match_ruby(
+            &vec!["囉"],
+            &vec![
+                text("甲：「"),
+                link("方丈"),
+                text("真係好小器呀！」乙：「係囉！」")
+            ],
+            &vec!["fong1", "zoeng6", "zan1", "hai6", "hou2", "siu2", "hei3", "aa3", "hai6", "lo1"]
+        ),
+        vec![
+            Word(normal_word("甲"), vec![]),
+            Punc("：".into()),
+            Punc("「".into()),
+            LinkedWord(vec![
+                (normal_word("方"), vec!["fong1".into()]),
+                (normal_word("丈"), vec!["zoeng6".into()])
+            ]),
+            Word(normal_word("真"), vec!["zan1".into()]),
+            Word(normal_word("係"), vec!["hai6".into()]),
+            Word(normal_word("好"), vec!["hou2".into()]),
+            Word(normal_word("小"), vec!["siu2".into()]),
+            Word(normal_word("器"), vec!["hei3".into()]),
+            Word(normal_word("呀"), vec!["aa3".into()]),
+            Punc("！".into()),
+            Punc("」".into()),
+            Word(normal_word("乙"), vec![]),
+            Punc("：".into()),
+            Punc("「".into()),
+            Word(normal_word("係"), vec!["hai6".into()],),
+            Word(bold_word("囉"), vec!["lo1".into()],),
+            Punc("！".into()),
+            Punc("」".into()),
         ]
     );
 }
