@@ -146,19 +146,74 @@ fn parse_br<'a>() -> lip::BoxedParser<'a, (), ()> {
 /// # );
 /// ```
 pub fn parse_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
-    succeed!(identity).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
+    succeed!(remove_extra_spaces_around_link).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
             succeed!(|string| (SegmentType::Link, string))
                 .skip(token("#"))
                 .keep(take_chomped(chomp_while1c(
                     &(|c: &char| !unicode::is_punc(*c) && !c.is_whitespace()),
                     name
-                )))
-                .skip(optional("", token(" "))),
+                ))),
             succeed!(|string| (SegmentType::Text, string)).keep(take_chomped(chomp_while1c(
                 &(|c: &char| *c != '#' && *c != '\n' && *c != '\r'),
                 name
             )))
         ))))
+}
+
+fn remove_extra_spaces_around_link(segs: Vec<Segment>) -> Vec<Segment> {
+    let mut i = 0;
+    let mut output_segs = segs.clone();
+    output_segs.iter_mut().for_each(|seg| {
+        // Remove the whitespace before a link if the whitespace
+        // is preceeded by a CJK character or another whitespace (double whitespace)
+        let mut seg_chars = seg.1.chars();
+        if i + 1 < segs.len()
+            && segs[i + 1].0 == SegmentType::Link
+            && seg_chars
+                .next_back()
+                .map(char::is_whitespace)
+                .unwrap_or(false)
+            && seg_chars
+                .next_back()
+                .map(|c| unicode::is_cjk(c) || char::is_whitespace(c))
+                .unwrap_or(false)
+        {
+            seg.1 = unicode::remove_last_char(&seg.1);
+        }
+
+        // Remove the whitespace after a link if the whitespace
+        // is followed by a CJK character or another whitespace (double whitespace)
+        seg_chars = seg.1.chars();
+        if i >= 1
+            && segs[i - 1].0 == SegmentType::Link
+            && seg_chars.next().map(char::is_whitespace).unwrap_or(false)
+            && seg_chars
+                .next()
+                .map(|c| unicode::is_cjk(c) || char::is_whitespace(c))
+                .unwrap_or(false)
+        {
+            seg.1 = unicode::remove_first_char(&seg.1);
+        }
+
+        // Remove trailing whitespace from the last seg
+        if i == segs.len() - 1
+            && seg
+                .1
+                .chars()
+                .next_back()
+                .map(char::is_whitespace)
+                .unwrap_or(false)
+        {
+            seg.1 = unicode::remove_last_char(&seg.1);
+        }
+
+        i += 1;
+    });
+    // Filter out empty segs resulted from whitespace trimming above
+    output_segs
+        .into_iter()
+        .filter(|seg| !seg.1.is_empty())
+        .collect()
 }
 
 /// Parse a [Line] tagged in front by its name/category
@@ -209,15 +264,14 @@ pub fn parse_named_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()
 /// ```
 ///
 pub fn parse_partial_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
-    succeed!(identity).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
-            succeed!(|string: String| (SegmentType::Link, string.trim_end().to_string()))
+    succeed!(remove_extra_spaces_around_link).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
+            succeed!(|string: String| (SegmentType::Link, string))
                 .skip(token("#"))
                 .keep(take_chomped(chomp_while1c(
                     &(|c: &char| !unicode::is_punc(*c) && !c.is_whitespace() && *c != '('),
                     name
-                )))
-                .skip(optional("", token(" "))),
-            succeed!(|string: String| (SegmentType::Text, string.trim_end().to_string())).keep(
+                ))),
+            succeed!(|string: String| (SegmentType::Text, string)).keep(
                 take_chomped(chomp_while1c(
                     &(|c: &char| *c != '#' && *c != '\n' && *c != '\r' && *c != '('),
                     name
@@ -691,10 +745,13 @@ pub fn parse_pr(str: &str) -> LaxJyutPing {
     LaxJyutPing(
         str.split_whitespace()
             .map(|pr_seg| match parse_jyutping(pr_seg) {
-                Some(pr) => if pr.is_empty() {
-                    LaxJyutPingSegment::Nonstandard(pr_seg.to_string())
-                } else {LaxJyutPingSegment::Standard(pr)
-                },
+                Some(pr) => {
+                    if pr.is_empty() {
+                        LaxJyutPingSegment::Nonstandard(pr_seg.to_string())
+                    } else {
+                        LaxJyutPingSegment::Standard(pr)
+                    }
+                }
                 None => LaxJyutPingSegment::Nonstandard(pr_seg.to_string()),
             })
             .collect(),

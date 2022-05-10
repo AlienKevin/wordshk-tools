@@ -45,6 +45,75 @@ fn normal_word(string: &'static str) -> rich_dict::Word {
 
 #[cfg(test)]
 #[test]
+fn test_parse_line() {
+    // Need to delete a single space before '#' if previous character is a CJK
+    // Need to delete a single space following a link (unconditional)
+    assert_succeed(
+        parse_line("yue"),
+        "有個詞叫 #你好 係好常用嘅。",
+        vec![text("有個詞叫"), link("你好"), text("係好常用嘅。")],
+    );
+
+    assert_succeed(
+        parse_line("eng"),
+        "particle #喇 laa3 before the particles #喎  wo3, #噃 bo3 or #可 ho2",
+        vec![
+            text("particle "),
+            link("喇"),
+            text(" laa3 before the particles "),
+            link("喎"),
+            text(" wo3, "),
+            link("噃"),
+            text(" bo3 or "),
+            link("可"),
+            text(" ho2"),
+        ],
+    );
+
+    assert_succeed(
+        parse_line("eng"),
+        "less common than #等等 dang2 dang2",
+        vec![
+            text("less common than "),
+            link("等等"),
+            text(" dang2 dang2"),
+        ],
+    );
+
+    assert_succeed(
+        parse_line("eng"),
+        "equavalent to #現 (jin6)",
+        vec![text("equavalent to "), link("現"), text(" (jin6)")],
+    );
+
+    assert_succeed(
+        parse_line("即 #未雨綢繆"),
+        "即 #未雨綢繆",
+        vec![text("即"), link("未雨綢繆")],
+    );
+
+    assert_succeed(
+        parse_line("yue"),
+        "#質素 同 #數量 嘅合稱",
+        vec![link("質素"), text("同"), link("數量"), text("嘅合稱")],
+    );
+
+    assert_succeed(
+        parse_line("yue"),
+        "eg. #咁 gam3, #勁 ging6 or #最 zeoi3",
+        vec![
+            text("eg. "),
+            link("咁"),
+            text(" gam3, "),
+            link("勁"),
+            text(" ging6 or "),
+            link("最"),
+            text(" zeoi3"),
+        ],
+    );
+}
+
+#[test]
 fn test_parse_clause() {
     assert_succeed(
         parse_clause("yue"),
@@ -60,6 +129,45 @@ fn test_parse_clause() {
             link("三個"),
             text("：字母"),
         ]],
+    );
+}
+
+#[test]
+fn test_partial_pr_line() {
+assert_succeed(
+        parse_partial_pr_line("eng"),
+        "particle #喇 laa3 before the particles #喎  wo3, #噃 bo3 or #可 ho2 (...PR NOT SHOWN HERE...)",
+        vec![
+            text("particle "),
+            link("喇"),
+            text(" laa3 before the particles "),
+            link("喎"),
+            text(" wo3, "),
+            link("噃"),
+            text(" bo3 or "),
+            link("可"),
+            text(" ho2"),
+        ],
+    );
+
+    assert_succeed(
+        parse_partial_pr_line("yue"),
+        "eg. #咁 gam3, #勁 ging6 or #最 zeoi3 (...PR NOT SHOWN HERE...)",
+        vec![
+            text("eg. "),
+            link("咁"),
+            text(" gam3, "),
+            link("勁"),
+            text(" ging6 or "),
+            link("最"),
+            text(" zeoi3"),
+        ],
+    );
+
+    assert_succeed(
+        parse_partial_pr_line("yue"),
+        "#質素 同 #數量 嘅合稱 (...PR NOT SHOWN HERE...)",
+        vec![link("質素"), text("同"), link("數量"), text("嘅合稱")],
     );
 }
 

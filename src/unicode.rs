@@ -6,6 +6,20 @@ use std::collections::HashSet;
 use unicode_names2;
 use unicode_segmentation::UnicodeSegmentation;
 
+pub fn remove_first_char(s: &str) -> String {
+     let mut chars = s.chars();
+    // skip the first char
+    chars.next();
+    chars.as_str().to_string()
+}
+
+pub fn remove_last_char(s: &str) -> String {
+     let mut chars = s.chars();
+    // skip the last char
+    chars.next_back();
+    chars.as_str().to_string()
+}
+
 pub fn normalize(s: &str) -> String {
     use unicode_normalization::UnicodeNormalization;
     s.nfkc().collect::<String>().to_lowercase()
