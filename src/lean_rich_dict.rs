@@ -11,6 +11,7 @@ pub struct LeanRichEntry {
 	pub sims: Vec<String>,
 	pub ants: Vec<String>,
 	pub defs: Vec<RichDef>,
+	pub published: bool,
 }
 
 /// A variant of a \[word\] with \[prs\] (pronounciations)
@@ -37,5 +38,6 @@ pub fn to_lean_rich_entry(entry: &RichEntry) -> LeanRichEntry {
 		sims: entry.sims.clone(),
 		ants: entry.ants.clone(),
 		defs: entry.defs.clone(),
+		published: entry.published,
 	}
 }

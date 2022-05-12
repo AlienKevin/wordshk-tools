@@ -37,6 +37,7 @@ pub struct Entry {
     pub refs: Vec<String>,
     pub imgs: Vec<String>,
     pub defs: Vec<Def>,
+    pub published: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

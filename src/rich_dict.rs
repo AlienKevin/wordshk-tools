@@ -20,6 +20,7 @@ pub struct RichEntry {
     pub refs: Vec<String>,
     pub imgs: Vec<String>,
     pub defs: Vec<RichDef>,
+    pub published: bool,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -575,6 +576,7 @@ pub fn enrich_dict(dict: &Dict) -> RichDict {
                     refs: entry.refs.clone(),
                     imgs: entry.imgs.clone(),
                     defs: rich_defs,
+                    published: entry.published,
                 },
             )
         })

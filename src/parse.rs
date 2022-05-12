@@ -33,6 +33,7 @@ pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
             let id: usize = entry[0].parse().unwrap();
             let head = &entry[1];
             let content = &entry[2];
+            let published = &entry[5] == "已公開";
             // entry[3] is always an empty string
             let head_parse_result = sequence(
                 "",
@@ -65,7 +66,7 @@ pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
                 ParseResult::Ok {
                     output: head_result,
                     ..
-                } => match parse_content(id, Variants(head_result)).run(content, ()) {
+                } => match parse_content(id, Variants(head_result), published).run(content, ()) {
                     ParseResult::Ok {
                         output: content_result,
                         ..
@@ -641,12 +642,13 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 /// # "};
 ///
 /// let id = 98634;
+/// let published = true;
 /// // prs omitted below for brevity
 /// let variants = Variants(vec![(Variant {word: "奸爸爹".into(), prs: LaxJyutPings(vec![])})]);
 ///
 /// // which parses to:
 ///
-/// # lip::assert_succeed(parse_content(id, variants.clone()), source,
+/// # lip::assert_succeed(parse_content(id, variants.clone(), published), source,
 /// Some(Entry {
 /// id: id,
 /// variants: variants,
@@ -661,12 +663,17 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
 ///     eng: Some(vec![vec![(Text, "cheer up".into())]]),
 ///     alts: vec![(AltLang::Jpn, vec![vec![(Text, "頑張って（がんばって）".into())]])],
 ///     egs: vec![],
-///     }]
+///     }],
+/// published: published,
 /// })
 /// # );
 /// ```
 ///
-pub fn parse_content<'a>(id: usize, variants: Variants) -> lip::BoxedParser<'a, Option<Entry>, ()> {
+pub fn parse_content<'a>(
+    id: usize,
+    variants: Variants,
+    published: bool,
+) -> lip::BoxedParser<'a, Option<Entry>, ()> {
     one_of!(
         succeed!(|poses, labels, sims, ants, refs, imgs, defs| Some(Entry {
             id,
@@ -678,6 +685,7 @@ pub fn parse_content<'a>(id: usize, variants: Variants) -> lip::BoxedParser<'a, 
             refs,
             imgs,
             defs,
+            published,
         }))
         .keep(parse_tags("pos"))
         .keep(parse_tags("label"))

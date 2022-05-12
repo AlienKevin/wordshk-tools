@@ -558,7 +558,7 @@ fn test_parse_content() {
             },
         ]);
         assert_succeed(
-            parse_content(id, variants.clone()),
+            parse_content(id, variants.clone(), true),
             "(pos:動詞)(pos:擬聲詞)
 <explanation>
 yue:表現不屑而發出嘅聲音
@@ -591,6 +591,7 @@ eng:Stop tsking!",
                         eng: Some(simple_line("Stop tsking!")),
                     }],
                 }],
+                published: true,
             }),
         );
     }
@@ -614,7 +615,7 @@ eng:Stop tsking!",
             ])]),
         }]);
         assert_succeed(
-                parse_content(id, variants.clone()),
+                parse_content(id, variants.clone(), true),
                 "(pos:動詞)(label:潮語)(label:粗俗)(ref:http://evchk.wikia.com/wiki/%E9%AB%98%E7%99%BB%E7%B2%97%E5%8F%A3Filter)
 yue:「#仆街」嘅代名詞",
                 Some(Entry {
@@ -631,7 +632,8 @@ yue:「#仆街」嘅代名詞",
                         eng: None,
                         alts: vec![],
                         egs: vec![],
-                    }]
+                    }],
+                    published: true,
                 })
             );
     }
@@ -1716,6 +1718,7 @@ fn test_to_lean_rich_dict() {
     use super::lean_rich_dict::{to_lean_rich_entry, LeanRichEntry, LeanVariant};
     {
         let id = 103022;
+        let published = true;
         let variants = Variants(vec![
             Variant {
                 word: "zip".to_string(),
@@ -1767,6 +1770,7 @@ fn test_to_lean_rich_dict() {
                 alts: vec![],
                 egs: vec![],
             }],
+            published,
         };
 
         let lean_entry = LeanRichEntry {
@@ -1782,6 +1786,7 @@ fn test_to_lean_rich_dict() {
                 alts: vec![],
                 egs: vec![],
             }],
+            published,
         };
         assert_eq!(lean_entry, to_lean_rich_entry(&entry));
     }
