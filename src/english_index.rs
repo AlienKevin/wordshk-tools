@@ -9,16 +9,17 @@ use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 
-pub type Index = HashMap<String, Vec<IndexData>>;
+pub type EnglishIndex = HashMap<String, Vec<EnglishIndexData>>;
 
 #[derive(Serialize, Deserialize)]
-pub struct IndexData {
+pub struct EnglishIndexData {
 	entry_id: usize,
+	def_index: usize,
 	score: f32,
 }
 
 // Use reverse ordering so BTreeSet sorts in descending order according to scores
-impl Ord for IndexData {
+impl Ord for EnglishIndexData {
 	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
 		other
 			.score
@@ -27,23 +28,23 @@ impl Ord for IndexData {
 	}
 }
 
-impl PartialOrd for IndexData {
+impl PartialOrd for EnglishIndexData {
 	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
 		other.score.partial_cmp(&self.score)
 	}
 }
 
-impl PartialEq for IndexData {
+impl PartialEq for EnglishIndexData {
 	fn eq(&self, other: &Self) -> bool {
 		other.score == self.score
 	}
 }
 
-impl Eq for IndexData {}
+impl Eq for EnglishIndexData {}
 
 type Counter = HashMap<String, u32>;
 
-pub fn generate_english_index(dict: &RichDict) -> Index {
+pub fn generate_english_index(dict: &RichDict) -> EnglishIndex {
 	let mut counter: Counter = HashMap::new();
 	dict.iter().for_each(|(_, entry)| {
 		let mut repeated_terms = HashSet::new();
@@ -170,7 +171,7 @@ fn mark_stem(stem: &str) -> String {
 	format!("!{stem}")
 }
 
-fn insert_to_index(term: &str, index_data: IndexData, index: &mut Index) {
+fn insert_to_index(term: &str, index_data: EnglishIndexData, index: &mut EnglishIndex) {
 	match index.get(&term.to_string()).and_then(|entries| {
 		entries
 			.iter()
@@ -189,72 +190,77 @@ fn insert_to_index(term: &str, index_data: IndexData, index: &mut Index) {
 	}
 }
 
-fn index_entry(counter: &Counter, entry: &RichEntry, index: &mut Index) {
+fn index_entry(counter: &Counter, entry: &RichEntry, index: &mut EnglishIndex) {
 	// Map of term to scores -- we need to postprocess them
 	let mut scores: HashMap<String, Vec<f32>> = HashMap::new();
 
 	// For phrase, splitted_phrase in tokenize_word(word):
-	tokenize_entry(entry).iter().for_each(|phrases| {
-		phrases.iter().for_each(|(phrase, splitted_phrase)| {
-			// This assumes skipped phrase does not break down into
-			// non-skippable terms
-			if SKIPPED_SET.contains(phrase.as_str()) {
-				return;
-			}
-
-			if splitted_phrase.len() <= 7 {
-				// Score = 100 for exact phrase match
-				insert_to_index(
-					phrase,
-					IndexData {
-						entry_id: entry.id,
-						score: 100.0,
-					},
-					index,
-				);
-			}
-
-			splitted_phrase.iter().for_each(|term| {
-				if SKIPPED_SET.contains(term.as_str()) {
+	tokenize_entry(entry)
+		.iter()
+		.enumerate()
+		.for_each(|(def_index, phrases)| {
+			phrases.iter().for_each(|(phrase, splitted_phrase)| {
+				// This assumes skipped phrase does not break down into
+				// non-skippable terms
+				if SKIPPED_SET.contains(phrase.as_str()) {
 					return;
 				}
 
-				let score = score_for_term(term, splitted_phrase, &counter);
-
-				// Don't repeat the whole phrase
-				if splitted_phrase.len() > 1 {
-					scores.entry(term.to_string()).or_insert(vec![]).push(score);
-				}
-
-				let stem = unicode::american_english_stem(term);
-				scores.entry(mark_stem(&stem)).or_insert(vec![]).push(score);
-			});
-			scores.iter().for_each(|(term_stem, score_list)| {
-				// the uncombined original score_list is roughly a real number from 0-1
-				// with higher score a higher match. To combine two scores with same
-				// key, x and y, each we interpret it as a probability and consider the
-				// probability it is NOT a match on BOTH counts, and calculate it by
-				// 1 - (1-x)(1-y)
-				let score = (1.0
-					- score_list
-						.iter()
-						.fold(1.0, |total, score| total * (1.0 - score)))
-					* 100.0;
-
-				if score >= 40.0 {
-					// This includes the stems
+				if splitted_phrase.len() <= 7 {
+					// Score = 100 for exact phrase match
 					insert_to_index(
-						term_stem,
-						IndexData {
+						phrase,
+						EnglishIndexData {
 							entry_id: entry.id,
-							score,
+							def_index,
+							score: 100.0,
 						},
 						index,
 					);
 				}
+
+				splitted_phrase.iter().for_each(|term| {
+					if SKIPPED_SET.contains(term.as_str()) {
+						return;
+					}
+
+					let score = score_for_term(term, splitted_phrase, &counter);
+
+					// Don't repeat the whole phrase
+					if splitted_phrase.len() > 1 {
+						scores.entry(term.to_string()).or_insert(vec![]).push(score);
+					}
+
+					let stem = unicode::american_english_stem(term);
+					scores.entry(mark_stem(&stem)).or_insert(vec![]).push(score);
+				});
+				scores.iter().for_each(|(term_stem, score_list)| {
+					// the uncombined original score_list is roughly a real number from 0-1
+					// with higher score a higher match. To combine two scores with same
+					// key, x and y, each we interpret it as a probability and consider the
+					// probability it is NOT a match on BOTH counts, and calculate it by
+					// 1 - (1-x)(1-y)
+					let score = (1.0
+						- score_list
+							.iter()
+							.fold(1.0, |total, score| total * (1.0 - score)))
+						* 100.0;
+
+					if score >= 40.0 {
+						// This includes the stems
+						insert_to_index(
+							term_stem,
+							EnglishIndexData {
+								entry_id: entry.id,
+								def_index,
+								score,
+							},
+							index,
+						);
+					}
+				});
 			});
 		});
-	});
 }
 
 lazy_static! {
