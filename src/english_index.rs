@@ -13,9 +13,9 @@ pub type EnglishIndex = HashMap<String, Vec<EnglishIndexData>>;
 
 #[derive(Serialize, Deserialize)]
 pub struct EnglishIndexData {
-	entry_id: usize,
-	def_index: usize,
-	score: f32,
+	pub entry_id: usize,
+	pub def_index: usize,
+	pub score: f32,
 }
 
 // Use reverse ordering so BTreeSet sorts in descending order according to scores
