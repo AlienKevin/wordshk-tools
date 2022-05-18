@@ -15,7 +15,6 @@ pub type Index = HashMap<String, Vec<IndexData>>;
 pub struct IndexData {
 	entry_id: usize,
 	score: f32,
-	is_single_phrase: bool,
 }
 
 // Use reverse ordering so BTreeSet sorts in descending order according to scores
@@ -210,7 +209,6 @@ fn index_entry(counter: &Counter, entry: &RichEntry, index: &mut Index) {
 					IndexData {
 						entry_id: entry.id,
 						score: 100.0,
-						is_single_phrase: splitted_phrase.len() == 1,
 					},
 					index,
 				);
@@ -250,7 +248,6 @@ fn index_entry(counter: &Counter, entry: &RichEntry, index: &mut Index) {
 						IndexData {
 							entry_id: entry.id,
 							score,
-							is_single_phrase: true,
 						},
 						index,
 					);

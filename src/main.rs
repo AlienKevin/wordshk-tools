@@ -4,6 +4,7 @@ use wordshk_tools::app_api::Api;
 use wordshk_tools::emit_apple_dict::rich_dict_to_xml;
 use wordshk_tools::english_index::generate_english_index;
 use wordshk_tools::parse::parse_dict;
+use wordshk_tools::rich_dict::enrich_dict;
 
 const APP_TMP_DIR: &str = "./app_tmp";
 
