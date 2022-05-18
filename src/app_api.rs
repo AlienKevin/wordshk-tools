@@ -1,3 +1,4 @@
+use super::generate_english_index::generate_english_index;
 use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, RichDict};
 use chrono::{DateTime, Utc};
@@ -33,7 +34,7 @@ impl Api {
     pub fn new(app_dir: &str) -> Self {
         let api_path = Path::new(app_dir).join("api.json");
         let current_time = Utc::now();
-        match deserialize_api(&api_path) {
+        let api = match deserialize_api(&api_path) {
             Some(api) => {
                 if current_time
                     .signed_duration_since(api.release_time)
@@ -46,7 +47,9 @@ impl Api {
                 }
             }
             None => Api::get_new_dict(&api_path),
-        }
+        };
+        Api::generate_index(app_dir, &api.dict);
+        api
     }
 
     fn get_new_dict<P: AsRef<Path>>(api_path: &P) -> Api {
@@ -67,5 +70,12 @@ impl Api {
         };
         serialize_api(api_path, &new_api);
         new_api
+    }
+
+    fn generate_index(app_dir: &str, dict: &RichDict) {
+        let index_path = Path::new(app_dir).join("english_index.json");
+        let english_index = generate_english_index(&dict);
+        fs::write(index_path, serde_json::to_string(&english_index).unwrap())
+            .expect("Unable to output serailized Index");
     }
 }

@@ -1,4 +1,5 @@
 use super::jyutping::LaxJyutPings;
+use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -12,7 +13,7 @@ pub type Dict = HashMap<usize, Entry>;
 ///
 /// \[variants\] variants of the word: 㗎:gaa3,咖:gaa3,𡃉:gaa3
 ///
-/// \[pos\] grammaticall positions of the word: 動詞, 名詞, 形容詞
+/// \[pos\] grammatical positions of the word: 動詞, 名詞, 形容詞
 ///
 /// \[labels\] labels on the word: 術語, 俚語, 專名
 ///
@@ -93,6 +94,10 @@ pub type Segment = (SegmentType, String);
 ///
 pub type Line = Vec<Segment>;
 
+pub fn line_to_string(line: &Line) -> String {
+    line.iter().map(|seg| seg.1.to_string()).join("")
+}
+
 /// A clause consists of one or more [Line]s. Appears in explanations and example sentences
 ///
 /// Single-line clause: `vec![vec![(Text, "一行白鷺上青天")]]`
@@ -100,6 +105,10 @@ pub type Line = Vec<Segment>;
 /// Multi-line clause: `vec![vec![(Text, "一行白鷺上青天")], vec![(Text, "兩個黃鸝鳴翠柳")]]`
 ///
 pub type Clause = Vec<Line>; // can be multiline
+
+pub fn clause_to_string(clause: &Clause) -> String {
+    clause.iter().map(|line| line_to_string(line)).join("\n")
+}
 
 /// A definition of a word
 ///

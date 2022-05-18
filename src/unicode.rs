@@ -1,20 +1,23 @@
 use super::hk_variant_map_safe::HONG_KONG_VARIANT_MAP_SAFE;
 use super::simp_to_trad::SIMP_TO_TRAD;
+use super::variant_to_us_english::VARIANT_TO_US_ENGLISH;
+use deunicode::deunicode;
 use itertools::Itertools;
 use lazy_static::lazy_static;
+use rust_stemmers::{Algorithm, Stemmer};
 use std::collections::HashSet;
 use unicode_names2;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub fn remove_first_char(s: &str) -> String {
-     let mut chars = s.chars();
+    let mut chars = s.chars();
     // skip the first char
     chars.next();
     chars.as_str().to_string()
 }
 
 pub fn remove_last_char(s: &str) -> String {
-     let mut chars = s.chars();
+    let mut chars = s.chars();
     // skip the last char
     chars.next_back();
     chars.as_str().to_string()
@@ -118,6 +121,31 @@ pub fn to_traditional(str: &str) -> String {
             None => c,
         })
         .join("")
+}
+
+/// This function assumes that the input look like english words (i.e. some
+/// west-Europe-alike language and just one word instead of many), and returns
+/// a consistent form regardless of which variant of the word is given
+pub fn normalize_english_word_for_search_index(word: &str) -> String {
+    to_us_english(
+        &deunicode(&word.to_lowercase())
+            .split_whitespace()
+            .join(" ")
+            .chars()
+            .filter(|c| c.is_alphabetic() || *c == ' ')
+            .collect::<String>(),
+    )
+}
+
+pub fn to_us_english(str: &str) -> String {
+    str.split_whitespace()
+        .map(|word| VARIANT_TO_US_ENGLISH.get(word).unwrap_or(&word).to_string())
+        .join(" ")
+}
+
+pub fn american_english_stem(str: &str) -> String {
+    let en_stemmer = Stemmer::create(Algorithm::English);
+    en_stemmer.stem(str).into_owned()
 }
 
 lazy_static! {
