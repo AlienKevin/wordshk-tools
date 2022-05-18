@@ -1,4 +1,4 @@
-use super::generate_english_index::generate_english_index;
+use super::english_index::generate_english_index;
 use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, RichDict};
 use chrono::{DateTime, Utc};
