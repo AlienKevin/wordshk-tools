@@ -1779,7 +1779,7 @@ fn test_to_lean_rich_dict() {
         let lean_entry = LeanRichEntry {
             id,
             variants: lean_variants,
-            variants_simp, 
+            variants_simp,
             poses: vec!["動詞".to_string(), "擬聲詞".to_string()],
             labels: vec![],
             sims: vec![],
@@ -1794,5 +1794,133 @@ fn test_to_lean_rich_dict() {
             published,
         };
         assert_eq!(lean_entry, to_lean_rich_entry(&entry));
+    }
+}
+
+#[test]
+fn test_get_simplified_rich_line() {
+    use rich_dict::{get_simplified_rich_line, RichLine, RubySegment, TextStyle, Word};
+    // empty edge case
+    {
+        let trad_rich_line = RichLine::Ruby(vec![]);
+        let simp_rich_line = RichLine::Ruby(vec![]);
+        let simp_line = "".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(simp_line, trad_rich_line)
+        );
+    }
+
+    // single Chinese character
+    {
+        let trad_rich_line = RichLine::Ruby(vec![RubySegment::Word(
+            Word(vec![(TextStyle::Normal, "國".into())]),
+            vec!["gwok3".into()],
+        )]);
+        let simp_rich_line = RichLine::Ruby(vec![RubySegment::Word(
+            Word(vec![(TextStyle::Normal, "国".into())]),
+            vec!["gwok3".into()],
+        )]);
+        let simp_line = "国".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(simp_line, trad_rich_line)
+        );
+    }
+
+    // single sentence of Chinese characters
+    {
+        let trad_rich_line = RichLine::Ruby(vec![
+            RubySegment::Punc("「".into()),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "國".into())]),
+                vec!["gwok3".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "家".into())]),
+                vec!["gaa1".into()],
+            ),
+            RubySegment::Punc("，".into()),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "富".into())]),
+                vec!["fu3".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "強".into())]),
+                vec!["koeng4".into()],
+            ),
+            RubySegment::Punc("。".into()),
+            RubySegment::Punc("」".into()),
+        ]);
+        let simp_rich_line = RichLine::Ruby(vec![
+            RubySegment::Punc("「".into()),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "国".into())]),
+                vec!["gwok3".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "家".into())]),
+                vec!["gaa1".into()],
+            ),
+            RubySegment::Punc("，".into()),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "富".into())]),
+                vec!["fu3".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "强".into())]),
+                vec!["koeng4".into()],
+            ),
+            RubySegment::Punc("。".into()),
+            RubySegment::Punc("」".into()),
+        ]);
+        let simp_line = "「国家，富强。」".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(simp_line, trad_rich_line)
+        );
+    }
+
+    // single sentence with a mixture of Chinese and latin characters
+    {
+        let trad_rich_line = RichLine::Ruby(vec![
+            RubySegment::Punc("「".into()),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "國".into())]),
+                vec!["gwok3".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "家".into())]),
+                vec!["gaa1".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "happy".into())]),
+                vec!["hep1".into(), "pi2".into()],
+            ),
+            RubySegment::Punc("。".into()),
+            RubySegment::Punc("」".into()),
+        ]);
+        let simp_rich_line = RichLine::Ruby(vec![
+            RubySegment::Punc("「".into()),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "国".into())]),
+                vec!["gwok3".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "家".into())]),
+                vec!["gaa1".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "happy".into())]),
+                vec!["hep1".into(), "pi2".into()],
+            ),
+            RubySegment::Punc("。".into()),
+            RubySegment::Punc("」".into()),
+        ]);
+        let simp_line = "「国家happy。」".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(simp_line, trad_rich_line)
+        );
     }
 }

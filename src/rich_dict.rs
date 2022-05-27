@@ -614,6 +614,48 @@ pub fn enrich_eg(variants: &Vec<&str>, eg: &Eg) -> RichEg {
     }
 }
 
+pub fn get_simplified_rich_line(simp_line: String, trad_line: RichLine) -> RichLine {
+    // Don't need to worry about bolding variants in simplified segments
+    // Because we only use the segment text and the text styles are derived
+    // from traditional segments
+    let simp_segs = tokenize(&vec![], &simp_line);
+    let mut simp_seg_index = 0;
+    match trad_line {
+        RichLine::Ruby(ruby_line) => RichLine::Ruby(
+            ruby_line
+                .iter()
+                .map(|seg| match seg {
+                    RubySegment::Punc(_) => {
+                        simp_seg_index += 1;
+                        seg.clone()
+                    }
+                    RubySegment::Word(_word, prs) => {
+                        simp_seg_index += 1;
+                        RubySegment::Word(simp_segs[simp_seg_index - 1].clone(), prs.to_vec())
+                    }
+                    RubySegment::LinkedWord(segs) => RubySegment::LinkedWord(
+                        segs.iter()
+                            .map(|(_word, prs)| {
+                                simp_seg_index += 1;
+                                (simp_segs[simp_seg_index - 1].clone(), prs.to_vec())
+                            })
+                            .collect(),
+                    ),
+                })
+                .collect(),
+        ),
+        RichLine::Text(word_line) => RichLine::Text(
+            word_line
+                .iter()
+                .map(|(seg_type, _seg)| {
+                    simp_seg_index += 1;
+                    (seg_type.clone(), simp_segs[simp_seg_index - 1].clone())
+                })
+                .collect(),
+        ),
+    }
+}
+
 fn get_simplified_variants(trad_variants: &Variants, defs: &Vec<Def>) -> Vec<String> {
     let mut lines: Vec<Line> = defs
         .iter()
