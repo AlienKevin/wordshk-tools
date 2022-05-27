@@ -4,8 +4,10 @@ use super::variant_to_us_english::VARIANT_TO_US_ENGLISH;
 use deunicode::deunicode;
 use itertools::Itertools;
 use lazy_static::lazy_static;
+use opencc_rust::*;
 use rust_stemmers::{Algorithm, Stemmer};
 use std::collections::HashSet;
+use std::path::Path;
 use unicode_names2;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -123,6 +125,10 @@ pub fn to_traditional(str: &str) -> String {
         .join("")
 }
 
+pub fn to_simplified(str: &str) -> String {
+    TRAD_TO_SIMP.convert(str)
+}
+
 /// This function assumes that the input look like english words (i.e. some
 /// west-Europe-alike language and just one word instead of many), and returns
 /// a consistent form regardless of which variant of the word is given
@@ -171,5 +177,11 @@ lazy_static! {
             '〈','〉', '︿', '﹀', '［', '］', '‧',
             // Small Form Variants for Chinese National Standard CNS 11643
             '﹐', '﹑','﹒', '﹔', '﹕', '﹖', '﹗', '﹘', '﹙', '﹚', '﹛', '﹜', '﹝', '﹞', '﹟'])
+    };
+
+    static ref TRAD_TO_SIMP: OpenCC = {
+        let output_path = Path::new("opencc");
+        generate_static_dictionary(&output_path, DefaultConfig::HK2S).unwrap();
+        OpenCC::new(Path::join(output_path, DefaultConfig::HK2S)).unwrap()
     };
 }

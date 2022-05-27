@@ -430,6 +430,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "lazy-static-include"
+version = "3.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e559d5071cbb9743796593a892d96a7cc411d90aad711f57cc7dcbbf3893c10c"
+dependencies = [
+ "lazy_static",
+ "manifest-dir-macros",
+ "syn",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -457,6 +468,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "manifest-dir-macros"
+version = "0.1.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f08150cf2bab1fc47c2196f4f41173a27fcd0f684165e5458c0046b53a472e2f"
+dependencies = [
+ "once_cell",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -570,6 +593,18 @@ name = "once_cell"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da32515d9f6e6e489d7bc9d84c71b060db7247dc035bbe44eac88cf87486d8d5"
+
+[[package]]
+name = "opencc-rust"
+version = "1.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e29d0bd7808dba688e3e29092e3119a58ed6a543c64368da1d170d1763533c7f"
+dependencies = [
+ "lazy-static-include",
+ "lazy_static",
+ "libc",
+ "pkg-config",
+]
 
 [[package]]
 name = "openssl"
@@ -1225,6 +1260,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "lip",
+ "opencc-rust",
  "regex",
  "reqwest",
  "rust-stemmers",

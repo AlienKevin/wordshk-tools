@@ -6,6 +6,7 @@ use serde::Serialize;
 pub struct LeanRichEntry {
 	pub id: usize,
 	pub variants: Vec<LeanVariant>,
+	pub variants_simp: Vec<String>,
 	pub poses: Vec<String>,
 	pub labels: Vec<String>,
 	pub sims: Vec<String>,
@@ -33,6 +34,7 @@ pub fn to_lean_rich_entry(entry: &RichEntry) -> LeanRichEntry {
 				prs: variant.prs.to_string(),
 			})
 			.collect(),
+		variants_simp: entry.variants_simp.clone(),
 		poses: entry.poses.clone(),
 		labels: entry.labels.clone(),
 		sims: entry.sims.clone(),

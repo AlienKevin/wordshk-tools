@@ -1,4 +1,6 @@
-use super::dict::{AltClause, Clause, Dict, Eg, Line, PrLine, Segment, SegmentType, Variants};
+use super::dict::{
+    line_to_string, AltClause, Clause, Def, Dict, Eg, Line, PrLine, Segment, SegmentType, Variants,
+};
 use super::unicode;
 use lazy_static::lazy_static;
 use serde::Deserialize;
@@ -13,6 +15,7 @@ pub type RichDict = HashMap<usize, RichEntry>;
 pub struct RichEntry {
     pub id: usize,
     pub variants: Variants,
+    pub variants_simp: Vec<String>,
     pub poses: Vec<String>,
     pub labels: Vec<String>,
     pub sims: Vec<String>,
@@ -26,6 +29,7 @@ pub struct RichEntry {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct RichDef {
     pub yue: Clause,
+    pub yue_simp: Clause,
     pub eng: Option<Clause>,
     pub alts: Vec<AltClause>,
     pub egs: Vec<RichEg>,
@@ -34,7 +38,9 @@ pub struct RichDef {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RichEg {
     pub zho: Option<RichLine>,
+    pub zho_simp: Option<String>,
     pub yue: Option<RichLine>,
+    pub yue_simp: Option<String>,
     pub eng: Option<Line>,
 }
 
@@ -559,6 +565,7 @@ pub fn enrich_dict(dict: &Dict) -> RichDict {
                 .iter()
                 .map(|def| RichDef {
                     yue: def.yue.clone(),
+                    yue_simp: clause_to_simplified(&def.yue),
                     eng: def.eng.clone(),
                     alts: def.alts.clone(),
                     egs: def.egs.iter().map(|eg| enrich_eg(variants, eg)).collect(),
@@ -569,6 +576,7 @@ pub fn enrich_dict(dict: &Dict) -> RichDict {
                 RichEntry {
                     id: *id,
                     variants: entry.variants.clone(),
+                    variants_simp: get_simplified_variants(&entry.variants, &entry.defs),
                     poses: entry.poses.clone(),
                     labels: entry.labels.clone(),
                     sims: entry.sims.clone(),
@@ -593,7 +601,75 @@ pub fn enrich_pr_line(variants: &Vec<&str>, pr_line: &PrLine) -> RichLine {
 pub fn enrich_eg(variants: &Vec<&str>, eg: &Eg) -> RichEg {
     RichEg {
         zho: eg.zho.as_ref().map(|zho| enrich_pr_line(variants, &zho)),
+        zho_simp: eg
+            .zho
+            .as_ref()
+            .map(|zho| line_to_string(&line_to_simplified(&zho.0))),
         yue: eg.yue.as_ref().map(|yue| enrich_pr_line(variants, &yue)),
+        yue_simp: eg
+            .yue
+            .as_ref()
+            .map(|yue| line_to_string(&line_to_simplified(&yue.0))),
         eng: eg.eng.clone(),
     }
+}
+
+fn get_simplified_variants(trad_variants: &Variants, defs: &Vec<Def>) -> Vec<String> {
+    let mut lines: Vec<Line> = defs
+        .iter()
+        .flat_map(|def| {
+            def.egs
+                .iter()
+                .filter_map(|eg| eg.zho.as_ref().map(|zho| zho.0.clone()))
+        })
+        .collect();
+    let yue_lines = defs.iter().flat_map(|def| {
+        def.egs
+            .iter()
+            .filter_map(|eg| eg.yue.as_ref().map(|yue| yue.0.clone()))
+    });
+    lines.extend(yue_lines);
+
+    let mut simp_variants = HashMap::new();
+
+    lines.iter().for_each(|line| {
+        let line_str = line_to_string(line);
+        let line_str_simp = unicode::to_simplified(&line_str);
+        trad_variants
+            .0
+            .iter()
+            .enumerate()
+            .for_each(|(variant_index, trad_variant)| {
+                let trad_variant = &trad_variant.word;
+                if let Some(variant_start_index) = line_str.find(trad_variant) {
+                    let variant_end_index = variant_start_index + trad_variant.len();
+                    simp_variants.insert(
+                        variant_index,
+                        (&line_str_simp[variant_start_index..variant_end_index]).to_string(),
+                    );
+                }
+            });
+    });
+    trad_variants
+        .0
+        .iter()
+        .enumerate()
+        .map(|(variant_index, trad_variant)| {
+            if let Some(simp_variant) = simp_variants.get(&variant_index) {
+                simp_variant.clone()
+            } else {
+                unicode::to_simplified(&trad_variant.word)
+            }
+        })
+        .collect()
+}
+
+fn clause_to_simplified(clause: &Clause) -> Clause {
+    clause.iter().map(line_to_simplified).collect()
+}
+
+fn line_to_simplified(line: &Line) -> Line {
+    line.iter()
+        .map(|(seg_type, seg)| (seg_type.clone(), unicode::to_simplified(seg)))
+        .collect()
 }

@@ -1745,6 +1745,7 @@ fn test_to_lean_rich_dict() {
                 ])]),
             },
         ]);
+        let variants_simp = vec!["zip".to_string(), "jip".to_string()];
         let lean_variants = vec![
             LeanVariant {
                 word: "zip".into(),
@@ -1758,6 +1759,7 @@ fn test_to_lean_rich_dict() {
         let entry = rich_dict::RichEntry {
             id,
             variants,
+            variants_simp: variants_simp.clone(),
             poses: vec!["動詞".to_string(), "擬聲詞".to_string()],
             labels: vec![],
             sims: vec![],
@@ -1766,6 +1768,7 @@ fn test_to_lean_rich_dict() {
             imgs: vec![],
             defs: vec![rich_dict::RichDef {
                 yue: simple_clause("表現不屑而發出嘅聲音"),
+                yue_simp: simple_clause("表现不屑而发出嘅声音"),
                 eng: Some(simple_clause("tsk")),
                 alts: vec![],
                 egs: vec![],
@@ -1776,12 +1779,14 @@ fn test_to_lean_rich_dict() {
         let lean_entry = LeanRichEntry {
             id,
             variants: lean_variants,
+            variants_simp, 
             poses: vec!["動詞".to_string(), "擬聲詞".to_string()],
             labels: vec![],
             sims: vec![],
             ants: vec![],
             defs: vec![rich_dict::RichDef {
                 yue: simple_clause("表現不屑而發出嘅聲音"),
+                yue_simp: simple_clause("表现不屑而发出嘅声音"),
                 eng: Some(simple_clause("tsk")),
                 alts: vec![],
                 egs: vec![],
