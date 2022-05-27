@@ -1,5 +1,6 @@
 use super::dict::{
-    line_to_string, AltClause, Clause, Def, Dict, Eg, Line, PrLine, Segment, SegmentType, Variants,
+    line_to_string, AltClause, Clause, Def, Dict, Eg, Line, PrLine, Segment, SegmentType, Variant,
+    Variants,
 };
 use super::unicode;
 use lazy_static::lazy_static;
@@ -576,7 +577,7 @@ pub fn enrich_dict(dict: &Dict) -> RichDict {
                 RichEntry {
                     id: *id,
                     variants: entry.variants.clone(),
-                    variants_simp: get_simplified_variants(&entry.variants, &entry.defs),
+                    variants_simp: get_simplified_variant_strings(&entry.variants, &entry.defs),
                     poses: entry.poses.clone(),
                     labels: entry.labels.clone(),
                     sims: entry.sims.clone(),
@@ -656,7 +657,24 @@ pub fn get_simplified_rich_line(simp_line: String, trad_line: RichLine) -> RichL
     }
 }
 
-fn get_simplified_variants(trad_variants: &Variants, defs: &Vec<Def>) -> Vec<String> {
+pub fn get_simplified_variants(
+    trad_variants: &Variants,
+    simp_variant_strings: &Vec<String>,
+) -> Variants {
+    Variants(
+        trad_variants
+            .0
+            .iter()
+            .enumerate()
+            .map(|(variant_index, Variant { prs, .. })| Variant {
+                word: simp_variant_strings[variant_index].clone(),
+                prs: prs.clone(),
+            })
+            .collect(),
+    )
+}
+
+fn get_simplified_variant_strings(trad_variants: &Variants, defs: &Vec<Def>) -> Vec<String> {
     let mut lines: Vec<Line> = defs
         .iter()
         .flat_map(|def| {
