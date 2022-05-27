@@ -1715,7 +1715,7 @@ fn test_compare_jyutping() {
 
 #[test]
 fn test_to_lean_rich_dict() {
-    use super::lean_rich_dict::{to_lean_rich_entry, LeanRichEntry, LeanVariant};
+    use super::lean_rich_dict::{to_lean_rich_entry, LeanDef, LeanRichEntry, LeanVariant};
     {
         let id = 103022;
         let published = true;
@@ -1756,10 +1756,20 @@ fn test_to_lean_rich_dict() {
                 prs: "! zip4".into(),
             },
         ];
+        let lean_variants_simp = vec![
+            LeanVariant {
+                word: "zip".into(),
+                prs: "zip4, !".into(),
+            },
+            LeanVariant {
+                word: "jip".into(),
+                prs: "! zip4".into(),
+            },
+        ];
         let entry = rich_dict::RichEntry {
             id,
             variants,
-            variants_simp: variants_simp.clone(),
+            variants_simp,
             poses: vec!["動詞".to_string(), "擬聲詞".to_string()],
             labels: vec![],
             sims: vec![],
@@ -1779,12 +1789,12 @@ fn test_to_lean_rich_dict() {
         let lean_entry = LeanRichEntry {
             id,
             variants: lean_variants,
-            variants_simp,
+            variants_simp: lean_variants_simp,
             poses: vec!["動詞".to_string(), "擬聲詞".to_string()],
             labels: vec![],
             sims: vec![],
             ants: vec![],
-            defs: vec![rich_dict::RichDef {
+            defs: vec![LeanDef {
                 yue: simple_clause("表現不屑而發出嘅聲音"),
                 yue_simp: simple_clause("表现不屑而发出嘅声音"),
                 eng: Some(simple_clause("tsk")),
@@ -1807,7 +1817,7 @@ fn test_get_simplified_rich_line() {
         let simp_line = "".to_string();
         assert_eq!(
             simp_rich_line,
-            get_simplified_rich_line(simp_line, trad_rich_line)
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
         );
     }
 
@@ -1824,7 +1834,7 @@ fn test_get_simplified_rich_line() {
         let simp_line = "国".to_string();
         assert_eq!(
             simp_rich_line,
-            get_simplified_rich_line(simp_line, trad_rich_line)
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
         );
     }
 
@@ -1877,7 +1887,7 @@ fn test_get_simplified_rich_line() {
         let simp_line = "「国家，富强。」".to_string();
         assert_eq!(
             simp_rich_line,
-            get_simplified_rich_line(simp_line, trad_rich_line)
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
         );
     }
 
@@ -1920,7 +1930,7 @@ fn test_get_simplified_rich_line() {
         let simp_line = "「国家happy。」".to_string();
         assert_eq!(
             simp_rich_line,
-            get_simplified_rich_line(simp_line, trad_rich_line)
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
         );
     }
 }

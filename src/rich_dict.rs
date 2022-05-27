@@ -615,11 +615,11 @@ pub fn enrich_eg(variants: &Vec<&str>, eg: &Eg) -> RichEg {
     }
 }
 
-pub fn get_simplified_rich_line(simp_line: String, trad_line: RichLine) -> RichLine {
+pub fn get_simplified_rich_line(simp_line: &String, trad_line: &RichLine) -> RichLine {
     // Don't need to worry about bolding variants in simplified segments
     // Because we only use the segment text and the text styles are derived
     // from traditional segments
-    let simp_segs = tokenize(&vec![], &simp_line);
+    let simp_segs = tokenize(&vec![], simp_line);
     let mut simp_seg_index = 0;
     match trad_line {
         RichLine::Ruby(ruby_line) => RichLine::Ruby(
