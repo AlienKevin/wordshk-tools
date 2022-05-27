@@ -630,15 +630,21 @@ pub fn get_simplified_rich_line(simp_line: &String, trad_line: &RichLine) -> Ric
                         simp_seg_index += 1;
                         seg.clone()
                     }
-                    RubySegment::Word(_word, prs) => {
+                    RubySegment::Word(word, prs) => {
                         simp_seg_index += 1;
-                        RubySegment::Word(simp_segs[simp_seg_index - 1].clone(), prs.to_vec())
+                        RubySegment::Word(
+                            replace_contents_in_word(word, &simp_segs[simp_seg_index - 1]),
+                            prs.to_vec(),
+                        )
                     }
                     RubySegment::LinkedWord(segs) => RubySegment::LinkedWord(
                         segs.iter()
-                            .map(|(_word, prs)| {
+                            .map(|(word, prs)| {
                                 simp_seg_index += 1;
-                                (simp_segs[simp_seg_index - 1].clone(), prs.to_vec())
+                                (
+                                    replace_contents_in_word(word, &simp_segs[simp_seg_index - 1]),
+                                    prs.to_vec(),
+                                )
                             })
                             .collect(),
                     ),
@@ -655,6 +661,17 @@ pub fn get_simplified_rich_line(simp_line: &String, trad_line: &RichLine) -> Ric
                 .collect(),
         ),
     }
+}
+
+fn replace_contents_in_word(target_word: &Word, content_word: &Word) -> Word {
+    Word(
+        target_word
+            .0
+            .iter()
+            .enumerate()
+            .map(|(seg_index, (seg_type, _seg))| (seg_type.clone(), content_word.0[seg_index].1.clone()))
+            .collect(),
+    )
 }
 
 pub fn get_simplified_variants(

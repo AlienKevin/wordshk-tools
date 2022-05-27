@@ -1824,11 +1824,11 @@ fn test_get_simplified_rich_line() {
     // single Chinese character
     {
         let trad_rich_line = RichLine::Ruby(vec![RubySegment::Word(
-            Word(vec![(TextStyle::Normal, "國".into())]),
+            Word(vec![(TextStyle::Bold, "國".into())]),
             vec!["gwok3".into()],
         )]);
         let simp_rich_line = RichLine::Ruby(vec![RubySegment::Word(
-            Word(vec![(TextStyle::Normal, "国".into())]),
+            Word(vec![(TextStyle::Bold, "国".into())]),
             vec!["gwok3".into()],
         )]);
         let simp_line = "国".to_string();
@@ -1843,11 +1843,11 @@ fn test_get_simplified_rich_line() {
         let trad_rich_line = RichLine::Ruby(vec![
             RubySegment::Punc("「".into()),
             RubySegment::Word(
-                Word(vec![(TextStyle::Normal, "國".into())]),
+                Word(vec![(TextStyle::Bold, "國".into())]),
                 vec!["gwok3".into()],
             ),
             RubySegment::Word(
-                Word(vec![(TextStyle::Normal, "家".into())]),
+                Word(vec![(TextStyle::Bold, "家".into())]),
                 vec!["gaa1".into()],
             ),
             RubySegment::Punc("，".into()),
@@ -1865,11 +1865,11 @@ fn test_get_simplified_rich_line() {
         let simp_rich_line = RichLine::Ruby(vec![
             RubySegment::Punc("「".into()),
             RubySegment::Word(
-                Word(vec![(TextStyle::Normal, "国".into())]),
+                Word(vec![(TextStyle::Bold, "国".into())]),
                 vec!["gwok3".into()],
             ),
             RubySegment::Word(
-                Word(vec![(TextStyle::Normal, "家".into())]),
+                Word(vec![(TextStyle::Bold, "家".into())]),
                 vec!["gaa1".into()],
             ),
             RubySegment::Punc("，".into()),
@@ -1896,11 +1896,11 @@ fn test_get_simplified_rich_line() {
         let trad_rich_line = RichLine::Ruby(vec![
             RubySegment::Punc("「".into()),
             RubySegment::Word(
-                Word(vec![(TextStyle::Normal, "國".into())]),
+                Word(vec![(TextStyle::Bold, "國".into())]),
                 vec!["gwok3".into()],
             ),
             RubySegment::Word(
-                Word(vec![(TextStyle::Normal, "家".into())]),
+                Word(vec![(TextStyle::Bold, "家".into())]),
                 vec!["gaa1".into()],
             ),
             RubySegment::Word(
@@ -1913,11 +1913,11 @@ fn test_get_simplified_rich_line() {
         let simp_rich_line = RichLine::Ruby(vec![
             RubySegment::Punc("「".into()),
             RubySegment::Word(
-                Word(vec![(TextStyle::Normal, "国".into())]),
+                Word(vec![(TextStyle::Bold, "国".into())]),
                 vec!["gwok3".into()],
             ),
             RubySegment::Word(
-                Word(vec![(TextStyle::Normal, "家".into())]),
+                Word(vec![(TextStyle::Bold, "家".into())]),
                 vec!["gaa1".into()],
             ),
             RubySegment::Word(
