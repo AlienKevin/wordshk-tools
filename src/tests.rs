@@ -1810,6 +1810,76 @@ fn test_to_lean_rich_dict() {
 #[test]
 fn test_get_simplified_rich_line() {
     use rich_dict::{get_simplified_rich_line, RichLine, RubySegment, TextStyle, Word};
+    // WordLine
+    // empty edge case
+    {
+        let trad_rich_line = RichLine::Text(vec![]);
+        let simp_rich_line = RichLine::Text(vec![]);
+        let simp_line = "".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
+        );
+    }
+
+    // single Chinese character
+    {
+        let trad_rich_line = RichLine::Text(vec![(
+            SegmentType::Text,
+            Word(vec![(TextStyle::Bold, "國".into())]),
+        )]);
+        let simp_rich_line = RichLine::Text(vec![(
+            SegmentType::Text,
+            Word(vec![(TextStyle::Bold, "国".into())]),
+        )]);
+        let simp_line = "国".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
+        );
+    }
+
+    // a link with a single Chinese character
+    {
+        let trad_rich_line = RichLine::Text(vec![(
+            SegmentType::Link,
+            Word(vec![(TextStyle::Bold, "國".into())]),
+        )]);
+        let simp_rich_line = RichLine::Text(vec![(
+            SegmentType::Link,
+            Word(vec![(TextStyle::Bold, "国".into())]),
+        )]);
+        let simp_line = "国".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
+        );
+    }
+
+    // a link with two Chinese characters
+    {
+        let trad_rich_line = RichLine::Text(vec![(
+            SegmentType::Link,
+            Word(vec![
+                (TextStyle::Bold, "國".into()),
+                (TextStyle::Bold, "家".into()),
+            ]),
+        )]);
+        let simp_rich_line = RichLine::Text(vec![(
+            SegmentType::Link,
+            Word(vec![
+                (TextStyle::Bold, "国".into()),
+                (TextStyle::Bold, "家".into()),
+            ]),
+        )]);
+        let simp_line = "国家".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
+        );
+    }
+
+    // RubyLine
     // empty edge case
     {
         let trad_rich_line = RichLine::Ruby(vec![]);
@@ -1933,6 +2003,161 @@ fn test_get_simplified_rich_line() {
             get_simplified_rich_line(&simp_line, &trad_rich_line)
         );
     }
+    // single link
+    {
+        let trad_rich_line = RichLine::Ruby(vec![RubySegment::LinkedWord(vec![(
+            Word(vec![(TextStyle::Bold, "國".into())]),
+            vec!["gwok3".into()],
+        )])]);
+        let simp_rich_line = RichLine::Ruby(vec![RubySegment::LinkedWord(vec![(
+            Word(vec![(TextStyle::Bold, "国".into())]),
+            vec!["gwok3".into()],
+        )])]);
+        let simp_line = "国".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
+        );
+    }
+    // link with two Chinese characters
+    {
+        let trad_rich_line = RichLine::Ruby(vec![RubySegment::LinkedWord(vec![
+            (
+                Word(vec![(TextStyle::Bold, "國".into())]),
+                vec!["gwok3".into()],
+            ),
+            (
+                Word(vec![(TextStyle::Bold, "家".into())]),
+                vec!["gaa1".into()],
+            ),
+        ])]);
+        let simp_rich_line = RichLine::Ruby(vec![RubySegment::LinkedWord(vec![
+            (
+                Word(vec![(TextStyle::Bold, "国".into())]),
+                vec!["gwok3".into()],
+            ),
+            (
+                Word(vec![(TextStyle::Bold, "家".into())]),
+                vec!["gaa1".into()],
+            ),
+        ])]);
+        let simp_line = "国家".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
+        );
+    }
+    // link with latin characters
+    {
+        let trad_rich_line = RichLine::Ruby(vec![RubySegment::LinkedWord(vec![(
+            Word(vec![(TextStyle::Bold, "keep fit".into())]),
+            vec!["kip1".into(), "fit1".into()],
+        )])]);
+        let simp_rich_line = trad_rich_line.clone();
+        let simp_line = "keep fit".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
+        );
+    }
+    // link with mixed script
+    {
+        let trad_rich_line = RichLine::Ruby(vec![RubySegment::LinkedWord(vec![
+            (
+                Word(vec![(TextStyle::Bold, "keep".into())]),
+                vec!["kip1".into()],
+            ),
+            (
+                Word(vec![(TextStyle::Normal, "數".into())]),
+                vec!["sou3".into()],
+            ),
+        ])]);
+        let simp_rich_line = RichLine::Ruby(vec![RubySegment::LinkedWord(vec![
+            (
+                Word(vec![(TextStyle::Bold, "keep".into())]),
+                vec!["kip1".into()],
+            ),
+            (
+                Word(vec![(TextStyle::Normal, "数".into())]),
+                vec!["sou3".into()],
+            ),
+        ])]);
+        let simp_line = "keep数".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
+        );
+    }
+    // embedded link with two Chinese characters
+    {
+        let trad_rich_line = RichLine::Ruby(vec![
+            RubySegment::Punc("「".into()),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Bold, "佢".into())]),
+                vec!["keoi5".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Bold, "話".into())]),
+                vec!["waa6".into()],
+            ),
+            RubySegment::LinkedWord(vec![
+                (
+                    Word(vec![(TextStyle::Bold, "國".into())]),
+                    vec!["gwok3".into()],
+                ),
+                (
+                    Word(vec![(TextStyle::Bold, "家".into())]),
+                    vec!["gaa1".into()],
+                ),
+            ]),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "富".into())]),
+                vec!["fu3".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "強".into())]),
+                vec!["koeng4".into()],
+            ),
+            RubySegment::Punc("。".into()),
+            RubySegment::Punc("」".into()),
+        ]);
+        let simp_rich_line = RichLine::Ruby(vec![
+            RubySegment::Punc("「".into()),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Bold, "佢".into())]),
+                vec!["keoi5".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Bold, "话".into())]),
+                vec!["waa6".into()],
+            ),
+            RubySegment::LinkedWord(vec![
+                (
+                    Word(vec![(TextStyle::Bold, "国".into())]),
+                    vec!["gwok3".into()],
+                ),
+                (
+                    Word(vec![(TextStyle::Bold, "家".into())]),
+                    vec!["gaa1".into()],
+                ),
+            ]),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "富".into())]),
+                vec!["fu3".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Normal, "强".into())]),
+                vec!["koeng4".into()],
+            ),
+            RubySegment::Punc("。".into()),
+            RubySegment::Punc("」".into()),
+        ]);
+        let simp_line = "「佢话国家富强。」".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
+        );
+    }
 }
 
 #[test]
@@ -1994,6 +2219,54 @@ fn test_get_simplified_variants() {
         assert_eq!(
             get_simplified_variants(&trad_variants, &simp_variant_strings),
             simp_variants
+        );
+    }
+}
+
+#[test]
+fn test_replace_contents_in_word() {
+    use super::rich_dict::{replace_contents_in_word, TextStyle::*, Word};
+    // empty edge case
+    {
+        let target_word = Word(vec![]);
+        let mut content_word = "".chars();
+        let expected_word = Word(vec![]);
+        assert_eq!(
+            replace_contents_in_word(&target_word, &mut content_word),
+            expected_word
+        );
+    }
+
+    // a single Chinese character
+    {
+        let target_word = Word(vec![(Bold, "國".into())]);
+        let mut content_word = "国".chars();
+        let expected_word = Word(vec![(Bold, "国".into())]);
+        assert_eq!(
+            replace_contents_in_word(&target_word, &mut content_word),
+            expected_word
+        );
+    }
+
+    // some latin characters
+    {
+        let target_word = Word(vec![(Bold, "camp".into())]);
+        let mut content_word = "camp".chars();
+        let expected_word = Word(vec![(Bold, "camp".into())]);
+        assert_eq!(
+            replace_contents_in_word(&target_word, &mut content_word),
+            expected_word
+        );
+    }
+
+    // mixed script
+    {
+        let target_word = Word(vec![(Bold, "國".into()), (Bold, "camp".into())]);
+        let mut content_word = "国camp".chars();
+        let expected_word = Word(vec![(Bold, "国".into()), (Bold, "camp".into())]);
+        assert_eq!(
+            replace_contents_in_word(&target_word, &mut content_word),
+            expected_word
         );
     }
 }

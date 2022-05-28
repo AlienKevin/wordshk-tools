@@ -616,33 +616,25 @@ pub fn enrich_eg(variants: &Vec<&str>, eg: &Eg) -> RichEg {
 }
 
 pub fn get_simplified_rich_line(simp_line: &String, trad_line: &RichLine) -> RichLine {
-    // Don't need to worry about bolding variants in simplified segments
-    // Because we only use the segment text and the text styles are derived
-    // from traditional segments
-    let simp_segs = tokenize(&vec![], simp_line);
-    let mut simp_seg_index = 0;
+    let mut simp_line_chars = simp_line.chars();
     match trad_line {
         RichLine::Ruby(ruby_line) => RichLine::Ruby(
             ruby_line
                 .iter()
                 .map(|seg| match seg {
                     RubySegment::Punc(_) => {
-                        simp_seg_index += 1;
+                        simp_line_chars.next();
                         seg.clone()
                     }
-                    RubySegment::Word(word, prs) => {
-                        simp_seg_index += 1;
-                        RubySegment::Word(
-                            replace_contents_in_word(word, &simp_segs[simp_seg_index - 1]),
-                            prs.to_vec(),
-                        )
-                    }
+                    RubySegment::Word(word, prs) => RubySegment::Word(
+                        replace_contents_in_word(word, &mut simp_line_chars),
+                        prs.to_vec(),
+                    ),
                     RubySegment::LinkedWord(segs) => RubySegment::LinkedWord(
                         segs.iter()
                             .map(|(word, prs)| {
-                                simp_seg_index += 1;
                                 (
-                                    replace_contents_in_word(word, &simp_segs[simp_seg_index - 1]),
+                                    replace_contents_in_word(word, &mut simp_line_chars),
                                     prs.to_vec(),
                                 )
                             })
@@ -654,22 +646,28 @@ pub fn get_simplified_rich_line(simp_line: &String, trad_line: &RichLine) -> Ric
         RichLine::Text(word_line) => RichLine::Text(
             word_line
                 .iter()
-                .map(|(seg_type, _seg)| {
-                    simp_seg_index += 1;
-                    (seg_type.clone(), simp_segs[simp_seg_index - 1].clone())
+                .map(|(seg_type, word)| {
+                    (
+                        seg_type.clone(),
+                        replace_contents_in_word(word, &mut simp_line_chars),
+                    )
                 })
                 .collect(),
         ),
     }
 }
 
-fn replace_contents_in_word(target_word: &Word, content_word: &Word) -> Word {
+pub fn replace_contents_in_word(target_word: &Word, content: &mut std::str::Chars<'_>) -> Word {
     Word(
         target_word
             .0
             .iter()
-            .enumerate()
-            .map(|(seg_index, (seg_type, _seg))| (seg_type.clone(), content_word.0[seg_index].1.clone()))
+            .map(|(seg_type, seg)| {
+                (
+                    seg_type.clone(),
+                    content.take(seg.chars().count()).collect(),
+                )
+            })
             .collect(),
     )
 }
