@@ -263,7 +263,7 @@ impl PartialOrd for PrSearchRank {
     }
 }
 
-fn pick_variants(variants: &ComboVariants, script: Script) -> &Variants {
+pub fn pick_variants(variants: &ComboVariants, script: Script) -> &Variants {
     match script {
         Script::Simplified => &variants.simplified,
         Script::Traditional => &variants.traditional,
