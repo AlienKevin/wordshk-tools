@@ -3,7 +3,7 @@ use super::jyutping::{
     parse_pr, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing,
     LaxJyutPingSegment,
 };
-use super::rich_dict::{RichDict, RichEntry};
+use super::rich_dict::{get_simplified_variants, RichDict, RichEntry};
 use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
 use std::cmp::Ordering;
@@ -19,11 +19,31 @@ const MAX_SCORE: Score = 100;
 
 type Index = usize;
 
-pub type VariantsMap = HashMap<usize, Variants>;
+#[derive(Copy, Clone)]
+pub enum Script {
+    Simplified,
+    Traditional,
+}
+
+/// A Map from entry ID to variants and simplified variants
+pub type VariantsMap = HashMap<usize, ComboVariants>;
+
+pub struct ComboVariants {
+    pub traditional: Variants,
+    pub simplified: Variants,
+}
 
 pub fn rich_dict_to_variants_map(dict: &RichDict) -> VariantsMap {
     dict.iter()
-        .map(|(id, entry)| (*id, entry.variants.clone()))
+        .map(|(id, entry)| {
+            (
+                *id,
+                ComboVariants {
+                    traditional: entry.variants.clone(),
+                    simplified: get_simplified_variants(&entry.variants, &entry.variants_simp),
+                },
+            )
+        })
         .collect()
 }
 
@@ -243,9 +263,19 @@ impl PartialOrd for PrSearchRank {
     }
 }
 
-pub fn get_entry_id(variants_map: &VariantsMap, query: &str) -> Option<usize> {
+fn pick_variants(variants: &ComboVariants, script: Script) -> &Variants {
+    match script {
+        Script::Simplified => &variants.simplified,
+        Script::Traditional => &variants.traditional,
+    }
+}
+
+pub fn get_entry_id(variants_map: &VariantsMap, query: &str, script: Script) -> Option<usize> {
     variants_map.iter().find_map(|(id, variants)| {
-        if variants.to_words_set().contains(query) {
+        if pick_variants(variants, script)
+            .to_words_set()
+            .contains(query)
+        {
             Some(*id)
         } else {
             None
@@ -313,6 +343,7 @@ pub fn pr_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<PrSearch
         let query = parse_pr(query);
         variants_map.iter().for_each(|(id, variants)| {
             variants
+                .traditional
                 .0
                 .iter()
                 .enumerate()
@@ -385,10 +416,12 @@ where
         .position(|window| window == needle)
 }
 
-fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
+fn score_variant_query(entry_variant: &str, query: &str, script: Script) -> (Index, Score) {
     let entry_variant_normalized = &unicode::normalize(entry_variant)[..];
-    let query_normalized =
-        &unicode::to_traditional(&unicode::to_hk_safe_variant(&unicode::normalize(query)))[..];
+    let query_normalized = &match script {
+        Script::Simplified => unicode::to_simplified,
+        Script::Traditional => unicode::to_traditional,
+    }(&unicode::to_hk_safe_variant(&unicode::normalize(query)))[..];
     let variant_graphemes =
         UnicodeSegmentation::graphemes(entry_variant_normalized, true).collect::<Vec<&str>>();
     let query_graphemes =
@@ -404,16 +437,20 @@ fn score_variant_query(entry_variant: &str, query: &str) -> (Index, Score) {
     (occurrence_index, levenshtein_score)
 }
 
-pub fn variant_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<VariantSearchRank> {
+pub fn variant_search(
+    variants_map: &VariantsMap,
+    query: &str,
+    script: Script,
+) -> BinaryHeap<VariantSearchRank> {
     let mut ranks = BinaryHeap::new();
     variants_map.iter().for_each(|(id, variants)| {
-        variants
+        pick_variants(variants, script)
             .0
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
                 let (occurrence_index, levenshtein_score) =
-                    score_variant_query(&variant.word, query);
+                    score_variant_query(&variant.word, query, script);
                 if occurrence_index < usize::MAX || levenshtein_score >= 80 {
                     ranks.push(VariantSearchRank {
                         id: *id,
@@ -430,6 +467,7 @@ pub fn variant_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<Var
 pub fn combined_search(
     variants_map: &VariantsMap,
     query: &str,
+    script: Script,
 ) -> (BinaryHeap<VariantSearchRank>, BinaryHeap<PrSearchRank>) {
     let mut variants_ranks = BinaryHeap::new();
     let mut pr_ranks = BinaryHeap::new();
@@ -439,13 +477,13 @@ pub fn combined_search(
         None
     };
     variants_map.iter().for_each(|(id, variants)| {
-        variants
+        pick_variants(variants, script)
             .0
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
                 let (occurrence_index, levenshtein_score) =
-                    score_variant_query(&variant.word, query);
+                    score_variant_query(&variant.word, query, script);
                 if occurrence_index < usize::MAX || levenshtein_score >= 80 {
                     variants_ranks.push(VariantSearchRank {
                         id: *id,
