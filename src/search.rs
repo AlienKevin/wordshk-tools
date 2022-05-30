@@ -1,4 +1,5 @@
-use super::dict::Variants;
+use super::dict::{clause_to_string, Variants};
+use super::english_index::EnglishIndex;
 use super::jyutping::{
     parse_pr, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing,
     LaxJyutPingSegment,
@@ -406,6 +407,13 @@ fn normalized_unicode_levenshtein(a: &str, b: &str) -> f64 {
     1.0 - (generic_levenshtein(&a_graphemes, &b_graphemes) as f64) / (a_len.max(b_len) as f64)
 }
 
+fn word_levenshtein(a: &Vec<&str>, b: &Vec<&str>) -> usize {
+    if a.is_empty() && b.is_empty() {
+        return 0;
+    }
+    generic_levenshtein(a, b)
+}
+
 // source: https://stackoverflow.com/a/35907071/6798201
 fn find_subsequence<T>(haystack: &[T], needle: &[T]) -> Option<usize>
 where
@@ -522,4 +530,77 @@ pub fn combined_search(
             });
     });
     (variants_ranks, pr_ranks)
+}
+
+pub struct EnglishSearchResult {
+    pub id: u32,
+    pub variant: String,
+    pub pr: String,
+    pub eng: String,
+}
+
+pub fn english_search(
+    english_index: &EnglishIndex,
+    variants_map: &VariantsMap,
+    dict: &RichDict,
+    query: &str,
+    script: Script,
+    capacity: usize,
+) -> Vec<EnglishSearchResult> {
+    let query = unicode::normalize_english_word_for_search_index(query);
+    let empty_entries = vec![];
+    let entries = english_index.get(&query).unwrap_or(
+        english_index
+            .iter()
+            .fold(
+                (60, &empty_entries), // must have a score of at least 60 out of 100
+                |(max_score, max_entries), (phrase, entries)| {
+                    let current_score = score_english_query(&query, phrase);
+                    if current_score > max_score {
+                        (current_score, entries)
+                    } else {
+                        (max_score, max_entries)
+                    }
+                },
+            )
+            .1,
+    );
+    entries[..std::cmp::min(capacity, entries.len())]
+        .iter()
+        .map(|entry| {
+            let variant = &pick_variants(variants_map.get(&entry.entry_id).unwrap(), script).0[0];
+            EnglishSearchResult {
+                id: entry.entry_id as u32,
+                variant: variant.word.clone(),
+                pr: variant.prs.0[0].to_string(),
+                eng: clause_to_string(
+                    &dict.get(&entry.entry_id).unwrap().defs[entry.def_index]
+                        .eng
+                        .as_ref()
+                        .unwrap(),
+                ),
+            }
+        })
+        .collect()
+}
+
+// Reference: https://www.oracle.com/webfolder/technetwork/data-quality/edqhelp/Content/processor_library/matching/comparisons/word_match_percentage.htm
+fn word_match_percent(a: &Vec<&str>, b: &Vec<&str>) -> Score {
+    let max_word_length = a.len().max(b.len());
+    ((max_word_length - word_levenshtein(a, b)) as f64 / (max_word_length as f64) * 100.0).round()
+        as Score
+}
+
+fn score_english_query(query: &str, phrase: &str) -> Score {
+    // multi-words
+    if unicode::is_multi_word(query) || unicode::is_multi_word(phrase) {
+        word_match_percent(
+            &query.split_ascii_whitespace().collect(),
+            &phrase.split_ascii_whitespace().collect(),
+        )
+    }
+    // single word
+    else {
+        (normalized_levenshtein(query, phrase) * 100.0).round() as Score
+    }
 }

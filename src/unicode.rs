@@ -2,13 +2,13 @@ use super::hk_variant_map_safe::HONG_KONG_VARIANT_MAP_SAFE;
 use super::simp_to_trad::SIMP_TO_TRAD;
 use super::variant_to_us_english::VARIANT_TO_US_ENGLISH;
 use deunicode::deunicode;
+use fast2s;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use rust_stemmers::{Algorithm, Stemmer};
 use std::collections::HashSet;
 use unicode_names2;
 use unicode_segmentation::UnicodeSegmentation;
-use fast2s;
 
 pub fn remove_first_char(s: &str) -> String {
     let mut chars = s.chars();
@@ -89,6 +89,10 @@ pub fn test_g(f: fn(char) -> bool, g: &str) -> bool {
     } else {
         false
     }
+}
+
+pub fn is_multi_word(s: &str) -> bool {
+    s.contains(char::is_whitespace)
 }
 
 /// Returns a 'HK variant' of the characters of the input text. The input is
