@@ -69,8 +69,11 @@ pub fn generate_english_index(dict: &RichDict) -> EnglishIndex {
 		index_entry(&counter, &entry, &mut index);
 	});
 
-	index.iter_mut().for_each(|(_, index_data)| {
+	index.retain(|phrase, index_data| {
 		index_data.sort();
+		// Remove stem words because not used
+		// in english_search
+		!phrase.starts_with('!')
 	});
 
 	index
