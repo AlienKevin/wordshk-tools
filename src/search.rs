@@ -1,5 +1,5 @@
-use super::dict::{clause_to_string, Variants};
-use super::english_index::EnglishIndex;
+use super::dict::Variants;
+use super::english_index::{EnglishIndex, EnglishIndexData};
 use super::jyutping::{
     parse_pr, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing,
     LaxJyutPingSegment,
@@ -532,56 +532,35 @@ pub fn combined_search(
     (variants_ranks, pr_ranks)
 }
 
-pub struct EnglishSearchResult {
+pub struct EnglishSearchRank {
     pub id: u32,
     pub variant: String,
     pub pr: String,
     pub eng: String,
 }
 
-pub fn english_search(
-    english_index: &EnglishIndex,
-    variants_map: &VariantsMap,
-    dict: &RichDict,
-    query: &str,
-    script: Script,
-    capacity: usize,
-) -> Vec<EnglishSearchResult> {
+pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishIndexData> {
     let query = unicode::normalize_english_word_for_search_index(query);
     let empty_entries = vec![];
-    let entries = english_index.get(&query).unwrap_or(
-        english_index
-            .iter()
-            .fold(
-                (60, &empty_entries), // must have a score of at least 60 out of 100
-                |(max_score, max_entries), (phrase, entries)| {
-                    let current_score = score_english_query(&query, phrase);
-                    if current_score > max_score {
-                        (current_score, entries)
-                    } else {
-                        (max_score, max_entries)
-                    }
-                },
-            )
-            .1,
-    );
-    entries[..std::cmp::min(capacity, entries.len())]
-        .iter()
-        .map(|entry| {
-            let variant = &pick_variants(variants_map.get(&entry.entry_id).unwrap(), script).0[0];
-            EnglishSearchResult {
-                id: entry.entry_id as u32,
-                variant: variant.word.clone(),
-                pr: variant.prs.0[0].to_string(),
-                eng: clause_to_string(
-                    &dict.get(&entry.entry_id).unwrap().defs[entry.def_index]
-                        .eng
-                        .as_ref()
-                        .unwrap(),
-                ),
-            }
-        })
-        .collect()
+    english_index
+        .get(&query)
+        .unwrap_or(
+            english_index
+                .iter()
+                .fold(
+                    (60, &empty_entries), // must have a score of at least 60 out of 100
+                    |(max_score, max_entries), (phrase, entries)| {
+                        let current_score = score_english_query(&query, phrase);
+                        if current_score > max_score {
+                            (current_score, entries)
+                        } else {
+                            (max_score, max_entries)
+                        }
+                    },
+                )
+                .1,
+        )
+        .to_vec()
 }
 
 // Reference: https://www.oracle.com/webfolder/technetwork/data-quality/edqhelp/Content/processor_library/matching/comparisons/word_match_percentage.htm

@@ -11,7 +11,7 @@ use std::collections::hash_set::HashSet;
 
 pub type EnglishIndex = HashMap<String, Vec<EnglishIndexData>>;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct EnglishIndexData {
 	pub entry_id: usize,
 	pub def_index: usize,
