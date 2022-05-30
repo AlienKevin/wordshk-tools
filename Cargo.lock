@@ -1254,7 +1254,7 @@ dependencies = [
 
 [[package]]
 name = "wordshk_tools"
-version = "3.7.0-beta"
+version = "3.7.1-beta"
 dependencies = [
  "chrono",
  "csv",

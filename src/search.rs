@@ -579,7 +579,9 @@ fn score_english_query(query: &str, phrase: &str) -> Score {
         )
     }
     // single word
+    // score is scaled down from a multiple of 100% to 80% to better match
+    // the score of multi-word word match percent
     else {
-        (normalized_levenshtein(query, phrase) * 100.0).round() as Score
+        (normalized_levenshtein(query, phrase) * 80.0).round() as Score
     }
 }
