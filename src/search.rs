@@ -11,6 +11,7 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use strsim::{generic_levenshtein, normalized_levenshtein};
+use thesaurus::Thesaurus;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// Max score is 100
@@ -541,26 +542,74 @@ pub struct EnglishSearchRank {
 
 pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishIndexData> {
     let query = unicode::normalize_english_word_for_search_index(query);
-    let empty_entries = vec![];
-    english_index
+    let default_results = vec![];
+    let results = english_index
         .get(&query)
-        .unwrap_or(
-            english_index
-                .iter()
-                .fold(
-                    (60, &empty_entries), // must have a score of at least 60 out of 100
-                    |(max_score, max_entries), (phrase, entries)| {
-                        let current_score = score_english_query(&query, phrase);
-                        if current_score > max_score {
-                            (current_score, entries)
-                        } else {
-                            (max_score, max_entries)
-                        }
-                    },
-                )
-                .1,
+        .unwrap_or(fuzzy_english_search(
+            &english_index,
+            &vec![&query],
+            &default_results,
+        ))
+        .to_vec();
+    if results.len() == 0 {
+        match Thesaurus::synonym(query, None) {
+            Ok(data) => {
+                let synonyms: Vec<&str> =
+                    data.words.iter().map(|word| word.name.as_str()).collect();
+                synonyms
+                    .iter()
+                    .fold(
+                        None,
+                        |results: Option<&Vec<EnglishIndexData>>, word| match (
+                            english_index.get(&word.to_string()),
+                            results,
+                        ) {
+                            (Some(current_results), Some(results)) => {
+                                if current_results[0].score > results[0].score {
+                                    Some(current_results)
+                                } else {
+                                    Some(results)
+                                }
+                            }
+                            (Some(current_results), None) => Some(current_results),
+                            _ => results,
+                        },
+                    )
+                    .unwrap_or(fuzzy_english_search(
+                        &english_index,
+                        &synonyms,
+                        &default_results,
+                    ))
+                    .to_vec()
+            }
+            Err(_) => results,
+        }
+    } else {
+        results
+    }
+}
+
+fn fuzzy_english_search<'a>(
+    english_index: &'a EnglishIndex,
+    queries: &Vec<&str>,
+    default_results: &'a Vec<EnglishIndexData>,
+) -> &'a Vec<EnglishIndexData> {
+    english_index
+        .iter()
+        .fold(
+            (60, default_results), // must have a score of at least 60 out of 100
+            |(max_score, max_entries), (phrase, entries)| {
+                let (mut next_max_score, mut next_max_entries) = (max_score, max_entries);
+                queries.iter().for_each(|query| {
+                    let current_score = score_english_query(&query, phrase);
+                    if current_score > max_score {
+                        (next_max_score, next_max_entries) = (current_score, entries)
+                    }
+                });
+                (next_max_score, next_max_entries)
+            },
         )
-        .to_vec()
+        .1
 }
 
 // Reference: https://www.oracle.com/webfolder/technetwork/data-quality/edqhelp/Content/processor_library/matching/comparisons/word_match_percentage.htm
