@@ -44,7 +44,7 @@ pub struct RichEntry {
     #[serde(rename = "d")]
     pub defs: Vec<RichDef>,
 
-    #[serde(rename = "p")]
+    #[serde(rename = "pb")]
     pub published: bool,
 }
 
