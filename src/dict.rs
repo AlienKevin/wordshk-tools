@@ -75,10 +75,10 @@ pub struct Variant {
 ///
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SegmentType {
-    #[serde(rename = "t")]
+    #[serde(rename = "T")]
     Text,
 
-    #[serde(rename = "l")]
+    #[serde(rename = "L")]
     Link,
 }
 
