@@ -15,7 +15,7 @@ pub struct Api {
 }
 
 fn serialize_api<P: AsRef<Path>>(output_path: &P, api: &Api) {
-    fs::write(output_path, serde_json::to_string(&api.dict).unwrap())
+    fs::write(output_path, serde_json::to_string(&api).unwrap())
         .expect("Unable to output serialized RichDict");
 }
 
