@@ -35,10 +35,10 @@ pub struct RichEntry {
     #[serde(rename = "a")]
     pub ants: Vec<String>,
 
-    #[serde(rename = "r")]
+    #[serde(skip)]
     pub refs: Vec<String>,
 
-    #[serde(rename = "i")]
+    #[serde(skip)]
     pub imgs: Vec<String>,
 
     #[serde(rename = "d")]
@@ -59,7 +59,7 @@ pub struct RichDef {
     #[serde(rename = "e")]
     pub eng: Option<Clause>,
 
-    #[serde(rename = "a")]
+    #[serde(skip)]
     pub alts: Vec<AltClause>,
 
     #[serde(rename = "eg")]
