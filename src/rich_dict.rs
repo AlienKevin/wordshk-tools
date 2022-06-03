@@ -794,6 +794,8 @@ fn clause_to_simplified(clause: &Clause) -> Clause {
 
 fn line_to_simplified(line: &Line) -> Line {
     line.iter()
-        .map(|(seg_type, seg)| (seg_type.clone(), unicode::to_simplified(seg)))
+        .map(|(seg_type, seg)| (seg_type.clone(),
+            unicode::to_simplified(seg).split_whitespace().collect()
+        ))
         .collect()
 }
