@@ -13,9 +13,14 @@ pub type EnglishIndex = HashMap<String, Vec<EnglishIndexData>>;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct EnglishIndexData {
+	#[serde(rename = "e")]
 	pub entry_id: usize,
+
+	#[serde(rename = "d")]
 	pub def_index: usize,
-	pub score: f32,
+
+	#[serde(rename = "s")]
+	pub score: usize,
 }
 
 // Use reverse ordering so BTreeSet sorts in descending order according to scores
@@ -216,7 +221,7 @@ fn index_entry(counter: &Counter, entry: &RichEntry, index: &mut EnglishIndex) {
 						EnglishIndexData {
 							entry_id: entry.id,
 							def_index,
-							score: 100.0,
+							score: 100,
 						},
 						index,
 					);
@@ -256,7 +261,7 @@ fn index_entry(counter: &Counter, entry: &RichEntry, index: &mut EnglishIndex) {
 							EnglishIndexData {
 								entry_id: entry.id,
 								def_index,
-								score,
+								score: score as usize,
 							},
 							index,
 						);
