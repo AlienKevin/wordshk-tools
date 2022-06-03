@@ -14,40 +14,82 @@ pub type RichDict = HashMap<usize, RichEntry>;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct RichEntry {
+    #[serde(rename = "i")]
     pub id: usize,
+
+    #[serde(rename = "v")]
     pub variants: Variants,
+
+    #[serde(rename = "vs")]
     pub variants_simp: Vec<String>,
+
+    #[serde(rename = "p")]
     pub poses: Vec<String>,
+
+    #[serde(rename = "l")]
     pub labels: Vec<String>,
+
+    #[serde(rename = "s")]
     pub sims: Vec<String>,
+
+    #[serde(rename = "a")]
     pub ants: Vec<String>,
+
+    #[serde(rename = "r")]
     pub refs: Vec<String>,
+
+    #[serde(rename = "i")]
     pub imgs: Vec<String>,
+
+    #[serde(rename = "d")]
     pub defs: Vec<RichDef>,
+
+    #[serde(rename = "p")]
     pub published: bool,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct RichDef {
+    #[serde(rename = "y")]
     pub yue: Clause,
+
+    #[serde(rename = "ys")]
     pub yue_simp: Clause,
+
+    #[serde(rename = "e")]
     pub eng: Option<Clause>,
+
+    #[serde(rename = "a")]
     pub alts: Vec<AltClause>,
+
+    #[serde(rename = "eg")]
     pub egs: Vec<RichEg>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RichEg {
+    #[serde(rename = "z")]
     pub zho: Option<RichLine>,
+
+    #[serde(rename = "zs")]
     pub zho_simp: Option<String>,
+
+    #[serde(rename = "y")]
     pub yue: Option<RichLine>,
+
+    #[serde(rename = "ys")]
     pub yue_simp: Option<String>,
+
+    #[serde(rename = "e")]
     pub eng: Option<Line>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum RichLine {
+    #[serde(rename = "R")]
     Ruby(RubyLine),
+
+    #[serde(rename = "T")]
     Text(WordLine),
 }
 
@@ -62,7 +104,9 @@ pub type Text = (TextStyle, String);
 /// Text styles, can be bold or normal
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum TextStyle {
+    #[serde(rename = "B")]
     Bold,
+    #[serde(rename = "N")]
     Normal,
 }
 
@@ -102,8 +146,13 @@ impl fmt::Display for Word {
 /// and their pronunciations
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum RubySegment {
+    #[serde(rename = "P")]
     Punc(String),
+
+    #[serde(rename = "W")]
     Word(Word, Vec<String>),
+
+    #[serde(rename = "L")]
     LinkedWord(Vec<(Word, Vec<String>)>),
 }
 

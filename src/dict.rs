@@ -60,7 +60,10 @@ impl Variants {
 /// A variant of a \[word\] with \[prs\] (pronounciations)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Variant {
+    #[serde(rename = "w")]
     pub word: String,
+
+    #[serde(rename = "p")]
     pub prs: LaxJyutPings,
 }
 
@@ -72,7 +75,10 @@ pub struct Variant {
 ///
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SegmentType {
+    #[serde(rename = "t")]
     Text,
+
+    #[serde(rename = "l")]
     Link,
 }
 

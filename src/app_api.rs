@@ -1,4 +1,5 @@
 use super::english_index::generate_english_index;
+use super::lean_rich_dict::{to_lean_rich_entry, LeanRichEntry};
 use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, RichDict};
 use flate2::read::GzDecoder;
@@ -14,8 +15,8 @@ pub struct Api {
 }
 
 fn serialize_api<P: AsRef<Path>>(output_path: &P, api: &Api) {
-    fs::write(output_path, serde_json::to_string(&api).unwrap())
-        .expect("Unable to output serailized RichDict");
+    fs::write(output_path, serde_json::to_string(&api.dict).unwrap())
+        .expect("Unable to output serialized RichDict");
 }
 
 impl Api {

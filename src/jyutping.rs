@@ -21,9 +21,16 @@ impl fmt::Display for LaxJyutPings {
 /// Phonetics info based on: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct JyutPing {
+	#[serde(rename = "i")]
 	pub initial: Option<JyutPingInitial>,
+
+	#[serde(rename = "n")]
 	pub nucleus: Option<JyutPingNucleus>,
+
+	#[serde(rename = "c")]
 	pub coda: Option<JyutPingCoda>,
+
+	#[serde(rename = "t")]
 	pub tone: Option<JyutPingTone>,
 }
 
@@ -99,7 +106,10 @@ impl LaxJyutPing {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum LaxJyutPingSegment {
+	#[serde(rename = "S")]
 	Standard(JyutPing),
+
+	#[serde(rename = "N")]
 	Nonstandard(String),
 }
 
