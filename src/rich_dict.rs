@@ -701,10 +701,6 @@ pub fn get_simplified_rich_line(simp_line: &String, trad_line: &RichLine) -> Ric
             word_line
                 .iter()
                 .map(|(seg_type, word)| {
-                    while simp_line_chars.peek().unwrap().is_whitespace() {
-                        // get rid of all whitespace before word
-                        simp_line_chars.next();
-                    };
                     (
                         seg_type.clone(),
                         replace_contents_in_word(word, &mut simp_line_chars),
@@ -721,10 +717,12 @@ pub fn replace_contents_in_word(target_word: &Word, content: &mut std::iter::Pee
             .0
             .iter()
             .map(|(seg_type, seg)| {
-                while content.peek().unwrap().is_whitespace() {
-                    // get rid of all whitespace before word
-                    content.next();
-                };
+                if !seg.chars().next().unwrap().is_whitespace() {
+                    while content.peek().unwrap().is_whitespace() {
+                        // get rid of all whitespace before word
+                        content.next();
+                    };
+                }
                 (
                     seg_type.clone(),
                     content.take(seg.chars().count()).collect(),

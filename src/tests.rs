@@ -2022,6 +2022,19 @@ fn test_get_simplified_rich_line() {
         );
     }
 
+    {
+        let trad_rich_line = RichLine::Ruby(vec![RubySegment::Word(
+            Word(vec![(TextStyle::Bold, "keep".into()), (TextStyle::Normal, " fit".into())]),
+            vec!["kip1".into(), "fit1".into()],
+        )]);
+        let simp_rich_line = trad_rich_line.clone();
+        let simp_line = "keep fit".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
+        );
+    }
+
     // single sentence with a mixture of Chinese and latin characters
     {
         let trad_rich_line = RichLine::Ruby(vec![
