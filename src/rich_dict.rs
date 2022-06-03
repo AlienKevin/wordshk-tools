@@ -665,13 +665,18 @@ pub fn enrich_eg(variants: &Vec<&str>, eg: &Eg) -> RichEg {
 }
 
 pub fn get_simplified_rich_line(simp_line: &String, trad_line: &RichLine) -> RichLine {
-    let mut simp_line_chars = simp_line.chars();
+    let mut simp_line_chars = simp_line.chars().peekable();
     match trad_line {
         RichLine::Ruby(ruby_line) => RichLine::Ruby(
             ruby_line
                 .iter()
                 .map(|seg| match seg {
                     RubySegment::Punc(_) => {
+                        while simp_line_chars.peek().unwrap().is_whitespace() {
+                            // get rid of all whitespace before punctuation
+                            simp_line_chars.next();
+                        }
+                        // skip over punctuation
                         simp_line_chars.next();
                         seg.clone()
                     }
@@ -696,6 +701,10 @@ pub fn get_simplified_rich_line(simp_line: &String, trad_line: &RichLine) -> Ric
             word_line
                 .iter()
                 .map(|(seg_type, word)| {
+                    while simp_line_chars.peek().unwrap().is_whitespace() {
+                        // get rid of all whitespace before word
+                        simp_line_chars.next();
+                    };
                     (
                         seg_type.clone(),
                         replace_contents_in_word(word, &mut simp_line_chars),
@@ -706,12 +715,16 @@ pub fn get_simplified_rich_line(simp_line: &String, trad_line: &RichLine) -> Ric
     }
 }
 
-pub fn replace_contents_in_word(target_word: &Word, content: &mut std::str::Chars<'_>) -> Word {
+pub fn replace_contents_in_word(target_word: &Word, content: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Word {
     Word(
         target_word
             .0
             .iter()
             .map(|(seg_type, seg)| {
+                while content.peek().unwrap().is_whitespace() {
+                    // get rid of all whitespace before word
+                    content.next();
+                };
                 (
                     seg_type.clone(),
                     content.take(seg.chars().count()).collect(),
@@ -794,8 +807,6 @@ fn clause_to_simplified(clause: &Clause) -> Clause {
 
 fn line_to_simplified(line: &Line) -> Line {
     line.iter()
-        .map(|(seg_type, seg)| (seg_type.clone(),
-            unicode::to_simplified(seg).split_whitespace().collect()
-        ))
+        .map(|(seg_type, seg)| (seg_type.clone(),unicode::to_simplified(seg)))
         .collect()
 }

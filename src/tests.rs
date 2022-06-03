@@ -1908,6 +1908,53 @@ fn test_get_simplified_rich_line() {
         );
     }
 
+    // single phrase of Chinese characters
+    {
+        let trad_rich_line = RichLine::Ruby(vec![
+            RubySegment::Word(
+                Word(vec![(TextStyle::Bold, "乙".into())]),
+                vec!["jyut6".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Bold, "等".into())]),
+                vec!["dang2".into()],
+            ),
+            RubySegment::Punc("/".into()),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Bold, "乙".into())]),
+                vec!["jyut6".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Bold, "級".into())]),
+                vec!["kap1".into()],
+            ),
+        ]);
+        let simp_rich_line = RichLine::Ruby(vec![
+            RubySegment::Word(
+                Word(vec![(TextStyle::Bold, "乙".into())]),
+                vec!["jyut6".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Bold, "等".into())]),
+                vec!["dang2".into()],
+            ),
+            RubySegment::Punc("/".into()),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Bold, "乙".into())]),
+                vec!["jyut6".into()],
+            ),
+            RubySegment::Word(
+                Word(vec![(TextStyle::Bold, "级".into())]),
+                vec!["kap1".into()],
+            ),
+        ]);
+        let simp_line = "乙等 / 乙级".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
+        );
+    }
+
     // single sentence of Chinese characters
     {
         let trad_rich_line = RichLine::Ruby(vec![
@@ -1955,6 +2002,20 @@ fn test_get_simplified_rich_line() {
             RubySegment::Punc("」".into()),
         ]);
         let simp_line = "「国家，富强。」".to_string();
+        assert_eq!(
+            simp_rich_line,
+            get_simplified_rich_line(&simp_line, &trad_rich_line)
+        );
+    }
+
+    // simple sentence with latin characters
+    {
+        let trad_rich_line = RichLine::Ruby(vec![RubySegment::Word(
+            Word(vec![(TextStyle::Bold, "keep fit".into())]),
+            vec!["kip1".into(), "fit1".into()],
+        )]);
+        let simp_rich_line = trad_rich_line.clone();
+        let simp_line = "keep fit".to_string();
         assert_eq!(
             simp_rich_line,
             get_simplified_rich_line(&simp_line, &trad_rich_line)
@@ -2229,7 +2290,7 @@ fn test_replace_contents_in_word() {
     // empty edge case
     {
         let target_word = Word(vec![]);
-        let mut content_word = "".chars();
+        let mut content_word = "".chars().peekable();
         let expected_word = Word(vec![]);
         assert_eq!(
             replace_contents_in_word(&target_word, &mut content_word),
@@ -2240,7 +2301,7 @@ fn test_replace_contents_in_word() {
     // a single Chinese character
     {
         let target_word = Word(vec![(Bold, "國".into())]);
-        let mut content_word = "国".chars();
+        let mut content_word = "国".chars().peekable();
         let expected_word = Word(vec![(Bold, "国".into())]);
         assert_eq!(
             replace_contents_in_word(&target_word, &mut content_word),
@@ -2251,7 +2312,7 @@ fn test_replace_contents_in_word() {
     // some latin characters
     {
         let target_word = Word(vec![(Bold, "camp".into())]);
-        let mut content_word = "camp".chars();
+        let mut content_word = "camp".chars().peekable();
         let expected_word = Word(vec![(Bold, "camp".into())]);
         assert_eq!(
             replace_contents_in_word(&target_word, &mut content_word),
@@ -2262,11 +2323,17 @@ fn test_replace_contents_in_word() {
     // mixed script
     {
         let target_word = Word(vec![(Bold, "國".into()), (Bold, "camp".into())]);
-        let mut content_word = "国camp".chars();
+        let mut content_word = "国camp".chars().peekable();
         let expected_word = Word(vec![(Bold, "国".into()), (Bold, "camp".into())]);
         assert_eq!(
             replace_contents_in_word(&target_word, &mut content_word),
             expected_word
         );
     }
+}
+
+#[test]
+fn test_to_simplified() {
+    use super::unicode::to_simplified;
+    assert_eq!(to_simplified("乙等/乙級"), "乙等/乙级");
 }
