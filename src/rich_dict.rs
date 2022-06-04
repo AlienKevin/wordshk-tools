@@ -32,8 +32,14 @@ pub struct RichEntry {
     #[serde(rename = "s")]
     pub sims: Vec<String>,
 
+    #[serde(rename = "ss")]
+    pub sims_simp: Vec<String>,
+
     #[serde(rename = "a")]
     pub ants: Vec<String>,
+
+    #[serde(rename = "as")]
+    pub ants_simp: Vec<String>,
 
     #[serde(skip)]
     pub refs: Vec<String>,
@@ -630,7 +636,9 @@ pub fn enrich_dict(dict: &Dict) -> RichDict {
                     poses: entry.poses.clone(),
                     labels: entry.labels.clone(),
                     sims: entry.sims.clone(),
+                    sims_simp: get_simplified_sims_or_ants(&entry.sims),
                     ants: entry.ants.clone(),
+                    ants_simp: get_simplified_sims_or_ants(&entry.ants),
                     refs: entry.refs.clone(),
                     imgs: entry.imgs.clone(),
                     defs: rich_defs,
@@ -797,6 +805,10 @@ fn get_simplified_variant_strings(trad_variants: &Variants, defs: &Vec<Def>) -> 
             }
         })
         .collect()
+}
+
+fn get_simplified_sims_or_ants(sims_or_ants: &Vec<String>) -> Vec<String> {
+    sims_or_ants.iter().map(|sim_or_ant| unicode::to_simplified(sim_or_ant)).collect()
 }
 
 fn clause_to_simplified(clause: &Clause) -> Clause {

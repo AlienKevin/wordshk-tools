@@ -13,7 +13,9 @@ pub struct LeanRichEntry {
 	pub poses: Vec<String>,
 	pub labels: Vec<String>,
 	pub sims: Vec<String>,
+	pub sims_simp: Vec<String>,
 	pub ants: Vec<String>,
+	pub ants_simp: Vec<String>,
 	pub defs: Vec<LeanDef>,
 	pub published: bool,
 }
@@ -54,7 +56,9 @@ pub fn to_lean_rich_entry(entry: &RichEntry) -> LeanRichEntry {
 		poses: entry.poses.clone(),
 		labels: entry.labels.clone(),
 		sims: entry.sims.clone(),
+		sims_simp: entry.sims_simp.clone(),
 		ants: entry.ants.clone(),
+		ants_simp: entry.ants_simp.clone(),
 		defs: entry.defs.iter().map(to_lean_def).collect(),
 		published: entry.published,
 	}

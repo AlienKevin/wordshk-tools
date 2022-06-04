@@ -1773,7 +1773,9 @@ fn test_to_lean_rich_dict() {
             poses: vec!["動詞".to_string(), "擬聲詞".to_string()],
             labels: vec![],
             sims: vec![],
+            sims_simp: vec![],
             ants: vec![],
+            ants_simp: vec![],
             refs: vec![],
             imgs: vec![],
             defs: vec![rich_dict::RichDef {
@@ -1793,7 +1795,9 @@ fn test_to_lean_rich_dict() {
             poses: vec!["動詞".to_string(), "擬聲詞".to_string()],
             labels: vec![],
             sims: vec![],
+            sims_simp: vec![],
             ants: vec![],
+            ants_simp: vec![],
             defs: vec![LeanDef {
                 yue: simple_clause("表現不屑而發出嘅聲音"),
                 yue_simp: simple_clause("表现不屑而发出嘅声音"),
