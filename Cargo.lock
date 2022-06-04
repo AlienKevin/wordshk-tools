@@ -1253,7 +1253,7 @@ dependencies = [
 
 [[package]]
 name = "wordshk_tools"
-version = "3.9.7-beta"
+version = "3.9.8-beta"
 dependencies = [
  "csv",
  "deunicode",
