@@ -100,8 +100,12 @@ pub type Segment = (SegmentType, String);
 ///
 pub type Line = Vec<Segment>;
 
+pub fn line_to_strings(line: &Line) -> Vec<String> {
+    line.iter().map(|seg| seg.1.to_string()).collect()
+}
+
 pub fn line_to_string(line: &Line) -> String {
-    line.iter().map(|seg| seg.1.to_string()).join("")
+    line_to_strings(line).join("")
 }
 
 /// A clause consists of one or more [Line]s. Appears in explanations and example sentences

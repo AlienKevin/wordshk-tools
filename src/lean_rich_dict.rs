@@ -1,4 +1,4 @@
-use super::dict::{AltClause, Clause, Line, Variants};
+use super::dict::{AltClause, Clause, Line, Variants, Segment};
 use super::rich_dict::{
 	get_simplified_rich_line, get_simplified_variants, RichDef, RichEg, RichEntry, RichLine,
 };
@@ -12,9 +12,9 @@ pub struct LeanRichEntry {
 	pub variants_simp: Vec<LeanVariant>,
 	pub poses: Vec<String>,
 	pub labels: Vec<String>,
-	pub sims: Vec<String>,
+	pub sims: Vec<Segment>,
 	pub sims_simp: Vec<String>,
-	pub ants: Vec<String>,
+	pub ants: Vec<Segment>,
 	pub ants_simp: Vec<String>,
 	pub defs: Vec<LeanDef>,
 	pub published: bool,

@@ -1,4 +1,4 @@
-use super::dict::{Clause, Segment, SegmentType};
+use super::dict::{Clause, Segment, SegmentType, line_to_strings};
 use super::jyutping::LaxJyutPingSegment;
 use super::rich_dict::{
     RichDef, RichDict, RichEntry, RichLine, RubySegment, TextStyle, Word, WordLine, WordSegment,
@@ -266,8 +266,8 @@ fn rich_entry_to_xml(entry: &RichEntry) -> String {
                 tags = "<div class=\"tags\">\n".to_string()
             + &(if entry.poses.len() > 0 { format!("<span>詞性：{}</span>\n", entry.poses.iter().map(|pos| to_xml_badge_em(pos)).collect::<Vec<String>>().join("，")) } else { "".to_string() })
             + &(if entry.labels.len() > 0 { format!("<span> ｜ 標籤：{}</span>\n", entry.labels.iter().map(|label| to_xml_badge(label)).collect::<Vec<String>>().join("，")) } else { "".to_string() })
-            + &(if entry.sims.len() > 0 { format!("<span> ｜ 近義：{}</span>\n", entry.sims.join("，")) } else { "".to_string() })
-            + &(if entry.ants.len() > 0 { format!("<span> ｜ 反義：{}</span>\n", entry.ants.join("，")) } else { "".to_string() })
+            + &(if entry.sims.len() > 0 { format!("<span> ｜ 近義：{}</span>\n", line_to_strings(&entry.sims).join("，")) } else { "".to_string() })
+            + &(if entry.ants.len() > 0 { format!("<span> ｜ 反義：{}</span>\n", line_to_strings(&entry.ants).join("，")) } else { "".to_string() })
             // TODO: add refs 
             // TODO: add imgs
             + "</div>",

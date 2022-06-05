@@ -1,7 +1,7 @@
 use super::english_index::generate_english_index;
 use super::lean_rich_dict::{to_lean_rich_entry, LeanRichEntry};
 use super::parse::parse_dict;
-use super::rich_dict::{enrich_dict, RichDict};
+use super::rich_dict::{enrich_dict, RichDict, EnrichDictOptions};
 use flate2::read::GzDecoder;
 use reqwest;
 use serde::{Deserialize, Serialize};
@@ -39,7 +39,7 @@ impl Api {
             .unwrap();
         let dict = parse_dict(csv_data_remove_two_lines.as_bytes()).unwrap();
         let new_api = Api {
-            dict: enrich_dict(&dict),
+            dict: enrich_dict(&dict, &EnrichDictOptions { remove_dead_links: true }),
         };
         serialize_api(api_path, &new_api);
         new_api
