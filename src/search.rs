@@ -1,8 +1,7 @@
 use super::dict::Variants;
 use super::english_index::{EnglishIndex, EnglishIndexData};
 use super::jyutping::{
-    parse_pr, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, LaxJyutPing,
-    LaxJyutPingSegment,
+    parse_jyutpings, JyutPings, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus
 };
 use super::rich_dict::{get_simplified_variants, RichDict, RichEntry};
 use super::unicode;
@@ -204,35 +203,24 @@ fn normalize_score(s: f64) -> Score {
     (s * MAX_SCORE as f64).round() as usize
 }
 
-pub fn compare_lax_jyutping_segment(pr1: &LaxJyutPingSegment, pr2: &LaxJyutPingSegment) -> Score {
-    use LaxJyutPingSegment::*;
-    match (pr1, pr2) {
-        (Standard(pr1), Standard(pr2)) => compare_jyutping(pr1, pr2),
-        (Standard(pr1), Nonstandard(pr2)) => compare_string(&pr1.to_string(), &pr2),
-        (Nonstandard(pr1), Standard(pr2)) => compare_string(pr1, &pr2.to_string()),
-        (Nonstandard(pr1), Nonstandard(pr2)) => compare_string(pr1, pr2),
-    }
-}
-
-fn compare_lax_jyutping(pr1: &LaxJyutPing, pr2: &LaxJyutPing) -> Score {
-    if pr1.0.len() != pr2.0.len() {
+fn compare_jyutpings(pr1: &JyutPings, pr2: &JyutPings) -> Score {
+    if pr1.len() != pr2.len() {
         0
     } else {
         let score: Score = pr1
-            .0
             .iter()
-            .zip(&pr2.0)
-            .map(|(pr1, pr2)| compare_lax_jyutping_segment(pr1, &pr2))
+            .zip(pr2)
+            .map(|(pr1, pr2)| compare_jyutping(pr1, pr2))
             .sum();
-        score / pr1.0.len()
+        score / pr1.len()
     }
 }
 
-pub fn score_pr_query(entry_pr: &LaxJyutPing, query: &LaxJyutPing) -> (Score, Index) {
-    entry_pr.0.windows(query.0.len()).enumerate().fold(
+pub fn score_pr_query(entry_pr: &JyutPings, query: &JyutPings) -> (Score, Index) {
+    entry_pr.windows(query.len()).enumerate().fold(
         (0, 0),
         |(max_score, max_index), (i, _seg)| {
-            let score = compare_lax_jyutping(entry_pr, query);
+            let score = compare_jyutpings(entry_pr, query);
             if score > max_score {
                 (score, i)
             } else {
@@ -342,34 +330,46 @@ fn get_entry_frequency(entry_id: usize) -> u8 {
 pub fn pr_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
     if query.is_ascii() {
-        let query = parse_pr(query);
-        variants_map.iter().for_each(|(id, variants)| {
-            variants
-                .traditional
-                .0
-                .iter()
-                .enumerate()
-                .for_each(|(variant_index, variant)| {
-                    let (score, pr_start_index, pr_index) = variant.prs.0.iter().enumerate().fold(
-                        (0, 0, 0),
-                        |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
-                            let (score, pr_start_index) = score_pr_query(pr, &query);
-                            if score > max_score {
-                                (score, pr_start_index, pr_index)
-                            } else {
-                                (max_score, max_pr_start_index, max_pr_index)
-                            }
-                        },
-                    );
-                    ranks.push(PrSearchRank {
-                        id: *id,
-                        variant_index,
-                        pr_index,
-                        score,
-                        pr_start_index,
+        let jyutpings = parse_jyutpings(query);
+        match jyutpings {
+            Some(query) => {
+            variants_map.iter().for_each(|(id, variants)| {
+                variants
+                    .traditional
+                    .0
+                    .iter()
+                    .enumerate()
+                    .for_each(|(variant_index, variant)| {
+                        let (score, pr_start_index, pr_index) = variant.prs.0.iter().enumerate().fold(
+                            (0, 0, 0),
+                            |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
+                                match pr.to_jyutpings() {
+                                    Some(pr) => {
+                                        let (score, pr_start_index) = score_pr_query(&pr, &query);
+                                        if score > max_score {
+                                            (score, pr_start_index, pr_index)
+                                        } else {
+                                            (max_score, max_pr_start_index, max_pr_index)
+                                        }
+                                    },
+                                    None => (max_score, max_pr_start_index, max_pr_index)
+                                }
+                            },
+                        );
+                        ranks.push(PrSearchRank {
+                            id: *id,
+                            variant_index,
+                            pr_index,
+                            score,
+                            pr_start_index,
+                        });
                     });
-                });
-        });
+            });
+        },
+        None => {
+            // do nothing
+        }
+        }
     }
     ranks
 }
@@ -481,7 +481,7 @@ pub fn combined_search(
     let mut variants_ranks = BinaryHeap::new();
     let mut pr_ranks = BinaryHeap::new();
     let pr_query = if query.is_ascii() {
-        Some(parse_pr(query))
+        parse_jyutpings(query)
     } else {
         None
     };
@@ -508,11 +508,16 @@ pub fn combined_search(
                             variant.prs.0.iter().enumerate().fold(
                                 (0, 0, 0),
                                 |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
-                                    let (score, pr_start_index) = score_pr_query(pr, query);
-                                    if score > max_score {
-                                        (score, pr_start_index, pr_index)
-                                    } else {
-                                        (max_score, max_pr_start_index, max_pr_index)
+                                    match pr.to_jyutpings() {
+                                        Some(pr) => {
+                                            let (score, pr_start_index) = score_pr_query(&pr, query);
+                                            if score > max_score {
+                                                (score, pr_start_index, pr_index)
+                                            } else {
+                                                (max_score, max_pr_start_index, max_pr_index)
+                                            }
+                                        },
+                                        None => (max_score, max_pr_start_index, max_pr_index)
                                     }
                                 },
                             );

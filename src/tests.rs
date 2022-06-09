@@ -1410,51 +1410,27 @@ fn test_parse_pr() {
 }
 
 #[test]
-fn test_score_pr_query() {
-    use super::search::score_pr_query;
-
+fn test_parse_jyutpings() {
+    // all valid jyutpings
     assert_eq!(
-        (25, 0),
-        score_pr_query(
-            &LaxJyutPing(vec![LaxJyutPingSegment::Standard(JyutPing {
-                initial: Some(JyutPingInitial::F),
-                nucleus: Some(JyutPingNucleus::E),
-                coda: None,
-                tone: Some(JyutPingTone::T1)
-            })]),
-            &LaxJyutPing(vec![LaxJyutPingSegment::Nonstandard("firework".into())])
-        )
-    );
-}
-
-#[test]
-fn test_compare_lax_jyutping_segment() {
-    use super::search::compare_lax_jyutping_segment;
-
-    assert_eq!(
-        25,
-        compare_lax_jyutping_segment(
-            &LaxJyutPingSegment::Standard(JyutPing {
-                initial: Some(JyutPingInitial::F),
-                nucleus: Some(JyutPingNucleus::E),
-                coda: None,
-                tone: Some(JyutPingTone::T1)
-            }),
-            &LaxJyutPingSegment::Nonstandard("firework".into())
-        )
+        parse_jyutpings(&"jyut6 ping3".to_string()),
+        Some(vec![JyutPing {
+            initial: Some(JyutPingInitial::J),
+            nucleus: Some(JyutPingNucleus::Yu),
+            coda: Some(JyutPingCoda::T),
+            tone: Some(JyutPingTone::T6)
+        }, JyutPing {
+            initial: Some(JyutPingInitial::P),
+            nucleus: Some(JyutPingNucleus::I),
+            coda: Some(JyutPingCoda::Ng),
+            tone: Some(JyutPingTone::T3)
+        }])
     );
 
+    // a single invalid jyutping
     assert_eq!(
-        25,
-        compare_lax_jyutping_segment(
-            &LaxJyutPingSegment::Nonstandard("firework".into()),
-            &LaxJyutPingSegment::Standard(JyutPing {
-                initial: Some(JyutPingInitial::F),
-                nucleus: Some(JyutPingNucleus::E),
-                coda: None,
-                tone: Some(JyutPingTone::T1)
-            })
-        )
+        parse_jyutpings(&"jyut6 pingg".to_string()),
+        None
     );
 }
 

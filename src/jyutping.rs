@@ -16,6 +16,8 @@ impl fmt::Display for LaxJyutPings {
 	}
 }
 
+pub type JyutPings = Vec<JyutPing>;
+
 /// JyutPing encoding with initial, nucleus, coda, and tone
 ///
 /// Phonetics info based on: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
@@ -95,6 +97,21 @@ impl LaxJyutPing {
 			.map(|seg| seg.to_string_without_tone())
 			.collect::<Vec<String>>()
 			.join(" ")
+	}
+
+	pub fn to_jyutpings(&self) -> Option<JyutPings> {
+		let mut jyutpings = vec![];
+		for seg in &self.0 {
+			match seg {
+				LaxJyutPingSegment::Standard(jyutping) => {
+					jyutpings.push(jyutping.clone());
+				},
+				LaxJyutPingSegment::Nonstandard(_) => {
+					return None;
+				}
+			}
+		}
+		Some(jyutpings)
 	}
 }
 
@@ -226,6 +243,21 @@ pub fn parse_pr(str: &str) -> LaxJyutPing {
 			})
 			.collect(),
 	)
+}
+
+pub fn parse_jyutpings(str: &str) -> Option<JyutPings> {
+	let mut jyutpings = vec![];
+	for pr_seg in str.split_whitespace() {
+		match parse_jyutping(pr_seg) {
+			Some(jyutping) => {
+				jyutpings.push(jyutping);
+			},
+			None => {
+				return None;
+			},
+		}
+	}
+	Some(jyutpings)
 }
 
 /// Parse [JyutPing] pronunciation
