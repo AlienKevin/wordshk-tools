@@ -61,12 +61,6 @@ impl fmt::Display for JyutPing {
 }
 
 impl JyutPing {
-	pub fn is_empty(&self) -> bool {
-		self.initial.is_none()
-			&& self.nucleus.is_none()
-			&& self.coda.is_none()
-			&& self.tone.is_none()
-	}
 	pub fn to_string_without_tone(&self) -> String {
 		self.initial
 			.as_ref()
@@ -227,13 +221,7 @@ pub fn parse_pr(str: &str) -> LaxJyutPing {
 	LaxJyutPing(
 		str.split_whitespace()
 			.map(|pr_seg| match parse_jyutping(pr_seg) {
-				Some(pr) => {
-					if pr.is_empty() {
-						LaxJyutPingSegment::Nonstandard(pr_seg.to_string())
-					} else {
-						LaxJyutPingSegment::Standard(pr)
-					}
-				}
+				Some(pr) => LaxJyutPingSegment::Standard(pr),
 				None => LaxJyutPingSegment::Nonstandard(pr_seg.to_string()),
 			})
 			.collect(),
@@ -259,14 +247,22 @@ pub fn parse_jyutping(str: &str) -> Option<JyutPing> {
 		start = _start;
 		_coda
 	});
-	let tone: Option<JyutPingTone> = parse_jyutping_tone(start, str);
+	let tone: Option<JyutPingTone> = parse_jyutping_tone(start, str).map(|(_tone, _start)| {
+		start = _start;
+		_tone
+	});
 
-	Some(JyutPing {
-		initial,
-		nucleus,
-		coda,
-		tone,
-	})
+	// part of the str is not matched
+	if start < str.len() {
+		None
+	} else {
+		Some(JyutPing {
+			initial,
+			nucleus,
+			coda,
+			tone,
+		})
+	}
 }
 
 fn parse_jyutping_component<T: FromStr>(start: usize, str: &str) -> Option<(T, usize)> {
@@ -300,10 +296,10 @@ fn parse_jyutping_coda(start: usize, str: &str) -> Option<(JyutPingCoda, usize)>
 	parse_jyutping_component::<JyutPingCoda>(start, str)
 }
 
-fn parse_jyutping_tone(start: usize, str: &str) -> Option<JyutPingTone> {
+fn parse_jyutping_tone(start: usize, str: &str) -> Option<(JyutPingTone, usize)> {
 	// println!("{} {} {}", str, start, str.len());
 	get_slice(str, start..str.len()).and_then(|substr| match JyutPingTone::from_str(substr) {
-		Ok(tone) => Some(tone),
+		Ok(tone) => Some((tone, start + 1)),
 		Err(_) => None,
 	})
 }

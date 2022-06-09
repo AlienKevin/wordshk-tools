@@ -1312,26 +1312,30 @@ fn test_parse_jyutping() {
         })
     );
 
+    // english
+    assert_eq!(
+        parse_jyutping(&"firework".to_string()),
+        None
+    );
+    assert_eq!(
+        parse_jyutping(&"good".to_string()),
+        None
+    );
+    assert_eq!(
+        parse_jyutping(&"manifest".to_string()),
+        None
+    );
+
     // nonstandard jyutping (simple)
     assert_eq!(
         parse_jyutping(&"!".to_string()),
-        Some(JyutPing {
-            initial: None,
-            nucleus: None,
-            coda: None,
-            tone: None
-        })
+        None
     );
 
     // nonstandard jyutping (complex)
     assert_eq!(
         parse_jyutping(&"!sdet6".to_string()),
-        Some(JyutPing {
-            initial: None,
-            nucleus: None,
-            coda: None,
-            tone: None
-        })
+        None
     );
 }
 
@@ -1402,6 +1406,55 @@ fn test_parse_pr() {
     assert_eq!(
         parse_pr(&"!sdet6".to_string()),
         LaxJyutPing(vec![LaxJyutPingSegment::Nonstandard("!sdet6".into())]),
+    );
+}
+
+#[test]
+fn test_score_pr_query() {
+    use super::search::score_pr_query;
+
+    assert_eq!(
+        (25, 0),
+        score_pr_query(
+            &LaxJyutPing(vec![LaxJyutPingSegment::Standard(JyutPing {
+                initial: Some(JyutPingInitial::F),
+                nucleus: Some(JyutPingNucleus::E),
+                coda: None,
+                tone: Some(JyutPingTone::T1)
+            })]),
+            &LaxJyutPing(vec![LaxJyutPingSegment::Nonstandard("firework".into())])
+        )
+    );
+}
+
+#[test]
+fn test_compare_lax_jyutping_segment() {
+    use super::search::compare_lax_jyutping_segment;
+
+    assert_eq!(
+        25,
+        compare_lax_jyutping_segment(
+            &LaxJyutPingSegment::Standard(JyutPing {
+                initial: Some(JyutPingInitial::F),
+                nucleus: Some(JyutPingNucleus::E),
+                coda: None,
+                tone: Some(JyutPingTone::T1)
+            }),
+            &LaxJyutPingSegment::Nonstandard("firework".into())
+        )
+    );
+
+    assert_eq!(
+        25,
+        compare_lax_jyutping_segment(
+            &LaxJyutPingSegment::Nonstandard("firework".into()),
+            &LaxJyutPingSegment::Standard(JyutPing {
+                initial: Some(JyutPingInitial::F),
+                nucleus: Some(JyutPingNucleus::E),
+                coda: None,
+                tone: Some(JyutPingTone::T1)
+            })
+        )
     );
 }
 

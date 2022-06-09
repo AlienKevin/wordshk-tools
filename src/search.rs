@@ -228,10 +228,10 @@ fn compare_lax_jyutping(pr1: &LaxJyutPing, pr2: &LaxJyutPing) -> Score {
     }
 }
 
-fn score_pr_query(entry_pr: &LaxJyutPing, query: &LaxJyutPing) -> (Score, Index) {
+pub fn score_pr_query(entry_pr: &LaxJyutPing, query: &LaxJyutPing) -> (Score, Index) {
     entry_pr.0.windows(query.0.len()).enumerate().fold(
         (0, 0),
-        |(max_score, max_index), (i, seg)| {
+        |(max_score, max_index), (i, _seg)| {
             let score = compare_lax_jyutping(entry_pr, query);
             if score > max_score {
                 (score, i)
