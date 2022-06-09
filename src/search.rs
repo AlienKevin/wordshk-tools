@@ -1,7 +1,7 @@
 use super::dict::Variants;
 use super::english_index::{EnglishIndex, EnglishIndexData};
 use super::jyutping::{
-    parse_jyutpings, JyutPings, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus
+    parse_jyutpings, looks_like_pr, JyutPings, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus
 };
 use super::rich_dict::{get_simplified_variants, RichDict, RichEntry};
 use super::unicode;
@@ -473,12 +473,33 @@ pub fn variant_search(
     ranks
 }
 
+pub enum CombinedSearchRank {
+    Variant(BinaryHeap<VariantSearchRank>),
+    Pr(BinaryHeap<PrSearchRank>),
+    All(BinaryHeap<VariantSearchRank>, BinaryHeap<PrSearchRank>, Vec<EnglishIndexData>)
+}
+
+// Auto recognize the type of the query
 pub fn combined_search(
     variants_map: &VariantsMap,
+    english_index: &EnglishIndex,
     query: &str,
     script: Script,
-) -> (BinaryHeap<VariantSearchRank>, BinaryHeap<PrSearchRank>) {
+) -> CombinedSearchRank {
     let mut variants_ranks = BinaryHeap::new();
+
+    // if the query has CJK characters, it can only be a variant
+    if query.chars().any(unicode::is_cjk) {
+        return CombinedSearchRank::Variant(variant_search(&variants_map, query, script));
+    }
+
+    // if the query looks like standard jyutping (with tones), it can only be a pr
+    if looks_like_pr(query) {
+        return CombinedSearchRank::Pr(pr_search(&variants_map, query));
+    }
+
+    // otherwise if the query doesn't have a very strong feature,
+    // it can be a variant, a jyutping or an english phrase
     let mut pr_ranks = BinaryHeap::new();
     let pr_query = if query.is_ascii() {
         parse_jyutpings(query)
@@ -535,14 +556,10 @@ pub fn combined_search(
                 }
             });
     });
-    (variants_ranks, pr_ranks)
-}
 
-pub struct EnglishSearchRank {
-    pub id: u32,
-    pub variant: String,
-    pub pr: String,
-    pub eng: String,
+    let english_results = english_search(english_index, query);
+
+    CombinedSearchRank::All(variants_ranks, pr_ranks, english_results)
 }
 
 pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishIndexData> {
