@@ -31,10 +31,13 @@ pub enum Script {
 #[derive(Default)]
 struct RomanizationMaps {
     pub yale_numbers_to_jyutping: RomanizationMap,
+    pub yale_numbers_without_tone_to_jyutping: RomanizationMap,
     pub cantonese_pinyin_to_jyutping: RomanizationMap,
+    pub cantonese_pinyin_without_tone_to_jyutping: RomanizationMap,
     pub sidney_lau_to_jyutping: RomanizationMap,
+    pub sidney_lau_without_tone_to_jyutping: RomanizationMap,
 
-    pub jyutpings: Vec<JyutPing>,
+    pub jyutpings: Vec<JyutPing>
 }
 
 type RomanizationMap = HashMap<String, usize>;
@@ -367,7 +370,23 @@ pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<JyutP
                 jyutpings.push(jyutping);
             },
             None => {
-                return None;
+                let jyutping_index = match romanization {
+                    YaleNumbers => ROMANIZATION_MAPS.yale_numbers_without_tone_to_jyutping.get(seg),
+                    CantonesePinyin => ROMANIZATION_MAPS.cantonese_pinyin_without_tone_to_jyutping.get(seg),
+                    SidneyLau => ROMANIZATION_MAPS.sidney_lau_without_tone_to_jyutping.get(seg),
+                    Jyutping => panic!("Should never reach this line. Jyutping without tone should be handled in parse_jyutping() already"),
+                    _ => panic!("Unsupported romanization {:?} in convert_to_jyutpings()", romanization)
+                };
+                match jyutping_index {
+                    Some(jyutping_index) => {
+                        let mut jyutping = ROMANIZATION_MAPS.jyutpings[*jyutping_index].clone();
+                        jyutping.tone = None;
+                        jyutpings.push(jyutping);
+                    },
+                    None => {
+                        return None;
+                    }
+                }
             }
         }
     }
@@ -709,8 +728,11 @@ lazy_static! {
             let entry = result.unwrap();
             maps.jyutpings.push(parse_jyutping(&entry[0]).unwrap());
             maps.yale_numbers_to_jyutping.insert(entry[1].to_string(), i);
+            maps.yale_numbers_without_tone_to_jyutping.insert(unicode::remove_last_char(&entry[1]), i);
             maps.cantonese_pinyin_to_jyutping.insert(entry[2].to_string(), i);
+            maps.cantonese_pinyin_without_tone_to_jyutping.insert(unicode::remove_last_char(&entry[2]), i);
             maps.sidney_lau_to_jyutping.insert(entry[3].to_string(), i);
+            maps.sidney_lau_without_tone_to_jyutping.insert(unicode::remove_last_char(&entry[3]), i);
 
             i += 1;
         }
