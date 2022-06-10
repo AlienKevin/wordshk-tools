@@ -347,7 +347,6 @@ pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<JyutP
     use Romanization::*;
     let mut jyutpings = vec![];
     for seg in s.split_whitespace() {
-        println!("{}", seg);
         let jyutping_index = match romanization {
             YaleNumbers => ROMANIZATION_MAPS.yale_numbers_to_jyutping.get(seg),
             YaleDiacritics => ROMANIZATION_MAPS.yale_diacritics_to_jyutping.get(seg),
@@ -367,11 +366,9 @@ pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<JyutP
                 }
             },
         };
-        println!("{:?}", jyutping_index);
         match jyutping_index {
             Some(jyutping_index) => {
                 let jyutping = ROMANIZATION_MAPS.jyutpings[*jyutping_index].clone();
-                println!("{}", jyutping);
                 jyutpings.push(jyutping);
             },
             None => {
