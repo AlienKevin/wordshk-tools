@@ -1,7 +1,7 @@
 use super::dict::Variants;
 use super::english_index::{EnglishIndex, EnglishIndexData};
 use super::jyutping::{
-    parse_jyutpings, looks_like_pr, JyutPings, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus
+    parse_jyutpings, looks_like_pr, parse_jyutping, JyutPings, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus
 };
 use super::rich_dict::{get_simplified_variants, RichDict, RichEntry};
 use super::unicode;
@@ -12,6 +12,8 @@ use std::collections::HashMap;
 use strsim::{generic_levenshtein, normalized_levenshtein};
 use thesaurus::Thesaurus;
 use unicode_segmentation::UnicodeSegmentation;
+use lazy_static::lazy_static;
+use csv;
 
 /// Max score is 100
 type Score = usize;
@@ -25,6 +27,31 @@ pub enum Script {
     Simplified,
     Traditional,
 }
+
+#[derive(Copy, Clone)]
+pub enum Romanization {
+    Jyutping,
+    YaleNumbers,
+    YaleDiacritics,
+    CantonesePinyin,
+    Guangdong,
+    SidneyLau,
+    Ipa,
+}
+
+#[derive(Default)]
+struct RomanizationMaps {
+    pub yale_numbers_to_jyutping: RomanizationMap,
+    pub yale_diacritics_to_jyutping: RomanizationMap,
+    pub cantonese_pinyin_to_jyutping: RomanizationMap,
+    pub guangdong_to_jyutping: RomanizationMap,
+    pub sidney_lau_to_jyutping: RomanizationMap,
+    pub ipa_to_jyutping: RomanizationMap,
+
+    pub jyutpings: Vec<JyutPing>,
+}
+
+type RomanizationMap = HashMap<String, usize>;
 
 /// A Map from entry ID to variants and simplified variants
 pub type VariantsMap = HashMap<usize, ComboVariants>;
@@ -327,49 +354,86 @@ fn get_entry_frequency(entry_id: usize) -> u8 {
     *WORD_FREQUENCIES.get(&(entry_id as u32)).unwrap_or(&50)
 }
 
-pub fn pr_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<PrSearchRank> {
+pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<JyutPings> {
+    use Romanization::*;
+    let mut jyutpings = vec![];
+    for seg in s.split_whitespace() {
+        println!("{}", seg);
+        let jyutping_index = match romanization {
+            YaleNumbers => ROMANIZATION_MAPS.yale_numbers_to_jyutping.get(seg),
+            YaleDiacritics => ROMANIZATION_MAPS.yale_diacritics_to_jyutping.get(seg),
+            CantonesePinyin => ROMANIZATION_MAPS.cantonese_pinyin_to_jyutping.get(seg),
+            Guangdong => ROMANIZATION_MAPS.guangdong_to_jyutping.get(seg),
+            SidneyLau => ROMANIZATION_MAPS.sidney_lau_to_jyutping.get(seg),
+            Ipa => ROMANIZATION_MAPS.ipa_to_jyutping.get(seg),
+            Jyutping => {
+                match parse_jyutping(seg) {
+                    Some(jyutping) => {
+                        jyutpings.push(jyutping);
+                        continue;
+                    },
+                    None => {
+                        return None;
+                    }
+                }
+            },
+        };
+        println!("{:?}", jyutping_index);
+        match jyutping_index {
+            Some(jyutping_index) => {
+                let jyutping = ROMANIZATION_MAPS.jyutpings[*jyutping_index].clone();
+                println!("{}", jyutping);
+                jyutpings.push(jyutping);
+            },
+            None => {
+                return None;
+            }
+        }
+    }
+    Some(jyutpings)
+}
+
+pub fn pr_search(variants_map: &VariantsMap, query: &str, romanization: Romanization) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
-    if query.is_ascii() {
-        let jyutpings = parse_jyutpings(query);
-        match jyutpings {
-            Some(query) => {
-            variants_map.iter().for_each(|(id, variants)| {
-                variants
-                    .traditional
-                    .0
-                    .iter()
-                    .enumerate()
-                    .for_each(|(variant_index, variant)| {
-                        let (score, pr_start_index, pr_index) = variant.prs.0.iter().enumerate().fold(
-                            (0, 0, 0),
-                            |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
-                                match pr.to_jyutpings() {
-                                    Some(pr) => {
-                                        let (score, pr_start_index) = score_pr_query(&pr, &query);
-                                        if score > max_score {
-                                            (score, pr_start_index, pr_index)
-                                        } else {
-                                            (max_score, max_pr_start_index, max_pr_index)
-                                        }
-                                    },
-                                    None => (max_score, max_pr_start_index, max_pr_index)
-                                }
-                            },
-                        );
-                        ranks.push(PrSearchRank {
-                            id: *id,
-                            variant_index,
-                            pr_index,
-                            score,
-                            pr_start_index,
-                        });
+    let jyutpings = convert_to_jyutpings(query, romanization);
+    match jyutpings {
+        Some(query) => {
+        variants_map.iter().for_each(|(id, variants)| {
+            variants
+                .traditional
+                .0
+                .iter()
+                .enumerate()
+                .for_each(|(variant_index, variant)| {
+                    let (score, pr_start_index, pr_index) = variant.prs.0.iter().enumerate().fold(
+                        (0, 0, 0),
+                        |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
+                            match pr.to_jyutpings() {
+                                Some(pr) => {
+                                    let (score, pr_start_index) = score_pr_query(&pr, &query);
+                                    if score > max_score {
+                                        (score, pr_start_index, pr_index)
+                                    } else {
+                                        (max_score, max_pr_start_index, max_pr_index)
+                                    }
+                                },
+                                None => (max_score, max_pr_start_index, max_pr_index)
+                            }
+                        },
+                    );
+                    ranks.push(PrSearchRank {
+                        id: *id,
+                        variant_index,
+                        pr_index,
+                        score,
+                        pr_start_index,
                     });
-            });
-        },
-        None => {
-            // do nothing
-        }
-        }
+                });
+        });
+    },
+    None => {
+        // do nothing
+    }
     }
     ranks
 }
@@ -485,6 +549,7 @@ pub fn combined_search(
     english_index: &EnglishIndex,
     query: &str,
     script: Script,
+    romanization: Romanization
 ) -> CombinedSearchRank {
     let mut variants_ranks = BinaryHeap::new();
 
@@ -495,7 +560,7 @@ pub fn combined_search(
 
     // if the query looks like standard jyutping (with tones), it can only be a pr
     if looks_like_pr(query) {
-        return CombinedSearchRank::Pr(pr_search(&variants_map, query));
+        return CombinedSearchRank::Pr(pr_search(&variants_map, query, romanization));
     }
 
     // otherwise if the query doesn't have a very strong feature,
@@ -655,4 +720,27 @@ fn score_english_query(query: &str, phrase: &str) -> Score {
     else {
         (normalized_levenshtein(query, phrase) * 80.0).round() as Score
     }
+}
+
+lazy_static! {
+    static ref ROMANIZATION_MAPS: RomanizationMaps = {
+        let tsv = include_str!("cantonese_romanizations.tsv");
+        let mut rdr = csv::ReaderBuilder::new().delimiter(b'\t').from_reader(tsv.as_bytes());
+        let mut maps: RomanizationMaps = RomanizationMaps::default();
+        let mut i = 0;
+        for result in rdr.records() {
+            let entry = result.unwrap();
+            maps.yale_numbers_to_jyutping.insert(entry[0].to_string(), i);
+            maps.yale_diacritics_to_jyutping.insert(entry[1].to_string(), i);
+            maps.cantonese_pinyin_to_jyutping.insert(entry[2].to_string(), i);
+            maps.ipa_to_jyutping.insert(entry[3].to_string(), i);
+            maps.guangdong_to_jyutping.insert(entry[5].to_string(), i);
+            maps.sidney_lau_to_jyutping.insert(entry[6].to_string(), i);
+
+            maps.jyutpings.push(parse_jyutping(&entry[4]).unwrap());
+
+            i += 1;
+        }
+        maps
+    };
 }

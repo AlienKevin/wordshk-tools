@@ -1435,6 +1435,83 @@ fn test_parse_jyutpings() {
 }
 
 #[test]
+fn test_convert_to_jyutpings() {
+    use super::search::{Romanization::*, convert_to_jyutpings};
+
+    // Make sure the first data line of the TSV is not discarded
+    assert_eq!(
+        convert_to_jyutpings(&"a1", YaleNumbers),
+        parse_jyutpings("aa1")
+    );
+
+    let expected_jyutpings1 = parse_jyutpings("ceon1 min4 bat1 gok3 hiu2");
+    let expected_jyutpings2 = parse_jyutpings("je6 loi4 fung1 jyu5 sing1");
+    
+    assert_eq!(
+        convert_to_jyutpings(&"cheun1 min4 bat1 gok3 hiu2", YaleNumbers),
+        expected_jyutpings1
+    );
+    assert_eq!(
+        convert_to_jyutpings(&"ye6 loi4 fung1 yu5 sing1", YaleNumbers),
+        expected_jyutpings2
+    );
+
+    assert_eq!(
+        convert_to_jyutpings(&"cheūn mìhn bāt gok hiú", YaleDiacritics),
+        expected_jyutpings1
+    );
+    assert_eq!(
+        convert_to_jyutpings(&"yeh lòih fūng yúh sīng", YaleDiacritics),
+        expected_jyutpings2
+    );
+
+    assert_eq!(
+        convert_to_jyutpings(&"tsoen1 min4 bat7 gok8 hiu2", CantonesePinyin),
+        expected_jyutpings1
+    );
+    assert_eq!(
+        convert_to_jyutpings(&"je6 loi4 fung1 jy5 sing1", CantonesePinyin),
+        expected_jyutpings2
+    );
+
+    assert_eq!(
+        convert_to_jyutpings(&"cên1 min4 bed1 gog3 hiu2", Guangdong),
+        expected_jyutpings1
+    );
+    assert_eq!(
+        convert_to_jyutpings(&"yé6 loi4 fung1 yu5 xing1", Guangdong),
+        expected_jyutpings2
+    );
+    
+    assert_eq!(
+        convert_to_jyutpings(&"cên1 min4 bed1 gog3 hiu2", Guangdong),
+        expected_jyutpings1
+    );
+    assert_eq!(
+        convert_to_jyutpings(&"yé6 loi4 fung1 yu5 xing1", Guangdong),
+        expected_jyutpings2
+    );
+
+    assert_eq!(
+        convert_to_jyutpings(&"chun1 min4 bat1 gok3 hiu2", SidneyLau),
+        expected_jyutpings1
+    );
+    assert_eq!(
+        convert_to_jyutpings(&"ye6 loi4 fung1 yue5 sing1", SidneyLau),
+        expected_jyutpings2
+    );
+
+    assert_eq!(
+        convert_to_jyutpings(&"tsʰɵn˥ miːn˨˩ pɐt˥ kɔːk˧ hiːu˧˥", Ipa),
+        expected_jyutpings1
+    );
+    assert_eq!(
+        convert_to_jyutpings(&"jɛː˨ lɔːi˨˩ fʊŋ˥ jyː˩˧ sɪŋ˥", Ipa),
+        expected_jyutpings2
+    );
+}
+
+#[test]
 fn test_compare_jyutping() {
     use super::search::compare_jyutping;
 
