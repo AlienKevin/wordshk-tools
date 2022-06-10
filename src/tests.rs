@@ -1435,8 +1435,42 @@ fn test_parse_jyutpings() {
 }
 
 #[test]
+fn test_looks_like_pr() {
+    use super::jyutping::Romanization::*;
+
+    assert!(
+        looks_like_pr("ceon1 min4 bat1 gok3 hiu2 je6 loi4 fung1 jyu5 sing1", Jyutping)
+    );
+    assert!(
+        looks_like_pr("ceon min bat1 gok3 hiu2 je6 loi4 fung1 jyu5 sing1", Jyutping)
+    );
+
+    assert!(
+        looks_like_pr("cheun1 min4 bat1 gok3 hiu2 ye6 loi4 fung1 yu5 sing1", YaleNumbers)
+    );
+    assert!(
+        looks_like_pr("cheun min bat1 gok3 hiu2 ye6 loi4 fung1 yu5 sing1", YaleNumbers)
+    );
+
+    assert!(
+        looks_like_pr("tsoen1 min4 bat7 gok8 hiu2 je6 loi4 fung1 jy5 sing1", CantonesePinyin)
+    );
+    assert!(
+        looks_like_pr("tsoen min bat7 gok8 hiu2 je6 loi4 fung1 jy5 sing1", CantonesePinyin)
+    );
+
+    assert!(
+        looks_like_pr("chun1 min4 bat1 gok3 hiu2 ye6 loi4 fung1 yue5 sing1", SidneyLau)
+    );
+    assert!(
+        looks_like_pr("chun min bat1 gok3 hiu2 ye6 loi4 fung1 yue5 sing1", SidneyLau)
+    );
+}
+
+#[test]
 fn test_convert_to_jyutpings() {
-    use super::search::{Romanization::*, convert_to_jyutpings};
+    use super::search::{convert_to_jyutpings};
+    use super::jyutping::Romanization::*;
 
     // Make sure the first data line of the TSV is not discarded
     assert_eq!(

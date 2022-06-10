@@ -1,7 +1,7 @@
 use super::dict::Variants;
 use super::english_index::{EnglishIndex, EnglishIndexData};
 use super::jyutping::{
-    parse_jyutpings, looks_like_pr, parse_jyutping, JyutPings, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus
+    parse_jyutpings, looks_like_pr, parse_jyutping, JyutPings, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, Romanization
 };
 use super::rich_dict::{get_simplified_variants, RichDict, RichEntry};
 use super::unicode;
@@ -26,17 +26,6 @@ type Index = usize;
 pub enum Script {
     Simplified,
     Traditional,
-}
-
-#[derive(Copy, Clone)]
-pub enum Romanization {
-    Jyutping,
-    YaleNumbers,
-    YaleDiacritics,
-    CantonesePinyin,
-    Guangdong,
-    SidneyLau,
-    Ipa,
 }
 
 #[derive(Default)]
@@ -559,7 +548,7 @@ pub fn combined_search(
     }
 
     // if the query looks like standard jyutping (with tones), it can only be a pr
-    if looks_like_pr(query) {
+    if looks_like_pr(query, romanization) {
         return CombinedSearchRank::Pr(pr_search(&variants_map, query, romanization));
     }
 

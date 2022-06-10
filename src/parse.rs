@@ -387,7 +387,7 @@ pub fn parse_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, PrLine, ()>
             let open_paren = open_paren_index.unwrap();
             let paren_segment = &line[open_paren + 1..line.len() - 1];
             // println!("paren_segment: {:?}", paren_segment);
-            if looks_like_pr(&paren_segment) {
+            if looks_like_pr(&paren_segment, Romanization::Jyutping) {
                 // println!("Found pr line with pr: {paren_segment}");
                 return (
                     (&line[0..open_paren]).to_string(),

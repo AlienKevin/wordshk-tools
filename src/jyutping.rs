@@ -8,6 +8,17 @@ use std::fmt;
 use std::ops::Range;
 use std::str::FromStr;
 
+#[derive(Copy, Clone, Debug)]
+pub enum Romanization {
+    Jyutping,
+    YaleNumbers,
+    YaleDiacritics,
+    CantonesePinyin,
+    Guangdong,
+    SidneyLau,
+    Ipa,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LaxJyutPings(pub Vec<LaxJyutPing>);
 impl fmt::Display for LaxJyutPings {
@@ -347,20 +358,78 @@ fn get_slice(s: &str, range: Range<usize>) -> Option<&str> {
 // Source: lib/cantonese.py:is_valid_jyutping_form
 fn is_standard_jyutping(s: &str) -> bool {
 	lazy_static! {
-		static ref RE: Regex = Regex::new(r"^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|z|c|s|j)?(i|ip|it|ik|im|in|ing|iu|yu|yut|yun|u|up|ut|uk|um|un|ung|ui|e|ep|et|ek|em|en|eng|ei|eu|eot|eon|eoi|oe|oet|oek|oeng|o|ot|ok|on|ong|oi|ou|op|om|a|ap|at|ak|am|an|ang|ai|au|aa|aap|aat|aak|aam|aan|aang|aai|aau|m|ng)[1-6]$").unwrap();
+		static ref RE: Regex = Regex::new(r"^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|z|c|s|j)?(i|ip|it|ik|im|in|ing|iu|yu|yut|yun|u|ut|uk|um|un|ung|ui|e|ep|et|ek|em|en|eng|ei|eu|eot|eon|eoi|oe|oet|oek|oeng|o|ot|ok|on|ong|oi|ou|op|om|a|ap|at|ak|am|an|ang|ai|au|aa|aap|aat|aak|aam|aan|aang|aai|aau|m|ng)[1-6]$").unwrap();
+	}
+	RE.is_match(s)
+}
+
+// source: https://jyutping.org/blog/table/
+fn is_standard_yale_with_numbers(s: &str) -> bool {
+	lazy_static! {
+		static ref RE: Regex = Regex::new(r"^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|j|ch|s|y)?(i|ip|it|ik|im|in|ing|iu|yu|yut|yun|u|ut|uk|um|un|ung|ui|e|ep|et|ek|em|en|eng|ei|eeu|eui|eu|eut|euk|eun|eung|o|ot|ok|on|ong|oi|ou|op|om|a|ap|at|ak|am|an|ang|ai|au|a|aap|aat|aak|aam|aan|aang|aai|aau|m|ng)[1-6]$").unwrap();
+	}
+	RE.is_match(s)
+}
+
+// source: https://jyutping.org/blog/table/
+// We are ignoring diacritics here
+// fn is_standard_yale_with_diacritics(s: &str) -> bool {
+// 	lazy_static! {
+// 		static ref RE: Regex = Regex::new(r"^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|j|ch|s|y)?(i|ih|ip|ihp|it|iht|ik|ihk|im|ihm|in|ihn|ing|ihng|iu|iuhng|yu|yuh|yut|yuht|yun|yuhn|u|uh|ut|uht|uk|uhk|um|uhm|un|uhn|ung|uhng|ui|uih|e|eh|ep|ehp|et|eht|ek|ehk|em|ehm|en|ehn|eng|ehng|ei|eih|eeu|eeuh|eui|euih|eu|euh|eut|euht|euk|euhk|eun|euhn|eung|euhng|o|oh|ot|oht|ok|ohk|on|ohn|ong|ohng|oi|oih|ou|ouh|op|ohp|om|ohm|a|ah|ap|ahp|at|aht|ak|ahk|am|ahm|an|ahn|ang|ahng|ai|aih|au|auh|aap|aahp|aat|aaht|aak|aahk|aam|aahm|aan|aahn|aang|aahng|aai|aaih|aau|aauh|m|mh|ng|ngh)$").unwrap();
+// 	}
+
+// 	RE.is_match(&remove_diacritics(&unicode::normalize(&s), find_yale_diacritics))
+// }
+
+// fn remove_diacritics(s: &str, find_diacritics: fn(char) -> char) -> String {
+// 	let chars = s.chars();
+//     chars.fold("".to_string(), |acc, c| acc + &find_diacritics(c).to_string())
+// }
+
+// fn find_yale_diacritics(c: char) -> char {
+// 	match c {
+// 		'ā'|'á'|'à' => 'a',
+// 		'ē'|'é'|'è' => 'e',
+// 		'ī'|'í'|'ì' => 'i',
+// 		'ō'|'ó'|'ò' => 'o',
+// 		'ū'|'ú'|'ù' => 'u',
+// 		_ => c
+// 	}
+// }
+
+// Source: https://jyutping.org/blog/table/
+fn is_standard_cantonese_pinyin(s: &str) -> bool {
+	lazy_static! {
+		static ref RE: Regex = Regex::new(r"^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|dz|ts|s|j)?(i|ip|it|ik|im|in|ing|iu|y|yt|yn|u|ut|uk|um|un|ung|ui|e|ep|et|ek|em|en|eng|ei|eu|eot|eon|eoy|oe|oet|oek|oeng|o|ot|ok|on|ong|oi|ou|op|om|a|ap|at|ak|am|an|ang|ai|au|aa|aap|aat|aak|aam|aan|aang|aai|aau|m|ng)[1-9]$").unwrap();
+	}
+	RE.is_match(s)
+}
+
+// Source: https://jyutping.org/blog/table/
+fn is_standard_sidney_lau(s: &str) -> bool {
+	lazy_static! {
+		static ref RE: Regex = Regex::new(r"^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|j|ch|s|y)?(i|ip|it|ik|im|in|ing|iu|ue|uet|uen|oo|oot|uk|um|oon|ung|ooi|e|ep|et|ek|em|en|eng|ei|euh|ui|eu|ut|euk|un|eung|o|ot|ok|on|ong|oh|oi|ou|op|om|a|ap|at|ak|am|an|ang|ai|au|a|aap|aat|aak|aam|aan|aang|aai|aau|m|ng)[1-6]$").unwrap();
 	}
 	RE.is_match(s)
 }
 
 // Source: zidin/definition.py:looks_like_jyutping
-pub fn looks_like_pr(s: &str) -> bool {
+pub fn looks_like_pr(s: &str, romanization: Romanization) -> bool {
+	use Romanization::*;
 	let segs = s.split_whitespace();
+	let standard_check = match romanization {
+		Jyutping => is_standard_jyutping,
+		YaleNumbers => is_standard_yale_with_numbers,
+		CantonesePinyin => is_standard_cantonese_pinyin,
+		SidneyLau => is_standard_sidney_lau,
+		_ => panic!("Unsupported romanization {:?} in looks_like_pr()", romanization),
+	};
 	let similarity_score: u32 = segs
 		.clone()
 		.map(|seg| {
 			let mut cleaned_seg = seg.to_string();
 			cleaned_seg.retain(|c| !unicode::is_english_punc(c));
-			if is_standard_jyutping(&cleaned_seg) {
+			if standard_check(&cleaned_seg) {
 				1
 			} else {
 				0
