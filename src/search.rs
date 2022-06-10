@@ -31,11 +31,8 @@ pub enum Script {
 #[derive(Default)]
 struct RomanizationMaps {
     pub yale_numbers_to_jyutping: RomanizationMap,
-    pub yale_diacritics_to_jyutping: RomanizationMap,
     pub cantonese_pinyin_to_jyutping: RomanizationMap,
-    pub guangdong_to_jyutping: RomanizationMap,
     pub sidney_lau_to_jyutping: RomanizationMap,
-    pub ipa_to_jyutping: RomanizationMap,
 
     pub jyutpings: Vec<JyutPing>,
 }
@@ -349,11 +346,8 @@ pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<JyutP
     for seg in s.split_whitespace() {
         let jyutping_index = match romanization {
             YaleNumbers => ROMANIZATION_MAPS.yale_numbers_to_jyutping.get(seg),
-            YaleDiacritics => ROMANIZATION_MAPS.yale_diacritics_to_jyutping.get(seg),
             CantonesePinyin => ROMANIZATION_MAPS.cantonese_pinyin_to_jyutping.get(seg),
-            Guangdong => ROMANIZATION_MAPS.guangdong_to_jyutping.get(seg),
             SidneyLau => ROMANIZATION_MAPS.sidney_lau_to_jyutping.get(seg),
-            Ipa => ROMANIZATION_MAPS.ipa_to_jyutping.get(seg),
             Jyutping => {
                 match parse_jyutping(seg) {
                     Some(jyutping) => {
@@ -365,6 +359,7 @@ pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<JyutP
                     }
                 }
             },
+            _ => panic!("Unsupported romanization {:?} in convert_to_jyutpings()", romanization)
         };
         match jyutping_index {
             Some(jyutping_index) => {
@@ -714,11 +709,8 @@ lazy_static! {
             let entry = result.unwrap();
             maps.jyutpings.push(parse_jyutping(&entry[0]).unwrap());
             maps.yale_numbers_to_jyutping.insert(entry[1].to_string(), i);
-            maps.yale_diacritics_to_jyutping.insert(entry[2].to_string(), i);
-            maps.cantonese_pinyin_to_jyutping.insert(entry[3].to_string(), i);
-            maps.guangdong_to_jyutping.insert(entry[4].to_string(), i);
-            maps.sidney_lau_to_jyutping.insert(entry[5].to_string(), i);
-            maps.ipa_to_jyutping.insert(entry[6].to_string(), i);
+            maps.cantonese_pinyin_to_jyutping.insert(entry[2].to_string(), i);
+            maps.sidney_lau_to_jyutping.insert(entry[3].to_string(), i);
 
             i += 1;
         }
