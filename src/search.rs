@@ -730,14 +730,13 @@ lazy_static! {
         let mut i = 0;
         for result in rdr.records() {
             let entry = result.unwrap();
-            maps.yale_numbers_to_jyutping.insert(entry[0].to_string(), i);
-            maps.yale_diacritics_to_jyutping.insert(entry[1].to_string(), i);
-            maps.cantonese_pinyin_to_jyutping.insert(entry[2].to_string(), i);
-            maps.ipa_to_jyutping.insert(entry[3].to_string(), i);
-            maps.guangdong_to_jyutping.insert(entry[5].to_string(), i);
-            maps.sidney_lau_to_jyutping.insert(entry[6].to_string(), i);
-
-            maps.jyutpings.push(parse_jyutping(&entry[4]).unwrap());
+            maps.jyutpings.push(parse_jyutping(&entry[0]).unwrap());
+            maps.yale_numbers_to_jyutping.insert(entry[1].to_string(), i);
+            maps.yale_diacritics_to_jyutping.insert(entry[2].to_string(), i);
+            maps.cantonese_pinyin_to_jyutping.insert(entry[3].to_string(), i);
+            maps.guangdong_to_jyutping.insert(entry[4].to_string(), i);
+            maps.sidney_lau_to_jyutping.insert(entry[5].to_string(), i);
+            maps.ipa_to_jyutping.insert(entry[6].to_string(), i);
 
             i += 1;
         }
