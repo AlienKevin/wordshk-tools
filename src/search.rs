@@ -552,11 +552,7 @@ pub fn combined_search(
     // otherwise if the query doesn't have a very strong feature,
     // it can be a variant, a jyutping or an english phrase
     let mut pr_ranks = BinaryHeap::new();
-    let pr_query = if query.is_ascii() {
-        parse_jyutpings(query)
-    } else {
-        None
-    };
+    let jyutpings = convert_to_jyutpings(query, romanization);
     variants_map.iter().for_each(|(id, variants)| {
         pick_variants(variants, script)
             .0
@@ -574,7 +570,7 @@ pub fn combined_search(
                     });
                 }
 
-                match &pr_query {
+                match &jyutpings {
                     Some(query) => {
                         let (score, pr_start_index, pr_index) =
                             variant.prs.0.iter().enumerate().fold(
