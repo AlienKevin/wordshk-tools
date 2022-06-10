@@ -25,7 +25,7 @@ use std::io;
 /// Parse the whole words.hk CSV database into a [Dict]
 pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
     // Build the CSV reader and iterate over each record.
-    let mut rdr = csv::Reader::from_reader(input);
+    let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_reader(input);
     let mut dict: Dict = HashMap::new();
     for result in rdr.records() {
         let entry = result?;
