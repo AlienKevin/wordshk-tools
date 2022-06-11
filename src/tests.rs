@@ -1046,6 +1046,27 @@ fn test_match_ruby() {
         ]
     );
 
+    // "FULLWIDTH COMMA" between english words
+    // assert_eq!(
+    //     match_ruby(
+    //         &vec!["M".into()],
+    //         &vec![text("好M唔M，M套？")],
+    //         &vec![
+    //             "hou2", "em1", "m4", "em1", "em1", "tou3"
+    //         ]
+    //     ),
+    //     vec![
+    //         Word(normal_word("好"), vec!["hou2".into()]),
+    //         Word(bold_word("M"), vec!["em1".into()]),
+    //         Word(normal_word("唔"), vec!["m4".into()]),
+    //         Word(bold_word("M"), vec!["em1".into()]),
+    //         Punc("，".into()),
+    //         Word(bold_word("M"), vec!["em1".into()]),
+    //         Word(normal_word("套"), vec!["tou3".into()]),
+    //         Punc("？".into()),
+    //     ]
+    // );
+
     // one Chinese character two prs
     assert_eq!(
         match_ruby(

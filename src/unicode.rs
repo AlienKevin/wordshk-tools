@@ -72,7 +72,7 @@ pub fn is_latin(c: char) -> bool {
 
 pub fn is_alphanumeric(c: char) -> bool {
     let cp = c as i32;
-    (0x30 <= cp && cp < 0x40) || (0xFF10 <= cp && cp < 0xFF20) || is_latin(c)
+    (0x30 <= cp && cp < 0x40) || is_latin(c)
 }
 
 pub fn is_cjk(c: char) -> bool {
