@@ -1,7 +1,7 @@
 use super::dict::Variants;
 use super::english_index::{EnglishIndex, EnglishIndexData};
 use super::jyutping::{
-    parse_continuous_jyutpings, looks_like_pr, parse_jyutping, JyutPings, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, Romanization
+    convert_to_jyutpings, looks_like_pr, JyutPings, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, Romanization
 };
 use super::rich_dict::{get_simplified_variants, RichDict, RichEntry};
 use super::unicode;
@@ -12,8 +12,6 @@ use std::collections::HashMap;
 use strsim::{generic_levenshtein, normalized_levenshtein};
 use thesaurus::Thesaurus;
 use unicode_segmentation::UnicodeSegmentation;
-use lazy_static::lazy_static;
-use csv;
 
 /// Max score is 100
 type Score = usize;
@@ -27,20 +25,6 @@ pub enum Script {
     Simplified,
     Traditional,
 }
-
-#[derive(Default)]
-struct RomanizationMaps {
-    pub yale_numbers_to_jyutping: RomanizationMap,
-    pub yale_numbers_without_tone_to_jyutping: RomanizationMap,
-    pub cantonese_pinyin_to_jyutping: RomanizationMap,
-    pub cantonese_pinyin_without_tone_to_jyutping: RomanizationMap,
-    pub sidney_lau_to_jyutping: RomanizationMap,
-    pub sidney_lau_without_tone_to_jyutping: RomanizationMap,
-
-    pub jyutpings: Vec<JyutPing>
-}
-
-type RomanizationMap = HashMap<String, usize>;
 
 /// A Map from entry ID to variants and simplified variants
 pub type VariantsMap = HashMap<usize, ComboVariants>;
@@ -343,81 +327,9 @@ fn get_entry_frequency(entry_id: usize) -> u8 {
     *WORD_FREQUENCIES.get(&(entry_id as u32)).unwrap_or(&50)
 }
 
-pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<Vec<JyutPings>> {
-    use Romanization::*;
-    let mut jyutping_possibilities: Vec<JyutPings> = vec![];
-    for seg in s.split_whitespace() {
-        let jyutping_index = match romanization {
-            YaleNumbers => ROMANIZATION_MAPS.yale_numbers_to_jyutping.get(seg),
-            CantonesePinyin => ROMANIZATION_MAPS.cantonese_pinyin_to_jyutping.get(seg),
-            SidneyLau => ROMANIZATION_MAPS.sidney_lau_to_jyutping.get(seg),
-            Jyutping => {
-                match parse_continuous_jyutpings(seg) {
-                    Some(jyutpings) => {
-                        if jyutping_possibilities.len() == 0 {
-                            jyutping_possibilities = jyutpings;
-                        } else {
-                            jyutping_possibilities = jyutping_possibilities.iter().flat_map(|possibility| {
-                                jyutpings.iter().map(move |jyutping| {
-                                    let mut result = possibility.clone();
-                                    result.extend(jyutping.clone());
-                                    result
-                                })
-                            }).collect();
-                        }
-                        continue;
-                    },
-                    None => {
-                        return None;
-                    }
-                }
-            },
-            _ => panic!("Unsupported romanization {:?} in convert_to_jyutpings()", romanization)
-        };
-        match jyutping_index {
-            Some(jyutping_index) => {
-                let jyutping = ROMANIZATION_MAPS.jyutpings[*jyutping_index].clone();
-                if jyutping_possibilities.len() == 0 {
-                    jyutping_possibilities.push(vec![jyutping]);
-                } else {
-                    jyutping_possibilities.iter_mut().for_each(|possibility| {
-                        possibility.push(jyutping.clone());
-                    });
-                }
-            },
-            None => {
-                let jyutping_index = match romanization {
-                    YaleNumbers => ROMANIZATION_MAPS.yale_numbers_without_tone_to_jyutping.get(seg),
-                    CantonesePinyin => ROMANIZATION_MAPS.cantonese_pinyin_without_tone_to_jyutping.get(seg),
-                    SidneyLau => ROMANIZATION_MAPS.sidney_lau_without_tone_to_jyutping.get(seg),
-                    Jyutping => panic!("Should never reach this line. Jyutping without tone should be handled in parse_jyutping() already"),
-                    _ => panic!("Unsupported romanization {:?} in convert_to_jyutpings()", romanization)
-                };
-                match jyutping_index {
-                    Some(jyutping_index) => {
-                        let mut jyutping = ROMANIZATION_MAPS.jyutpings[*jyutping_index].clone();
-                        jyutping.tone = None;
-                        if jyutping_possibilities.len() == 0 {
-                            jyutping_possibilities.push(vec![jyutping]);
-                        } else {
-                            jyutping_possibilities.iter_mut().for_each(|possibility| {
-                                possibility.push(jyutping.clone());
-                            });
-                        }
-                    },
-                    None => {
-                        return None;
-                    }
-                }
-            }
-        }
-    }
-    Some(jyutping_possibilities)
-}
-
 pub fn pr_search(variants_map: &VariantsMap, query: &str, romanization: Romanization) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
-    let jyutpings = convert_to_jyutpings(query, romanization);
+    let jyutpings = convert_to_jyutpings(&unicode::normalize(query), romanization);
     match jyutpings {
         Some(queries) => {
         queries.iter().for_each(|query| {
@@ -742,26 +654,4 @@ fn score_english_query(query: &str, phrase: &str) -> Score {
     else {
         (normalized_levenshtein(query, phrase) * 80.0).round() as Score
     }
-}
-
-lazy_static! {
-    static ref ROMANIZATION_MAPS: RomanizationMaps = {
-        let tsv = include_str!("cantonese_romanizations.tsv");
-        let mut rdr = csv::ReaderBuilder::new().delimiter(b'\t').from_reader(tsv.as_bytes());
-        let mut maps: RomanizationMaps = RomanizationMaps::default();
-        let mut i = 0;
-        for result in rdr.records() {
-            let entry = result.unwrap();
-            maps.jyutpings.push(parse_jyutping(&entry[0]).unwrap());
-            maps.yale_numbers_to_jyutping.insert(entry[1].to_string(), i);
-            maps.yale_numbers_without_tone_to_jyutping.insert(unicode::remove_last_char(&entry[1]), i);
-            maps.cantonese_pinyin_to_jyutping.insert(entry[2].to_string(), i);
-            maps.cantonese_pinyin_without_tone_to_jyutping.insert(unicode::remove_last_char(&entry[2]), i);
-            maps.sidney_lau_to_jyutping.insert(entry[3].to_string(), i);
-            maps.sidney_lau_without_tone_to_jyutping.insert(unicode::remove_last_char(&entry[3]), i);
-
-            i += 1;
-        }
-        maps
-    };
 }

@@ -1457,8 +1457,9 @@ fn test_parse_jyutpings() {
 
 #[test]
 fn test_parse_continuous_jyutpings() {
+    // valid jyutping
     assert_eq!(
-        parse_continuous_jyutpings(&"zinaan"),
+        parse_continuous_prs(&"zinaan", Romanization::Jyutping),
         Some(vec![vec![JyutPing {
             initial: Some(JyutPingInitial::Z),
             nucleus: Some(JyutPingNucleus::I),
@@ -1517,7 +1518,7 @@ fn test_parse_continuous_jyutpings() {
     );
 
     assert_eq!(
-        parse_continuous_jyutpings(&"zi5naan"),
+        parse_continuous_prs(&"zi5naan", Romanization::Jyutping),
         Some(vec![vec![JyutPing {
             initial: Some(JyutPingInitial::Z),
             nucleus: Some(JyutPingNucleus::I),
@@ -1549,9 +1550,36 @@ fn test_parse_continuous_jyutpings() {
 
     // invalid jyutping
     assert_eq!(
-        parse_continuous_jyutpings(&"zinagn"),
+        parse_continuous_prs(&"zinagn", Romanization::Jyutping),
         None
-    )
+    );
+
+    // valid yale
+    assert_eq!(
+        parse_continuous_prs(&"yauji", Romanization::YaleNumbers),
+        Some(vec![vec![JyutPing {
+            initial: Some(JyutPingInitial::J),
+            nucleus: Some(JyutPingNucleus::A),
+            coda: Some(JyutPingCoda::U),
+            tone: None
+        },
+        JyutPing {
+            initial: Some(JyutPingInitial::Z),
+            nucleus: Some(JyutPingNucleus::I),
+            coda: None,
+            tone: None
+        }]])
+    );
+
+    assert_eq!(
+        parse_continuous_prs(&"yau4", Romanization::YaleNumbers),
+        Some(vec![vec![JyutPing {
+            initial: Some(JyutPingInitial::J),
+            nucleus: Some(JyutPingNucleus::A),
+            coda: Some(JyutPingCoda::U),
+            tone: Some(JyutPingTone::T4)
+        }]])
+    );
 }
 
 #[test]
@@ -1589,7 +1617,6 @@ fn test_looks_like_pr() {
 
 #[test]
 fn test_convert_to_jyutpings() {
-    use super::search::{convert_to_jyutpings};
     use super::jyutping::Romanization::*;
 
     // Make sure the first data line of the TSV is not discarded
@@ -1654,6 +1681,32 @@ fn test_convert_to_jyutpings() {
     //     convert_to_jyutpings(&"jɛː˨ lɔːi˨˩ fʊŋ˥ jyː˩˧ sɪŋ˥", Ipa),
     //     expected_jyutpings2
     // );
+
+    let zi5naan4 = Some(vec![vec![JyutPing {
+            initial: Some(JyutPingInitial::Z),
+            nucleus: Some(JyutPingNucleus::I),
+            coda: None,
+            tone: Some(JyutPingTone::T5)
+        },
+        JyutPing {
+            initial: Some(JyutPingInitial::N),
+            nucleus: Some(JyutPingNucleus::Aa),
+            coda: Some(JyutPingCoda::N),
+            tone: Some(JyutPingTone::T4)
+        }]
+        ]);
+
+    // continous jyutpings with tones
+    assert_eq!(
+        convert_to_jyutpings(&"zi5naan4", Jyutping),
+        zi5naan4
+    );
+
+    // continous yale with tones
+    assert_eq!(
+        convert_to_jyutpings(&"ji5naan4", YaleNumbers),
+        zi5naan4
+    );
 }
 
 #[test]
