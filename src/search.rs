@@ -1,7 +1,7 @@
 use super::dict::Variants;
 use super::english_index::{EnglishIndex, EnglishIndexData};
 use super::jyutping::{
-    parse_jyutpings, looks_like_pr, parse_jyutping, JyutPings, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, Romanization
+    parse_continuous_jyutpings, looks_like_pr, parse_jyutping, JyutPings, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, Romanization
 };
 use super::rich_dict::{get_simplified_variants, RichDict, RichEntry};
 use super::unicode;
@@ -343,18 +343,28 @@ fn get_entry_frequency(entry_id: usize) -> u8 {
     *WORD_FREQUENCIES.get(&(entry_id as u32)).unwrap_or(&50)
 }
 
-pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<JyutPings> {
+pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<Vec<JyutPings>> {
     use Romanization::*;
-    let mut jyutpings = vec![];
+    let mut jyutping_possibilities: Vec<JyutPings> = vec![];
     for seg in s.split_whitespace() {
         let jyutping_index = match romanization {
             YaleNumbers => ROMANIZATION_MAPS.yale_numbers_to_jyutping.get(seg),
             CantonesePinyin => ROMANIZATION_MAPS.cantonese_pinyin_to_jyutping.get(seg),
             SidneyLau => ROMANIZATION_MAPS.sidney_lau_to_jyutping.get(seg),
             Jyutping => {
-                match parse_jyutping(seg) {
-                    Some(jyutping) => {
-                        jyutpings.push(jyutping);
+                match parse_continuous_jyutpings(seg) {
+                    Some(jyutpings) => {
+                        if jyutping_possibilities.len() == 0 {
+                            jyutping_possibilities = jyutpings;
+                        } else {
+                            jyutping_possibilities = jyutping_possibilities.iter().flat_map(|possibility| {
+                                jyutpings.iter().map(move |jyutping| {
+                                    let mut result = possibility.clone();
+                                    result.extend(jyutping.clone());
+                                    result
+                                })
+                            }).collect();
+                        }
                         continue;
                     },
                     None => {
@@ -367,7 +377,13 @@ pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<JyutP
         match jyutping_index {
             Some(jyutping_index) => {
                 let jyutping = ROMANIZATION_MAPS.jyutpings[*jyutping_index].clone();
-                jyutpings.push(jyutping);
+                if jyutping_possibilities.len() == 0 {
+                    jyutping_possibilities.push(vec![jyutping]);
+                } else {
+                    jyutping_possibilities.iter_mut().for_each(|possibility| {
+                        possibility.push(jyutping.clone());
+                    });
+                }
             },
             None => {
                 let jyutping_index = match romanization {
@@ -381,7 +397,13 @@ pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<JyutP
                     Some(jyutping_index) => {
                         let mut jyutping = ROMANIZATION_MAPS.jyutpings[*jyutping_index].clone();
                         jyutping.tone = None;
-                        jyutpings.push(jyutping);
+                        if jyutping_possibilities.len() == 0 {
+                            jyutping_possibilities.push(vec![jyutping]);
+                        } else {
+                            jyutping_possibilities.iter_mut().for_each(|possibility| {
+                                possibility.push(jyutping.clone());
+                            });
+                        }
                     },
                     None => {
                         return None;
@@ -390,14 +412,15 @@ pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<JyutP
             }
         }
     }
-    Some(jyutpings)
+    Some(jyutping_possibilities)
 }
 
 pub fn pr_search(variants_map: &VariantsMap, query: &str, romanization: Romanization) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
     let jyutpings = convert_to_jyutpings(query, romanization);
     match jyutpings {
-        Some(query) => {
+        Some(queries) => {
+        queries.iter().for_each(|query| {
         variants_map.iter().for_each(|(id, variants)| {
             variants
                 .traditional
@@ -430,6 +453,7 @@ pub fn pr_search(variants_map: &VariantsMap, query: &str, romanization: Romaniza
                     });
                 });
         });
+    });
     },
     None => {
         // do nothing
@@ -583,9 +607,10 @@ pub fn combined_search(
                         levenshtein_score,
                     });
                 }
-
+                
                 match &jyutpings {
-                    Some(query) => {
+                    Some(queries) => {
+                        queries.iter().for_each(|query| {
                         let (score, pr_start_index, pr_index) =
                             variant.prs.0.iter().enumerate().fold(
                                 (0, 0, 0),
@@ -610,6 +635,7 @@ pub fn combined_search(
                             score,
                             pr_start_index,
                         });
+                    });
                     }
                     None => {
                         // do nothing

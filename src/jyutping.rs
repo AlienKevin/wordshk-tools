@@ -271,6 +271,39 @@ pub fn parse_jyutpings(str: &str) -> Option<JyutPings> {
 	Some(jyutpings)
 }
 
+pub fn parse_continuous_jyutpings(str: &str) -> Option<Vec<JyutPings>> {
+	let results = parse_continuous_jyutpings_helper(str);
+	if results.len() == 0 {
+		None
+	} else {
+		Some(results)
+	}
+}
+
+fn parse_continuous_jyutpings_helper(str: &str) -> Vec<JyutPings> {
+	let mut jyutpings = vec![];
+	let mut i = 1;
+	while i <= str.len() {
+		let head_word = &str[0..i];
+		if is_standard_jyutping_optional_tone(head_word) {
+			if let Some(head_jyutping) = parse_jyutping(head_word) {
+				if i == str.len() {
+					jyutpings.push(vec![head_jyutping]);
+				} else {
+					let sub_jyutpings = parse_continuous_jyutpings_helper(&str[i..]);
+					for sub_jyutping in sub_jyutpings {
+						let mut sub_jyutping: JyutPings = sub_jyutping.clone();
+						sub_jyutping.insert(0, head_jyutping.clone());
+						jyutpings.push(sub_jyutping);
+					}
+				}
+			}
+		}
+		i += 1;
+	}
+	jyutpings
+}
+
 /// Parse [JyutPing] pronunciation
 pub fn parse_jyutping(str: &str) -> Option<JyutPing> {
 	let mut start = 0;
@@ -355,10 +388,21 @@ fn get_slice(s: &str, range: Range<usize>) -> Option<&str> {
 	}
 }
 
+lazy_static! {
+	static ref JYUTPING_WITHOUT_TONE_REGEX: &'static str = "^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|z|c|s|j)?(i|ip|it|ik|im|in|ing|iu|yu|yut|yun|u|ut|uk|um|un|ung|ui|e|ep|et|ek|em|en|eng|ei|eu|eot|eon|eoi|oe|oet|oek|oeng|o|ot|ok|on|ong|oi|ou|op|om|a|ap|at|ak|am|an|ang|ai|au|aa|aap|aat|aak|aam|aan|aang|aai|aau|m|ng)";
+}
+
 // Source: lib/cantonese.py:is_valid_jyutping_form
 fn is_standard_jyutping(s: &str) -> bool {
 	lazy_static! {
-		static ref RE: Regex = Regex::new(r"^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|z|c|s|j)?(i|ip|it|ik|im|in|ing|iu|yu|yut|yun|u|ut|uk|um|un|ung|ui|e|ep|et|ek|em|en|eng|ei|eu|eot|eon|eoi|oe|oet|oek|oeng|o|ot|ok|on|ong|oi|ou|op|om|a|ap|at|ak|am|an|ang|ai|au|aa|aap|aat|aak|aam|aan|aang|aai|aau|m|ng)[1-6]$").unwrap();
+		static ref RE: Regex = Regex::new(&(JYUTPING_WITHOUT_TONE_REGEX.to_owned() + r"[1-6]$")).unwrap();
+	}
+	RE.is_match(s)
+}
+
+fn is_standard_jyutping_optional_tone(s: &str) -> bool {
+	lazy_static! {
+		static ref RE: Regex = Regex::new(&(JYUTPING_WITHOUT_TONE_REGEX.to_owned() + r"[1-6]?$")).unwrap();
 	}
 	RE.is_match(s)
 }
