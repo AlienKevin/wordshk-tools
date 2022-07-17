@@ -2606,6 +2606,71 @@ fn test_get_simplified_variants() {
 }
 
 #[test]
+fn test_create_combo_variants() {
+    use super::search::{ComboVariant, create_combo_variants};
+    {
+        let trad_variants = Variants(vec![
+            Variant {
+                word: "這位是乾隆皇帝的乾兒子".to_string(),
+                prs: LaxJyutPings(vec![LaxJyutPing(vec![LaxJyutPingSegment::Standard(
+                    JyutPing {
+                        initial: Some(JyutPingInitial::Z),
+                        nucleus: Some(JyutPingNucleus::E),
+                        coda: None,
+                        tone: Some(JyutPingTone::T3),
+                    },
+                )])]),
+            },
+            Variant {
+                word: "呢位係乾隆皇帝嘅養子".to_string(),
+                prs: LaxJyutPings(vec![LaxJyutPing(vec![LaxJyutPingSegment::Standard(
+                    JyutPing {
+                        initial: Some(JyutPingInitial::N),
+                        nucleus: Some(JyutPingNucleus::I),
+                        coda: None,
+                        tone: Some(JyutPingTone::T1),
+                    },
+                )])]),
+            },
+        ]);
+        let combo_variants = vec![
+            ComboVariant {
+                word_trad: "這位是乾隆皇帝的乾兒子".to_string(),
+                word_simp: "这位是乾隆皇帝的干儿子".to_string(),
+                prs: LaxJyutPings(vec![LaxJyutPing(vec![LaxJyutPingSegment::Standard(
+                    JyutPing {
+                        initial: Some(JyutPingInitial::Z),
+                        nucleus: Some(JyutPingNucleus::E),
+                        coda: None,
+                        tone: Some(JyutPingTone::T3),
+                    },
+                )])]),
+            },
+            ComboVariant {
+                word_trad: "呢位係乾隆皇帝嘅養子".to_string(),
+                word_simp: "呢位係乾隆皇帝嘅养子".to_string(),
+                prs: LaxJyutPings(vec![LaxJyutPing(vec![LaxJyutPingSegment::Standard(
+                    JyutPing {
+                        initial: Some(JyutPingInitial::N),
+                        nucleus: Some(JyutPingNucleus::I),
+                        coda: None,
+                        tone: Some(JyutPingTone::T1),
+                    },
+                )])]),
+            },
+        ];
+        let simp_variant_strings = vec![
+            "这位是乾隆皇帝的干儿子".into(),
+            "呢位係乾隆皇帝嘅养子".into(),
+        ];
+        assert_eq!(
+            create_combo_variants(&trad_variants, &simp_variant_strings),
+            combo_variants
+        );
+    }
+}
+
+#[test]
 fn test_replace_contents_in_word() {
     use super::rich_dict::{replace_contents_in_word, TextStyle::*, Word};
     // empty edge case

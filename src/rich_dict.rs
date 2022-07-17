@@ -1,6 +1,6 @@
 use super::dict::{
-    line_to_string, line_to_strings, AltClause, Clause, Def, Dict, Eg, Line, PrLine,
-    Segment, SegmentType, Variant, Variants,
+    line_to_string, line_to_strings, AltClause, Clause, Def, Dict, Eg, Line, PrLine, Segment,
+    SegmentType, Variant, Variants,
 };
 use super::unicode;
 use lazy_static::lazy_static;
@@ -613,7 +613,7 @@ lazy_static! {
 }
 
 pub struct EnrichDictOptions {
-    pub remove_dead_links: bool
+    pub remove_dead_links: bool,
 }
 
 pub fn enrich_dict(dict: &Dict, options: &EnrichDictOptions) -> RichDict {
@@ -626,15 +626,29 @@ pub fn enrich_dict(dict: &Dict, options: &EnrichDictOptions) -> RichDict {
                 .map(|def| {
                     let yue = enrich_clause(&def.yue, dict, options);
                     let yue_simp = clause_to_simplified(&yue);
-                    let eng = def.eng.as_ref().map(|eng| enrich_clause(eng, dict, options));
-                    let alts: Vec<AltClause> = def.alts.iter().map(|(alt_lang, alt)| (alt_lang.clone(), enrich_clause(alt, dict, options))).collect();
+                    let eng = def
+                        .eng
+                        .as_ref()
+                        .map(|eng| enrich_clause(eng, dict, options));
+                    let alts: Vec<AltClause> = def
+                        .alts
+                        .iter()
+                        .map(|(alt_lang, alt)| {
+                            (alt_lang.clone(), enrich_clause(alt, dict, options))
+                        })
+                        .collect();
                     RichDef {
                         yue,
                         yue_simp,
                         eng: eng,
                         alts: alts,
-                        egs: def.egs.iter().map(|eg| enrich_eg(variants, eg, dict, options)).collect(),
-                    }})
+                        egs: def
+                            .egs
+                            .iter()
+                            .map(|eg| enrich_eg(variants, eg, dict, options))
+                            .collect(),
+                    }
+                })
                 .collect();
             let sims = enrich_sims_or_ants(&entry.sims, dict, options);
             let sims_simp = get_simplified_sims_or_ants(&line_to_strings(&sims));
@@ -664,7 +678,10 @@ pub fn enrich_dict(dict: &Dict, options: &EnrichDictOptions) -> RichDict {
 
 pub fn enrich_clause(clause: &Clause, dict: &Dict, options: &EnrichDictOptions) -> Clause {
     if options.remove_dead_links {
-        clause.iter().map(|line| enrich_line(line, dict, options)).collect()
+        clause
+            .iter()
+            .map(|line| enrich_line(line, dict, options))
+            .collect()
     } else {
         clause.clone()
     }
@@ -672,41 +689,60 @@ pub fn enrich_clause(clause: &Clause, dict: &Dict, options: &EnrichDictOptions) 
 
 pub fn enrich_line(line: &Line, dict: &Dict, options: &EnrichDictOptions) -> Line {
     if options.remove_dead_links {
-        line.iter().map(|(seg_type, seg)|
-            if seg_type == &SegmentType::Link {
-                let new_seg_type = if is_live_link(seg, dict) {
-                    SegmentType::Link
+        line.iter()
+            .map(|(seg_type, seg)| {
+                if seg_type == &SegmentType::Link {
+                    let new_seg_type = if is_live_link(seg, dict) {
+                        SegmentType::Link
+                    } else {
+                        SegmentType::Text
+                    };
+                    (new_seg_type, seg.clone())
                 } else {
-                    SegmentType::Text
-                };
-                (new_seg_type, seg.clone())
-            } else {
-                (seg_type.clone(), seg.clone())
-            }).collect()
+                    (seg_type.clone(), seg.clone())
+                }
+            })
+            .collect()
     } else {
         line.clone()
     }
 }
 
-pub fn enrich_sims_or_ants(sims_or_ants: &Vec<String>, dict: &Dict, options: &EnrichDictOptions) -> Vec<Segment> {
+pub fn enrich_sims_or_ants(
+    sims_or_ants: &Vec<String>,
+    dict: &Dict,
+    options: &EnrichDictOptions,
+) -> Vec<Segment> {
     if options.remove_dead_links {
-        sims_or_ants.iter().map(|sim_or_ant| if is_live_link(sim_or_ant, dict) {
-            (SegmentType::Link, sim_or_ant.clone())
-        } else {
-            (SegmentType::Text, sim_or_ant.clone())
-        }).collect()
+        sims_or_ants
+            .iter()
+            .map(|sim_or_ant| {
+                if is_live_link(sim_or_ant, dict) {
+                    (SegmentType::Link, sim_or_ant.clone())
+                } else {
+                    (SegmentType::Text, sim_or_ant.clone())
+                }
+            })
+            .collect()
     } else {
-        sims_or_ants.iter().map(|sim_or_ant| (SegmentType::Link, sim_or_ant.clone())).collect()
+        sims_or_ants
+            .iter()
+            .map(|sim_or_ant| (SegmentType::Link, sim_or_ant.clone()))
+            .collect()
     }
 }
 
 fn is_live_link(link: &str, dict: &Dict) -> bool {
-    dict.iter().any(|(id, entry)| {
-        entry.variants.to_words_set().contains(link)
-    })
+    dict.iter()
+        .any(|(id, entry)| entry.variants.to_words_set().contains(link))
 }
 
-pub fn enrich_pr_line(variants: &Vec<&str>, pr_line: &PrLine, dict: &Dict, options: &EnrichDictOptions) -> RichLine {
+pub fn enrich_pr_line(
+    variants: &Vec<&str>,
+    pr_line: &PrLine,
+    dict: &Dict,
+    options: &EnrichDictOptions,
+) -> RichLine {
     let line = enrich_line(&pr_line.0, dict, options);
     match &pr_line.1 {
         Some(pr) => RichLine::Ruby(match_ruby(variants, &line, &unicode::to_words(pr))),
@@ -714,18 +750,29 @@ pub fn enrich_pr_line(variants: &Vec<&str>, pr_line: &PrLine, dict: &Dict, optio
     }
 }
 
-pub fn enrich_eg(variants: &Vec<&str>, eg: &Eg, dict: &Dict, options: &EnrichDictOptions) -> RichEg {
+pub fn enrich_eg(
+    variants: &Vec<&str>,
+    eg: &Eg,
+    dict: &Dict,
+    options: &EnrichDictOptions,
+) -> RichEg {
     let eng = eg.eng.as_ref().map(|eng| enrich_line(eng, dict, options));
-    let zho = eg.zho.as_ref().map(|zho| enrich_pr_line(variants, zho, dict, options));
+    let zho = eg
+        .zho
+        .as_ref()
+        .map(|zho| enrich_pr_line(variants, zho, dict, options));
     let zho_simp = eg
-            .zho
-            .as_ref()
-            .map(|zho| line_to_string(&line_to_simplified(&enrich_line(&zho.0, dict, options))));
-    let yue = eg.yue.as_ref().map(|yue| enrich_pr_line(variants, &yue, dict, options));
+        .zho
+        .as_ref()
+        .map(|zho| line_to_string(&line_to_simplified(&enrich_line(&zho.0, dict, options))));
+    let yue = eg
+        .yue
+        .as_ref()
+        .map(|yue| enrich_pr_line(variants, &yue, dict, options));
     let yue_simp = eg
-            .yue
-            .as_ref()
-            .map(|yue| line_to_string(&line_to_simplified(&enrich_line(&yue.0, dict, options))));
+        .yue
+        .as_ref()
+        .map(|yue| line_to_string(&line_to_simplified(&enrich_line(&yue.0, dict, options))));
     RichEg {
         zho,
         zho_simp,
@@ -782,7 +829,10 @@ pub fn get_simplified_rich_line(simp_line: &String, trad_line: &RichLine) -> Ric
     }
 }
 
-pub fn replace_contents_in_word(target_word: &Word, content: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Word {
+pub fn replace_contents_in_word(
+    target_word: &Word,
+    content: &mut std::iter::Peekable<std::str::Chars<'_>>,
+) -> Word {
     Word(
         target_word
             .0
@@ -792,7 +842,7 @@ pub fn replace_contents_in_word(target_word: &Word, content: &mut std::iter::Pee
                     while content.peek().unwrap().is_whitespace() {
                         // get rid of all whitespace before word
                         content.next();
-                    };
+                    }
                 }
                 (
                     seg_type.clone(),
@@ -871,7 +921,10 @@ fn get_simplified_variant_strings(trad_variants: &Variants, defs: &Vec<Def>) -> 
 }
 
 fn get_simplified_sims_or_ants(sims_or_ants: &Vec<String>) -> Vec<String> {
-    sims_or_ants.iter().map(|sim_or_ant| unicode::to_simplified(sim_or_ant)).collect()
+    sims_or_ants
+        .iter()
+        .map(|sim_or_ant| unicode::to_simplified(sim_or_ant))
+        .collect()
 }
 
 fn clause_to_simplified(clause: &Clause) -> Clause {
@@ -880,6 +933,6 @@ fn clause_to_simplified(clause: &Clause) -> Clause {
 
 fn line_to_simplified(line: &Line) -> Line {
     line.iter()
-        .map(|(seg_type, seg)| (seg_type.clone(),unicode::to_simplified(seg)))
+        .map(|(seg_type, seg)| (seg_type.clone(), unicode::to_simplified(seg)))
         .collect()
 }

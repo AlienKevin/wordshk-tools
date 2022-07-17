@@ -1,9 +1,11 @@
-use super::dict::Variants;
+use super::dict::{Variant, Variants};
 use super::english_index::{EnglishIndex, EnglishIndexData};
+use super::iconic_simps::ICONIC_SIMPS;
 use super::jyutping::{
-    convert_to_jyutpings, looks_like_pr, JyutPings, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus, Romanization
+    convert_to_jyutpings, looks_like_pr, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus,
+    JyutPings, LaxJyutPings, Romanization,
 };
-use super::rich_dict::{get_simplified_variants, RichDict, RichEntry};
+use super::rich_dict::{RichDict, RichEntry};
 use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
 use std::cmp::Ordering;
@@ -29,21 +31,38 @@ pub enum Script {
 /// A Map from entry ID to variants and simplified variants
 pub type VariantsMap = HashMap<usize, ComboVariants>;
 
-pub struct ComboVariants {
-    pub traditional: Variants,
-    pub simplified: Variants,
+#[derive(Debug, Clone, PartialEq)]
+pub struct ComboVariant {
+    pub word_trad: String,
+    pub word_simp: String,
+    pub prs: LaxJyutPings,
 }
+
+pub type ComboVariants = Vec<ComboVariant>;
 
 pub fn rich_dict_to_variants_map(dict: &RichDict) -> VariantsMap {
     dict.iter()
         .map(|(id, entry)| {
             (
                 *id,
-                ComboVariants {
-                    traditional: entry.variants.clone(),
-                    simplified: get_simplified_variants(&entry.variants, &entry.variants_simp),
-                },
+                create_combo_variants(&entry.variants, &entry.variants_simp),
             )
+        })
+        .collect()
+}
+
+pub fn create_combo_variants(
+    trad_variants: &Variants,
+    simp_variant_strings: &Vec<String>,
+) -> ComboVariants {
+    trad_variants
+        .0
+        .iter()
+        .enumerate()
+        .map(|(variant_index, Variant { word, prs, .. })| ComboVariant {
+            word_trad: word.clone(),
+            word_simp: simp_variant_strings[variant_index].clone(),
+            prs: prs.clone(),
         })
         .collect()
 }
@@ -217,17 +236,17 @@ fn compare_jyutpings(pr1: &JyutPings, pr2: &JyutPings) -> Score {
 }
 
 pub fn score_pr_query(entry_pr: &JyutPings, query: &JyutPings) -> (Score, Index) {
-    entry_pr.windows(query.len()).enumerate().fold(
-        (0, 0),
-        |(max_score, max_index), (i, _seg)| {
+    entry_pr
+        .windows(query.len())
+        .enumerate()
+        .fold((0, 0), |(max_score, max_index), (i, _seg)| {
             let score = compare_jyutpings(entry_pr, query);
             if score > max_score {
                 (score, i)
             } else {
                 (max_score, max_index)
             }
-        },
-    )
+        })
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -253,11 +272,26 @@ impl PartialOrd for PrSearchRank {
     }
 }
 
-pub fn pick_variants(variants: &ComboVariants, script: Script) -> &Variants {
+fn pick_variant(variant: &ComboVariant, script: Script) -> Variant {
     match script {
-        Script::Simplified => &variants.simplified,
-        Script::Traditional => &variants.traditional,
+        Script::Simplified => Variant {
+            word: variant.word_simp.clone(),
+            prs: variant.prs.clone(),
+        },
+        Script::Traditional => Variant {
+            word: variant.word_trad.clone(),
+            prs: variant.prs.clone(),
+        },
     }
+}
+
+pub fn pick_variants(variants: &ComboVariants, script: Script) -> Variants {
+    Variants(
+        variants
+            .iter()
+            .map(|combo| pick_variant(combo, script))
+            .collect(),
+    )
 }
 
 pub fn get_entry_id(variants_map: &VariantsMap, query: &str, script: Script) -> Option<usize> {
@@ -327,49 +361,54 @@ fn get_entry_frequency(entry_id: usize) -> u8 {
     *WORD_FREQUENCIES.get(&(entry_id as u32)).unwrap_or(&50)
 }
 
-pub fn pr_search(variants_map: &VariantsMap, query: &str, romanization: Romanization) -> BinaryHeap<PrSearchRank> {
+pub fn pr_search(
+    variants_map: &VariantsMap,
+    query: &str,
+    romanization: Romanization,
+) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
     let jyutpings = convert_to_jyutpings(&unicode::normalize(query), romanization);
     match jyutpings {
         Some(queries) => {
-        queries.iter().for_each(|query| {
-        variants_map.iter().for_each(|(id, variants)| {
-            variants
-                .traditional
-                .0
-                .iter()
-                .enumerate()
-                .for_each(|(variant_index, variant)| {
-                    let (score, pr_start_index, pr_index) = variant.prs.0.iter().enumerate().fold(
-                        (0, 0, 0),
-                        |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
-                            match pr.to_jyutpings() {
-                                Some(pr) => {
-                                    let (score, pr_start_index) = score_pr_query(&pr, &query);
-                                    if score > max_score {
-                                        (score, pr_start_index, pr_index)
-                                    } else {
-                                        (max_score, max_pr_start_index, max_pr_index)
-                                    }
-                                },
-                                None => (max_score, max_pr_start_index, max_pr_index)
-                            }
-                        },
-                    );
-                    ranks.push(PrSearchRank {
-                        id: *id,
-                        variant_index,
-                        pr_index,
-                        score,
-                        pr_start_index,
-                    });
+            queries.iter().for_each(|query| {
+                variants_map.iter().for_each(|(id, variants)| {
+                    variants
+                        .iter()
+                        .enumerate()
+                        .for_each(|(variant_index, variant)| {
+                            let (score, pr_start_index, pr_index) =
+                                variant.prs.0.iter().enumerate().fold(
+                                    (0, 0, 0),
+                                    |(max_score, max_pr_start_index, max_pr_index),
+                                     (pr_index, pr)| {
+                                        match pr.to_jyutpings() {
+                                            Some(pr) => {
+                                                let (score, pr_start_index) =
+                                                    score_pr_query(&pr, &query);
+                                                if score > max_score {
+                                                    (score, pr_start_index, pr_index)
+                                                } else {
+                                                    (max_score, max_pr_start_index, max_pr_index)
+                                                }
+                                            }
+                                            None => (max_score, max_pr_start_index, max_pr_index),
+                                        }
+                                    },
+                                );
+                            ranks.push(PrSearchRank {
+                                id: *id,
+                                variant_index,
+                                pr_index,
+                                score,
+                                pr_start_index,
+                            });
+                        });
                 });
-        });
-    });
-    },
-    None => {
-        // do nothing
-    }
+            });
+        }
+        None => {
+            // do nothing
+        }
     }
     ranks
 }
@@ -425,12 +464,16 @@ where
         .position(|window| window == needle)
 }
 
-fn score_variant_query(entry_variant: &str, query: &str, script: Script) -> (Index, Score) {
-    let entry_variant_normalized = &unicode::normalize(entry_variant)[..];
-    let query_normalized = &match script {
-        Script::Simplified => unicode::to_simplified,
-        Script::Traditional => unicode::to_traditional,
-    }(&unicode::to_hk_safe_variant(&unicode::normalize(query)))[..];
+fn score_variant_query(entry_variant: &ComboVariant, query: &str) -> (Index, Score) {
+    let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
+    let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
+        // query contains iconic simplified characters
+        Script::Simplified
+    } else {
+        Script::Traditional
+    };
+    let entry_variant_normalized =
+        &unicode::normalize(&pick_variant(entry_variant, query_script).word)[..];
     let variant_graphemes =
         UnicodeSegmentation::graphemes(entry_variant_normalized, true).collect::<Vec<&str>>();
     let query_graphemes =
@@ -446,20 +489,14 @@ fn score_variant_query(entry_variant: &str, query: &str, script: Script) -> (Ind
     (occurrence_index, levenshtein_score)
 }
 
-pub fn variant_search(
-    variants_map: &VariantsMap,
-    query: &str,
-    script: Script,
-) -> BinaryHeap<VariantSearchRank> {
+pub fn variant_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<VariantSearchRank> {
     let mut ranks = BinaryHeap::new();
     variants_map.iter().for_each(|(id, variants)| {
-        pick_variants(variants, script)
-            .0
+        variants
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
-                let (occurrence_index, levenshtein_score) =
-                    score_variant_query(&variant.word, query, script);
+                let (occurrence_index, levenshtein_score) = score_variant_query(&variant, query);
                 if occurrence_index < usize::MAX || levenshtein_score >= 80 {
                     ranks.push(VariantSearchRank {
                         id: *id,
@@ -476,7 +513,11 @@ pub fn variant_search(
 pub enum CombinedSearchRank {
     Variant(BinaryHeap<VariantSearchRank>),
     Pr(BinaryHeap<PrSearchRank>),
-    All(BinaryHeap<VariantSearchRank>, BinaryHeap<PrSearchRank>, Vec<EnglishIndexData>)
+    All(
+        BinaryHeap<VariantSearchRank>,
+        BinaryHeap<PrSearchRank>,
+        Vec<EnglishIndexData>,
+    ),
 }
 
 // Auto recognize the type of the query
@@ -484,14 +525,13 @@ pub fn combined_search(
     variants_map: &VariantsMap,
     english_index: &EnglishIndex,
     query: &str,
-    script: Script,
-    romanization: Romanization
+    romanization: Romanization,
 ) -> CombinedSearchRank {
     let mut variants_ranks = BinaryHeap::new();
 
     // if the query has CJK characters, it can only be a variant
     if query.chars().any(unicode::is_cjk) {
-        return CombinedSearchRank::Variant(variant_search(&variants_map, query, script));
+        return CombinedSearchRank::Variant(variant_search(&variants_map, query));
     }
 
     // if the query looks like standard jyutping (with tones), it can only be a pr
@@ -504,13 +544,11 @@ pub fn combined_search(
     let mut pr_ranks = BinaryHeap::new();
     let jyutpings = convert_to_jyutpings(query, romanization);
     variants_map.iter().for_each(|(id, variants)| {
-        pick_variants(variants, script)
-            .0
+        variants
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
-                let (occurrence_index, levenshtein_score) =
-                    score_variant_query(&variant.word, query, script);
+                let (occurrence_index, levenshtein_score) = score_variant_query(&variant, query);
                 if occurrence_index < usize::MAX || levenshtein_score >= 80 {
                     variants_ranks.push(VariantSearchRank {
                         id: *id,
@@ -519,35 +557,36 @@ pub fn combined_search(
                         levenshtein_score,
                     });
                 }
-                
                 match &jyutpings {
                     Some(queries) => {
                         queries.iter().for_each(|query| {
-                        let (score, pr_start_index, pr_index) =
-                            variant.prs.0.iter().enumerate().fold(
-                                (0, 0, 0),
-                                |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
-                                    match pr.to_jyutpings() {
-                                        Some(pr) => {
-                                            let (score, pr_start_index) = score_pr_query(&pr, query);
-                                            if score > max_score {
-                                                (score, pr_start_index, pr_index)
-                                            } else {
-                                                (max_score, max_pr_start_index, max_pr_index)
+                            let (score, pr_start_index, pr_index) =
+                                variant.prs.0.iter().enumerate().fold(
+                                    (0, 0, 0),
+                                    |(max_score, max_pr_start_index, max_pr_index),
+                                     (pr_index, pr)| {
+                                        match pr.to_jyutpings() {
+                                            Some(pr) => {
+                                                let (score, pr_start_index) =
+                                                    score_pr_query(&pr, query);
+                                                if score > max_score {
+                                                    (score, pr_start_index, pr_index)
+                                                } else {
+                                                    (max_score, max_pr_start_index, max_pr_index)
+                                                }
                                             }
-                                        },
-                                        None => (max_score, max_pr_start_index, max_pr_index)
-                                    }
-                                },
-                            );
-                        pr_ranks.push(PrSearchRank {
-                            id: *id,
-                            variant_index,
-                            pr_index,
-                            score,
-                            pr_start_index,
+                                            None => (max_score, max_pr_start_index, max_pr_index),
+                                        }
+                                    },
+                                );
+                            pr_ranks.push(PrSearchRank {
+                                id: *id,
+                                variant_index,
+                                pr_index,
+                                score,
+                                pr_start_index,
+                            });
                         });
-                    });
                     }
                     None => {
                         // do nothing

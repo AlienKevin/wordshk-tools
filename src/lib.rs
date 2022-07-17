@@ -6,6 +6,7 @@ pub mod emit_apple_dict;
 pub mod emit_html;
 pub mod english_index;
 mod hk_variant_map_safe;
+mod iconic_simps;
 pub mod jyutping;
 pub mod lean_rich_dict;
 pub mod parse;
