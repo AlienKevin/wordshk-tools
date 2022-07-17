@@ -12,7 +12,6 @@ pub mod lean_rich_dict;
 pub mod parse;
 pub mod rich_dict;
 pub mod search;
-mod simp_to_trad;
 pub mod unicode;
 mod variant_to_us_english;
 mod word_frequencies;

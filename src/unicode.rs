@@ -1,5 +1,4 @@
 use super::hk_variant_map_safe::HONG_KONG_VARIANT_MAP_SAFE;
-use super::simp_to_trad::SIMP_TO_TRAD;
 use super::variant_to_us_english::VARIANT_TO_US_ENGLISH;
 use deunicode::deunicode;
 use fast2s;
@@ -115,15 +114,6 @@ pub fn to_hk_safe_variant(str: &str) -> String {
                 }
             }
             return g.to_string();
-        })
-        .join("")
-}
-
-pub fn to_traditional(str: &str) -> String {
-    str.chars()
-        .map(|c| match SIMP_TO_TRAD.get(&c) {
-            Some(trad_char) => *trad_char,
-            None => c,
         })
         .join("")
 }
