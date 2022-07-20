@@ -1,6 +1,7 @@
 use super::dict::{Variant, Variants};
 use super::english_index::{EnglishIndex, EnglishIndexData};
 use super::iconic_simps::ICONIC_SIMPS;
+use super::iconic_trads::ICONIC_TRADS;
 use super::jyutping::{
     convert_to_jyutpings, looks_like_pr, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus,
     JyutPings, LaxJyutPings, Romanization,
@@ -464,14 +465,11 @@ where
         .position(|window| window == needle)
 }
 
-fn score_variant_query(entry_variant: &ComboVariant, query: &str) -> (Index, Score) {
-    let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
-    let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
-        // query contains iconic simplified characters
-        Script::Simplified
-    } else {
-        Script::Traditional
-    };
+fn score_variant_query(
+    entry_variant: &ComboVariant,
+    query_normalized: &str,
+    query_script: Script,
+) -> (Index, Score) {
     let entry_variant_normalized =
         &unicode::normalize(&pick_variant(entry_variant, query_script).word)[..];
     let variant_graphemes =
@@ -489,14 +487,28 @@ fn score_variant_query(entry_variant: &ComboVariant, query: &str) -> (Index, Sco
     (occurrence_index, levenshtein_score)
 }
 
-pub fn variant_search(variants_map: &VariantsMap, query: &str) -> BinaryHeap<VariantSearchRank> {
+pub fn variant_search(
+    variants_map: &VariantsMap,
+    query: &str,
+    script: Script,
+) -> BinaryHeap<VariantSearchRank> {
     let mut ranks = BinaryHeap::new();
+    let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
+    let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
+        // query contains iconic simplified characters
+        Script::Simplified
+    } else if query_normalized.chars().any(|c| ICONIC_TRADS.contains(&c)) {
+        Script::Traditional
+    } else {
+        script
+    };
     variants_map.iter().for_each(|(id, variants)| {
         variants
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
-                let (occurrence_index, levenshtein_score) = score_variant_query(&variant, query);
+                let (occurrence_index, levenshtein_score) =
+                    score_variant_query(&variant, query_normalized, query_script);
                 if occurrence_index < usize::MAX || levenshtein_score >= 80 {
                     ranks.push(VariantSearchRank {
                         id: *id,
@@ -525,13 +537,14 @@ pub fn combined_search(
     variants_map: &VariantsMap,
     english_index: &EnglishIndex,
     query: &str,
+    script: Script,
     romanization: Romanization,
 ) -> CombinedSearchRank {
     let mut variants_ranks = BinaryHeap::new();
 
     // if the query has CJK characters, it can only be a variant
     if query.chars().any(unicode::is_cjk) {
-        return CombinedSearchRank::Variant(variant_search(&variants_map, query));
+        return CombinedSearchRank::Variant(variant_search(&variants_map, query, script));
     }
 
     // if the query looks like standard jyutping (with tones), it can only be a pr
@@ -543,12 +556,22 @@ pub fn combined_search(
     // it can be a variant, a jyutping or an english phrase
     let mut pr_ranks = BinaryHeap::new();
     let jyutpings = convert_to_jyutpings(query, romanization);
+    let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
+    let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
+        // query contains iconic simplified characters
+        Script::Simplified
+    } else if query_normalized.chars().any(|c| ICONIC_TRADS.contains(&c)) {
+        Script::Traditional
+    } else {
+        script
+    };
     variants_map.iter().for_each(|(id, variants)| {
         variants
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
-                let (occurrence_index, levenshtein_score) = score_variant_query(&variant, query);
+                let (occurrence_index, levenshtein_score) =
+                    score_variant_query(&variant, query_normalized, query_script);
                 if occurrence_index < usize::MAX || levenshtein_score >= 80 {
                     variants_ranks.push(VariantSearchRank {
                         id: *id,
