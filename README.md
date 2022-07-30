@@ -50,7 +50,7 @@ https://alienkevin.github.io/wordshk-tools/
 
 ## Source
 
-The full up-to-date CSV database of words.hk dictionary can be downloaded from this url: https://words.hk/static/all.csv.gz
+The full up-to-date CSV database of words.hk dictionary can be downloaded from words.hk. You can request access to the CSV using this link: https://words.hk/faiman/request_data/
 
 ## License
 MIT

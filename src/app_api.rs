@@ -1,7 +1,6 @@
 use super::english_index::generate_english_index;
-use super::lean_rich_dict::{to_lean_rich_entry, LeanRichEntry};
 use super::parse::parse_dict;
-use super::rich_dict::{enrich_dict, RichDict, EnrichDictOptions};
+use super::rich_dict::{enrich_dict, EnrichDictOptions, RichDict};
 use flate2::read::GzDecoder;
 use reqwest;
 use serde::{Deserialize, Serialize};
@@ -20,15 +19,14 @@ fn serialize_api<P: AsRef<Path>>(output_path: &P, api: &Api) {
 }
 
 impl Api {
-    pub fn new(app_dir: &str) -> Self {
+    pub fn new(app_dir: &str, csv_url: &str) -> Self {
         let api_path = Path::new(app_dir).join("api.json");
-        let api = Api::get_new_dict(&api_path);
+        let api = Api::get_new_dict(&api_path, csv_url);
         Api::generate_index(app_dir, &api.dict);
         api
     }
 
-    fn get_new_dict<P: AsRef<Path>>(api_path: &P) -> Api {
-        let csv_url = "https://words.hk/static/all.csv.gz";
+    fn get_new_dict<P: AsRef<Path>>(api_path: &P, csv_url: &str) -> Api {
         let csv_gz_data = reqwest::blocking::get(csv_url).unwrap().bytes().unwrap();
         let mut gz = GzDecoder::new(&csv_gz_data[..]);
         let mut csv_data = String::new();
@@ -39,7 +37,12 @@ impl Api {
             .unwrap();
         let dict = parse_dict(csv_data_remove_two_lines.as_bytes()).unwrap();
         let new_api = Api {
-            dict: enrich_dict(&dict, &EnrichDictOptions { remove_dead_links: true }),
+            dict: enrich_dict(
+                &dict,
+                &EnrichDictOptions {
+                    remove_dead_links: true,
+                },
+            ),
         };
         serialize_api(api_path, &new_api);
         new_api
