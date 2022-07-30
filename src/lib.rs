@@ -7,6 +7,7 @@ pub mod dict;
 pub mod emit_apple_dict;
 pub mod emit_html;
 pub mod english_index;
+#[path = "../data/hk_variant_map_safe.rs"]
 mod hk_variant_map_safe;
 #[path = "../data/simp_trad_conversions/iconic_simps.rs"]
 mod iconic_simps;
