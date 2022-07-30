@@ -2750,3 +2750,28 @@ fn test_get_char_jyutpings() {
         Some(vec!["ngan6".into(), "jan6".into(), "ngan1".into()])
     );
 }
+
+#[test]
+fn test_thesaurus() {
+    use thesaurus::Thesaurus;
+    
+    // assumes that grotesque is a synonym of fantastic
+    let synonyms: Vec<String> = Thesaurus::synonym("fantastic", None)
+        .unwrap()
+        .words
+        .iter()
+        .map(|word| word.name.as_str().to_string())
+        .collect();
+    dbg!(&synonyms);
+    assert!(synonyms.contains(&"grotesque".to_string()));
+    
+    // assumes that fantastic is a synonym of grotesque
+    let synonyms: Vec<String> = Thesaurus::synonym("grotesque", None)
+        .unwrap()
+        .words
+        .iter()
+        .map(|word| word.name.as_str().to_string())
+        .collect();
+    dbg!(&synonyms);
+    assert!(synonyms.contains(&"fantastic".to_string()));
+}
