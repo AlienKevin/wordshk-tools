@@ -3,12 +3,12 @@ use super::dict::{
     SegmentType, Variant, Variants,
 };
 use super::unicode;
-use lazy_static::lazy_static;
 use serde::Deserialize;
 use serde::Serialize;
 use std::cmp;
 use std::collections::HashMap;
 use std::fmt;
+use super::charlist::CHARLIST;
 
 pub type RichDict = HashMap<usize, RichEntry>;
 
@@ -167,8 +167,6 @@ pub type RubyLine = Vec<RubySegment>;
 
 /// A line consists of one or more [WordSegment]s
 pub type WordLine = Vec<WordSegment>;
-
-type CharList = HashMap<char, HashMap<String, usize>>;
 
 // source: https://stackoverflow.com/a/35907071/6798201
 // Important: strings are normalized before comparison
@@ -603,13 +601,6 @@ fn match_ruby_backtrack(
         }
     }
     pr_map
-}
-
-lazy_static! {
-    static ref CHARLIST: CharList = {
-        let charlist = include_bytes!("charlist.json");
-        serde_json::from_slice(charlist).unwrap()
-    };
 }
 
 pub struct EnrichDictOptions {

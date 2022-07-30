@@ -1,6 +1,8 @@
 #[macro_use]
 mod tests;
 pub mod app_api;
+#[path = "../data/char_jyutpings/charlist.rs"]
+mod charlist;
 pub mod dict;
 pub mod emit_apple_dict;
 pub mod emit_html;
