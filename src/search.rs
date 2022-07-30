@@ -1,3 +1,4 @@
+use super::charlist::CHARLIST;
 use super::dict::{Variant, Variants};
 use super::english_index::{EnglishIndex, EnglishIndexData};
 use super::iconic_simps::ICONIC_SIMPS;
@@ -716,4 +717,10 @@ fn score_english_query(query: &str, phrase: &str) -> Score {
     else {
         (normalized_levenshtein(query, phrase) * 80.0).round() as Score
     }
+}
+
+pub fn get_char_jyutpings(query: char) -> Option<Vec<String>> {
+    CHARLIST
+        .get(&query)
+        .map(|prs| prs.iter().map(|pr| pr.to_string()).collect())
 }

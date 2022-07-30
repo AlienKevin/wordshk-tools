@@ -1334,30 +1334,15 @@ fn test_parse_jyutping() {
     );
 
     // english
-    assert_eq!(
-        parse_jyutping(&"firework".to_string()),
-        None
-    );
-    assert_eq!(
-        parse_jyutping(&"good".to_string()),
-        None
-    );
-    assert_eq!(
-        parse_jyutping(&"manifest".to_string()),
-        None
-    );
+    assert_eq!(parse_jyutping(&"firework".to_string()), None);
+    assert_eq!(parse_jyutping(&"good".to_string()), None);
+    assert_eq!(parse_jyutping(&"manifest".to_string()), None);
 
     // nonstandard jyutping (simple)
-    assert_eq!(
-        parse_jyutping(&"!".to_string()),
-        None
-    );
+    assert_eq!(parse_jyutping(&"!".to_string()), None);
 
     // nonstandard jyutping (complex)
-    assert_eq!(
-        parse_jyutping(&"!sdet6".to_string()),
-        None
-    );
+    assert_eq!(parse_jyutping(&"!sdet6".to_string()), None);
 }
 
 #[test]
@@ -1435,24 +1420,24 @@ fn test_parse_jyutpings() {
     // all valid jyutpings
     assert_eq!(
         parse_jyutpings(&"jyut6 ping3".to_string()),
-        Some(vec![JyutPing {
-            initial: Some(JyutPingInitial::J),
-            nucleus: Some(JyutPingNucleus::Yu),
-            coda: Some(JyutPingCoda::T),
-            tone: Some(JyutPingTone::T6)
-        }, JyutPing {
-            initial: Some(JyutPingInitial::P),
-            nucleus: Some(JyutPingNucleus::I),
-            coda: Some(JyutPingCoda::Ng),
-            tone: Some(JyutPingTone::T3)
-        }])
+        Some(vec![
+            JyutPing {
+                initial: Some(JyutPingInitial::J),
+                nucleus: Some(JyutPingNucleus::Yu),
+                coda: Some(JyutPingCoda::T),
+                tone: Some(JyutPingTone::T6)
+            },
+            JyutPing {
+                initial: Some(JyutPingInitial::P),
+                nucleus: Some(JyutPingNucleus::I),
+                coda: Some(JyutPingCoda::Ng),
+                tone: Some(JyutPingTone::T3)
+            }
+        ])
     );
 
     // a single invalid jyutping
-    assert_eq!(
-        parse_jyutpings(&"jyut6 pingg".to_string()),
-        None
-    );
+    assert_eq!(parse_jyutpings(&"jyut6 pingg".to_string()), None);
 }
 
 #[test]
@@ -1460,92 +1445,116 @@ fn test_parse_continuous_jyutpings() {
     // valid jyutping
     assert_eq!(
         parse_continuous_prs(&"zinaan", Romanization::Jyutping),
-        Some(vec![vec![JyutPing {
-            initial: Some(JyutPingInitial::Z),
-            nucleus: Some(JyutPingNucleus::I),
-            coda: None,
-            tone: None
-        },JyutPing {
-            initial: Some(JyutPingInitial::N),
-            nucleus: Some(JyutPingNucleus::A),
-            coda: None,
-            tone: None
-        },JyutPing {
-            initial: None,
-            nucleus: Some(JyutPingNucleus::A),
-            coda: Some(JyutPingCoda::N),
-            tone: None
-        }],
-        vec![JyutPing {
-            initial: Some(JyutPingInitial::Z),
-            nucleus: Some(JyutPingNucleus::I),
-            coda: None,
-            tone: None
-        },JyutPing {
-            initial: Some(JyutPingInitial::N),
-            nucleus: Some(JyutPingNucleus::Aa),
-            coda: Some(JyutPingCoda::N),
-            tone: None
-        }],
-        vec![JyutPing {
-            initial: Some(JyutPingInitial::Z),
-            nucleus: Some(JyutPingNucleus::I),
-            coda: Some(JyutPingCoda::N),
-            tone: None
-        },JyutPing {
-            initial: None,
-            nucleus: Some(JyutPingNucleus::A),
-            coda: None,
-            tone: None
-        },JyutPing {
-            initial: None,
-            nucleus: Some(JyutPingNucleus::A),
-            coda: Some(JyutPingCoda::N),
-            tone: None
-        }],
-        vec![JyutPing {
-            initial: Some(JyutPingInitial::Z),
-            nucleus: Some(JyutPingNucleus::I),
-            coda: Some(JyutPingCoda::N),
-            tone: None
-        },JyutPing {
-            initial: None,
-            nucleus: Some(JyutPingNucleus::Aa),
-            coda: Some(JyutPingCoda::N),
-            tone: None
-        }]
+        Some(vec![
+            vec![
+                JyutPing {
+                    initial: Some(JyutPingInitial::Z),
+                    nucleus: Some(JyutPingNucleus::I),
+                    coda: None,
+                    tone: None
+                },
+                JyutPing {
+                    initial: Some(JyutPingInitial::N),
+                    nucleus: Some(JyutPingNucleus::A),
+                    coda: None,
+                    tone: None
+                },
+                JyutPing {
+                    initial: None,
+                    nucleus: Some(JyutPingNucleus::A),
+                    coda: Some(JyutPingCoda::N),
+                    tone: None
+                }
+            ],
+            vec![
+                JyutPing {
+                    initial: Some(JyutPingInitial::Z),
+                    nucleus: Some(JyutPingNucleus::I),
+                    coda: None,
+                    tone: None
+                },
+                JyutPing {
+                    initial: Some(JyutPingInitial::N),
+                    nucleus: Some(JyutPingNucleus::Aa),
+                    coda: Some(JyutPingCoda::N),
+                    tone: None
+                }
+            ],
+            vec![
+                JyutPing {
+                    initial: Some(JyutPingInitial::Z),
+                    nucleus: Some(JyutPingNucleus::I),
+                    coda: Some(JyutPingCoda::N),
+                    tone: None
+                },
+                JyutPing {
+                    initial: None,
+                    nucleus: Some(JyutPingNucleus::A),
+                    coda: None,
+                    tone: None
+                },
+                JyutPing {
+                    initial: None,
+                    nucleus: Some(JyutPingNucleus::A),
+                    coda: Some(JyutPingCoda::N),
+                    tone: None
+                }
+            ],
+            vec![
+                JyutPing {
+                    initial: Some(JyutPingInitial::Z),
+                    nucleus: Some(JyutPingNucleus::I),
+                    coda: Some(JyutPingCoda::N),
+                    tone: None
+                },
+                JyutPing {
+                    initial: None,
+                    nucleus: Some(JyutPingNucleus::Aa),
+                    coda: Some(JyutPingCoda::N),
+                    tone: None
+                }
+            ]
         ])
     );
 
     assert_eq!(
         parse_continuous_prs(&"zi5naan", Romanization::Jyutping),
-        Some(vec![vec![JyutPing {
-            initial: Some(JyutPingInitial::Z),
-            nucleus: Some(JyutPingNucleus::I),
-            coda: None,
-            tone: Some(JyutPingTone::T5)
-        },JyutPing {
-            initial: Some(JyutPingInitial::N),
-            nucleus: Some(JyutPingNucleus::A),
-            coda: None,
-            tone: None
-        },JyutPing {
-            initial: None,
-            nucleus: Some(JyutPingNucleus::A),
-            coda: Some(JyutPingCoda::N),
-            tone: None
-        }],
-        vec![JyutPing {
-            initial: Some(JyutPingInitial::Z),
-            nucleus: Some(JyutPingNucleus::I),
-            coda: None,
-            tone: Some(JyutPingTone::T5)
-        },JyutPing {
-            initial: Some(JyutPingInitial::N),
-            nucleus: Some(JyutPingNucleus::Aa),
-            coda: Some(JyutPingCoda::N),
-            tone: None
-        }]])
+        Some(vec![
+            vec![
+                JyutPing {
+                    initial: Some(JyutPingInitial::Z),
+                    nucleus: Some(JyutPingNucleus::I),
+                    coda: None,
+                    tone: Some(JyutPingTone::T5)
+                },
+                JyutPing {
+                    initial: Some(JyutPingInitial::N),
+                    nucleus: Some(JyutPingNucleus::A),
+                    coda: None,
+                    tone: None
+                },
+                JyutPing {
+                    initial: None,
+                    nucleus: Some(JyutPingNucleus::A),
+                    coda: Some(JyutPingCoda::N),
+                    tone: None
+                }
+            ],
+            vec![
+                JyutPing {
+                    initial: Some(JyutPingInitial::Z),
+                    nucleus: Some(JyutPingNucleus::I),
+                    coda: None,
+                    tone: Some(JyutPingTone::T5)
+                },
+                JyutPing {
+                    initial: Some(JyutPingInitial::N),
+                    nucleus: Some(JyutPingNucleus::Aa),
+                    coda: Some(JyutPingCoda::N),
+                    tone: None
+                }
+            ]
+        ])
     );
 
     // invalid jyutping
@@ -1557,18 +1566,20 @@ fn test_parse_continuous_jyutpings() {
     // valid yale
     assert_eq!(
         parse_continuous_prs(&"yauji", Romanization::YaleNumbers),
-        Some(vec![vec![JyutPing {
-            initial: Some(JyutPingInitial::J),
-            nucleus: Some(JyutPingNucleus::A),
-            coda: Some(JyutPingCoda::U),
-            tone: None
-        },
-        JyutPing {
-            initial: Some(JyutPingInitial::Z),
-            nucleus: Some(JyutPingNucleus::I),
-            coda: None,
-            tone: None
-        }]])
+        Some(vec![vec![
+            JyutPing {
+                initial: Some(JyutPingInitial::J),
+                nucleus: Some(JyutPingNucleus::A),
+                coda: Some(JyutPingCoda::U),
+                tone: None
+            },
+            JyutPing {
+                initial: Some(JyutPingInitial::Z),
+                nucleus: Some(JyutPingNucleus::I),
+                coda: None,
+                tone: None
+            }
+        ]])
     );
 
     assert_eq!(
@@ -1586,33 +1597,41 @@ fn test_parse_continuous_jyutpings() {
 fn test_looks_like_pr() {
     use super::jyutping::Romanization::*;
 
-    assert!(
-        looks_like_pr("ceon1 min4 bat1 gok3 hiu2 je6 loi4 fung1 jyu5 sing1", Jyutping)
-    );
-    assert!(
-        looks_like_pr("ceon min bat1 gok3 hiu2 je6 loi4 fung1 jyu5 sing1", Jyutping)
-    );
+    assert!(looks_like_pr(
+        "ceon1 min4 bat1 gok3 hiu2 je6 loi4 fung1 jyu5 sing1",
+        Jyutping
+    ));
+    assert!(looks_like_pr(
+        "ceon min bat1 gok3 hiu2 je6 loi4 fung1 jyu5 sing1",
+        Jyutping
+    ));
 
-    assert!(
-        looks_like_pr("cheun1 min4 bat1 gok3 hiu2 ye6 loi4 fung1 yu5 sing1", YaleNumbers)
-    );
-    assert!(
-        looks_like_pr("cheun min bat1 gok3 hiu2 ye6 loi4 fung1 yu5 sing1", YaleNumbers)
-    );
+    assert!(looks_like_pr(
+        "cheun1 min4 bat1 gok3 hiu2 ye6 loi4 fung1 yu5 sing1",
+        YaleNumbers
+    ));
+    assert!(looks_like_pr(
+        "cheun min bat1 gok3 hiu2 ye6 loi4 fung1 yu5 sing1",
+        YaleNumbers
+    ));
 
-    assert!(
-        looks_like_pr("tsoen1 min4 bat7 gok8 hiu2 je6 loi4 fung1 jy5 sing1", CantonesePinyin)
-    );
-    assert!(
-        looks_like_pr("tsoen min bat7 gok8 hiu2 je6 loi4 fung1 jy5 sing1", CantonesePinyin)
-    );
+    assert!(looks_like_pr(
+        "tsoen1 min4 bat7 gok8 hiu2 je6 loi4 fung1 jy5 sing1",
+        CantonesePinyin
+    ));
+    assert!(looks_like_pr(
+        "tsoen min bat7 gok8 hiu2 je6 loi4 fung1 jy5 sing1",
+        CantonesePinyin
+    ));
 
-    assert!(
-        looks_like_pr("chun1 min4 bat1 gok3 hiu2 ye6 loi4 fung1 yue5 sing1", SidneyLau)
-    );
-    assert!(
-        looks_like_pr("chun min bat1 gok3 hiu2 ye6 loi4 fung1 yue5 sing1", SidneyLau)
-    );
+    assert!(looks_like_pr(
+        "chun1 min4 bat1 gok3 hiu2 ye6 loi4 fung1 yue5 sing1",
+        SidneyLau
+    ));
+    assert!(looks_like_pr(
+        "chun min bat1 gok3 hiu2 ye6 loi4 fung1 yue5 sing1",
+        SidneyLau
+    ));
 }
 
 #[test]
@@ -1625,9 +1644,10 @@ fn test_convert_to_jyutpings() {
         parse_jyutpings("aa1").map(|jyutpings| vec![jyutpings])
     );
 
-    let expected_jyutpings1 = parse_jyutpings("ceon1 min4 bat1 gok3 hiu2").map(|jyutpings| vec![jyutpings]);
-    let expected_jyutpings2 = parse_jyutpings("je6 loi4 fung1 jyu5 sing1").map(|jyutpings| vec![jyutpings]);
-    
+    let expected_jyutpings1 =
+        parse_jyutpings("ceon1 min4 bat1 gok3 hiu2").map(|jyutpings| vec![jyutpings]);
+    let expected_jyutpings2 =
+        parse_jyutpings("je6 loi4 fung1 jyu5 sing1").map(|jyutpings| vec![jyutpings]);
     assert_eq!(
         convert_to_jyutpings(&"cheun1 min4 bat1 gok3 hiu2", YaleNumbers),
         expected_jyutpings1
@@ -1654,7 +1674,6 @@ fn test_convert_to_jyutpings() {
         convert_to_jyutpings(&"je6 loi4 fung1 jy5 sing1", CantonesePinyin),
         expected_jyutpings2
     );
-    
     // assert_eq!(
     //     convert_to_jyutpings(&"cên1 min4 bed1 gog3 hiu2", Guangdong),
     //     expected_jyutpings1
@@ -1682,31 +1701,26 @@ fn test_convert_to_jyutpings() {
     //     expected_jyutpings2
     // );
 
-    let zi5naan4 = Some(vec![vec![JyutPing {
+    let zi5naan4 = Some(vec![vec![
+        JyutPing {
             initial: Some(JyutPingInitial::Z),
             nucleus: Some(JyutPingNucleus::I),
             coda: None,
-            tone: Some(JyutPingTone::T5)
+            tone: Some(JyutPingTone::T5),
         },
         JyutPing {
             initial: Some(JyutPingInitial::N),
             nucleus: Some(JyutPingNucleus::Aa),
             coda: Some(JyutPingCoda::N),
-            tone: Some(JyutPingTone::T4)
-        }]
-        ]);
+            tone: Some(JyutPingTone::T4),
+        },
+    ]]);
 
     // continous jyutpings with tones
-    assert_eq!(
-        convert_to_jyutpings(&"zi5naan4", Jyutping),
-        zi5naan4
-    );
+    assert_eq!(convert_to_jyutpings(&"zi5naan4", Jyutping), zi5naan4);
 
     // continous yale with tones
-    assert_eq!(
-        convert_to_jyutpings(&"ji5naan4", YaleNumbers),
-        zi5naan4
-    );
+    assert_eq!(convert_to_jyutpings(&"ji5naan4", YaleNumbers), zi5naan4);
 }
 
 #[test]
@@ -2332,7 +2346,10 @@ fn test_get_simplified_rich_line() {
 
     {
         let trad_rich_line = RichLine::Ruby(vec![RubySegment::Word(
-            Word(vec![(TextStyle::Bold, "keep".into()), (TextStyle::Normal, " fit".into())]),
+            Word(vec![
+                (TextStyle::Bold, "keep".into()),
+                (TextStyle::Normal, " fit".into()),
+            ]),
             vec!["kip1".into(), "fit1".into()],
         )]);
         let simp_rich_line = trad_rich_line.clone();
@@ -2607,7 +2624,7 @@ fn test_get_simplified_variants() {
 
 #[test]
 fn test_create_combo_variants() {
-    use super::search::{ComboVariant, create_combo_variants};
+    use super::search::{create_combo_variants, ComboVariant};
     {
         let trad_variants = Variants(vec![
             Variant {
@@ -2722,4 +2739,14 @@ fn test_replace_contents_in_word() {
 fn test_to_simplified() {
     use super::unicode::to_simplified;
     assert_eq!(to_simplified("乙等/乙級"), "乙等/乙级");
+}
+
+#[test]
+fn test_get_char_jyutpings() {
+    use super::search::get_char_jyutpings;
+    // assumes that "韌":{"jan6":4,"ngan1":1,"ngan6":7}
+    assert_eq!(
+        get_char_jyutpings('韌'),
+        Some(vec!["ngan6".into(), "jan6".into(), "ngan1".into()])
+    );
 }
