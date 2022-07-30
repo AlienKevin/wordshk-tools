@@ -20,4 +20,5 @@ pub mod search;
 pub mod unicode;
 #[path = "../data/variant_to_us_english.rs"]
 mod variant_to_us_english;
+#[path = "../data/word_frequencies.rs"]
 mod word_frequencies;
