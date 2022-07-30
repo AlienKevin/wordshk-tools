@@ -1,3 +1,4 @@
+use super::charlist::CHARLIST;
 use super::dict::{
     line_to_string, line_to_strings, AltClause, Clause, Def, Dict, Eg, Line, PrLine, Segment,
     SegmentType, Variant, Variants,
@@ -8,7 +9,6 @@ use serde::Serialize;
 use std::cmp;
 use std::collections::HashMap;
 use std::fmt;
-use super::charlist::CHARLIST;
 
 pub type RichDict = HashMap<usize, RichEntry>;
 
@@ -512,7 +512,7 @@ fn match_pr(seg: &str, pr: &str) -> PrMatch {
                     None => {
                         // try half pr (without tones), to accommodate for tone changes
                         let half_c_prs = c_prs
-                            .keys()
+                            .iter()
                             .map(|pr| {
                                 if let Some(tail) = pr.chars().last() {
                                     if tail.is_digit(10) {
