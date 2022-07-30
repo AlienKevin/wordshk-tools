@@ -18,5 +18,6 @@ pub mod parse;
 pub mod rich_dict;
 pub mod search;
 pub mod unicode;
+#[path = "../data/variant_to_us_english.rs"]
 mod variant_to_us_english;
 mod word_frequencies;
