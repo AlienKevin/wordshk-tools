@@ -1,9 +1,7 @@
 use super::dict::clause_to_string;
 use super::rich_dict::{RichDict, RichEntry};
 use super::unicode;
-use indexmap::IndexMap;
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
@@ -208,12 +206,6 @@ fn index_entry(counter: &Counter, entry: &RichEntry, index: &mut EnglishIndex) {
 		.enumerate()
 		.for_each(|(def_index, phrases)| {
 			phrases.iter().for_each(|(phrase, splitted_phrase)| {
-				// This assumes skipped phrase does not break down into
-				// non-skippable terms
-				if SKIPPED_SET.contains(phrase.as_str()) {
-					return;
-				}
-
 				if splitted_phrase.len() <= 7 {
 					// Score = 100 for exact phrase match
 					insert_to_index(
@@ -228,10 +220,6 @@ fn index_entry(counter: &Counter, entry: &RichEntry, index: &mut EnglishIndex) {
 				}
 
 				splitted_phrase.iter().for_each(|term| {
-					if SKIPPED_SET.contains(term.as_str()) {
-						return;
-					}
-
 					let score = score_for_term(term, splitted_phrase, &counter);
 
 					// Don't repeat the whole phrase
@@ -269,121 +257,4 @@ fn index_entry(counter: &Counter, entry: &RichEntry, index: &mut EnglishIndex) {
 				});
 			});
 		});
-}
-
-lazy_static! {
-	static ref BATCH_INDEXER_TOP_HITS: IndexMap<&'static str, u32> = {
-		IndexMap::from([
-("to", 18003), //0
-("a", 9166), //1
-("the", 6583), //2
-("of", 6432), //3
-("in", 4623), //4
-("or", 4518), //5
-("and", 4111), //6
-("liter", 3753), //7
-("on", 3690), //8
-("be", 2825), //9
-("for", 2545), //10
-("with", 2161), //11
-("an", 1911), //12
-("us", 1819), //13
-("is", 1614), //14
-("someth", 1426), //15
-("that", 1400), //16
-("have", 1360), //17
-("as", 1304), //18
-("by", 1280), //19
-("not", 1156), //20
-("someon", 1098), //21
-("from", 1082), //22
-("person", 955), //23
-("up", 947), //24
-("at", 826), //25
-("who", 791), //26
-("make", 788), //27
-("it", 779), //28
-("", 772), //29
-("usual", 764), //30
-("out", 732), //31
-("do", 691), //32
-("take", 679), //33
-("time", 658), //34
-("peopl", 641), //35
-("other", 630), //36
-("chines", 547), //37
-("good", 541), //38
-("get", 524), //39
-("go", 505), //40
-("no", 503), //41
-("which", 499), //42
-("when", 486), //43
-("somebodi", 480), //44
-("ar", 480), //45
-("veri", 476), //46
-("describ", 474), //47
-("wai", 471), //48
-("thing", 470), //49
-("refer", 470), //50
-("work", 455), //51
-("place", 451), //52
-("mean", 449), //53
-("into", 443), //54
-("hong", 434), //55
-("after", 429), //56
-("kong", 418), //57
-("express", 398), //58
-("all", 395), //59
-("like", 392), //60
-("figur", 391), //61
-("monei", 389), //62
-("ha", 366), //63
-("see", 361), //64
-("give", 360), //65
-("word", 353), //66
-("term", 347), //67
-("form", 344), //68
-("but", 344), //69
-("look", 344), //70
-("water", 340), //71
-("without", 328), //72
-("oneself", 325), //73
-("can", 318), //74
-("especi", 312), //75
-("down", 310), //76
-("bad", 310), //77
-("gener", 309), //78
-("about", 306), //79
-("short", 304), //80
-("name", 303), //81
-("feel", 301), //82
-("hand", 293), //83
-("off", 292), //84
-("often", 290), //85
-("you", 290), //86
-("put", 289), //87
-("man", 289), //88
-("new", 287), //89
-("old", 286), //90
-("long", 285), //91
-("more", 281), //92
-("small", 280), //93
-("food", 277), //94
-("big", 275), //95
-("what", 274), //96
-("over", 274), //97
-("sol", 274), //98
-("situat", 274), //99
-		])
-	};
-
-	static ref SKIPPED_SET: HashSet<&'static str> = {
-		BATCH_INDEXER_TOP_HITS.iter().enumerate().filter_map(|(i, (k, v))| {
-			if i <= 50 {
-				Some(*k)
-			} else {
-				None
-			}
-		}).collect()
-	};
 }
