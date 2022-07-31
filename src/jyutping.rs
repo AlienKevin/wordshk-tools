@@ -594,7 +594,8 @@ fn is_standard_sidney_lau_optional_tone(s: &str) -> bool {
 // Source: zidin/definition.py:looks_like_jyutping
 pub fn looks_like_pr(s: &str, romanization: Romanization) -> bool {
 	use Romanization::*;
-	let segs = s.split_whitespace();
+	let s_lower = s.to_ascii_lowercase();
+	let segs = s_lower.split_whitespace();
 	let standard_check = match romanization {
 		Jyutping => is_standard_jyutping,
 		YaleNumbers => is_standard_yale_with_numbers,

@@ -1632,6 +1632,17 @@ fn test_looks_like_pr() {
         "chun min bat1 gok3 hiu2 ye6 loi4 fung1 yue5 sing1",
         SidneyLau
     ));
+
+    // test mixed-case prs
+    assert!(looks_like_pr(
+        "Ceon min Bat1 GOK3 hIu2 Je6 LoI4 FUNG1 jyu5 sing1",
+        Jyutping
+    ));
+
+    assert!(looks_like_pr(
+        "cheun1 MIn4 bat1 Gok3 hiU2 ye6 LOI4 fUNg1 YU5 SING1",
+        YaleNumbers
+    ));
 }
 
 #[test]
