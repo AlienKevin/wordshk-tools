@@ -556,8 +556,8 @@ pub fn combined_search(
     // otherwise if the query doesn't have a very strong feature,
     // it can be a variant, a jyutping or an english phrase
     let mut pr_ranks = BinaryHeap::new();
-    let jyutpings = convert_to_jyutpings(query, romanization);
     let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
+    let jyutpings = convert_to_jyutpings(query_normalized, romanization);
     let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
         // query contains iconic simplified characters
         Script::Simplified
