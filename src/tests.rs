@@ -2764,25 +2764,13 @@ fn test_get_char_jyutpings() {
 
 #[test]
 fn test_thesaurus() {
-    use thesaurus::Thesaurus;
-    
+    use thesaurus::wordnet;
     // assumes that grotesque is a synonym of fantastic
-    let synonyms: Vec<String> = Thesaurus::synonym("fantastic", None)
-        .unwrap()
-        .words
-        .iter()
-        .map(|word| word.name.as_str().to_string())
-        .collect();
+    let synonyms: Vec<String> = wordnet::synonyms("fantastic").unwrap();
     dbg!(&synonyms);
     assert!(synonyms.contains(&"grotesque".to_string()));
-    
     // assumes that fantastic is a synonym of grotesque
-    let synonyms: Vec<String> = Thesaurus::synonym("grotesque", None)
-        .unwrap()
-        .words
-        .iter()
-        .map(|word| word.name.as_str().to_string())
-        .collect();
+    let synonyms: Vec<String> = wordnet::synonyms("grotesque").unwrap();
     dbg!(&synonyms);
     assert!(synonyms.contains(&"fantastic".to_string()));
 }

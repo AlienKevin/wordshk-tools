@@ -14,7 +14,7 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use strsim::{generic_levenshtein, normalized_levenshtein};
-use thesaurus::Thesaurus;
+use thesaurus::wordnet;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// Max score is 100
@@ -631,42 +631,38 @@ pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishI
         .get(&query)
         .unwrap_or(fuzzy_english_search(
             &english_index,
-            &vec![&query],
+            &vec![query.clone()],
             &default_results,
         ))
         .to_vec();
     if results.len() == 0 {
-        match Thesaurus::synonym(query, None) {
-            Ok(data) => {
-                let synonyms: Vec<&str> =
-                    data.words.iter().map(|word| word.name.as_str()).collect();
-                synonyms
-                    .iter()
-                    .fold(
-                        None,
-                        |results: Option<&Vec<EnglishIndexData>>, word| match (
-                            english_index.get(&word.to_string()),
-                            results,
-                        ) {
-                            (Some(current_results), Some(results)) => {
-                                if current_results[0].score > results[0].score {
-                                    Some(current_results)
-                                } else {
-                                    Some(results)
-                                }
+        match wordnet::synonyms(query) {
+            Some(synonyms) => synonyms
+                .iter()
+                .fold(
+                    None,
+                    |results: Option<&Vec<EnglishIndexData>>, word| match (
+                        english_index.get(&word.to_string()),
+                        results,
+                    ) {
+                        (Some(current_results), Some(results)) => {
+                            if current_results[0].score > results[0].score {
+                                Some(current_results)
+                            } else {
+                                Some(results)
                             }
-                            (Some(current_results), None) => Some(current_results),
-                            _ => results,
-                        },
-                    )
-                    .unwrap_or(fuzzy_english_search(
-                        &english_index,
-                        &synonyms,
-                        &default_results,
-                    ))
-                    .to_vec()
-            }
-            Err(_) => results,
+                        }
+                        (Some(current_results), None) => Some(current_results),
+                        _ => results,
+                    },
+                )
+                .unwrap_or(fuzzy_english_search(
+                    &english_index,
+                    &synonyms,
+                    &default_results,
+                ))
+                .to_vec(),
+            None => results,
         }
     } else {
         results
@@ -675,7 +671,7 @@ pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishI
 
 fn fuzzy_english_search<'a>(
     english_index: &'a EnglishIndex,
-    queries: &Vec<&str>,
+    queries: &Vec<String>,
     default_results: &'a Vec<EnglishIndexData>,
 ) -> &'a Vec<EnglishIndexData> {
     english_index
