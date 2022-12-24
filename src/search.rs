@@ -14,7 +14,7 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use strsim::{generic_levenshtein, normalized_levenshtein};
-use thesaurus::wordnet;
+use thesaurus;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// Max score is 100
@@ -636,8 +636,11 @@ pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishI
         ))
         .to_vec();
     if results.len() == 0 {
-        match wordnet::synonyms(query) {
-            Some(synonyms) => synonyms
+        let synonyms = thesaurus::synonyms(query);
+        if synonyms.is_empty() {
+            results
+        } else {
+            synonyms
                 .iter()
                 .fold(
                     None,
@@ -661,8 +664,7 @@ pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishI
                     &synonyms,
                     &default_results,
                 ))
-                .to_vec(),
-            None => results,
+                .to_vec()
         }
     } else {
         results
