@@ -35,6 +35,12 @@ To build the dictionary and install it to Dictionary.app, you will need to insta
 
 Then, cd into the `/apple_dict` folder and run `make && make install`. If everything is successful, you should see a bunch of messages printed to the console and the last line should be "To test the new dictionary, try Dictionary.app." If you have already opened Dictionary.app, close it and reopen it. Under Dictionary->Preferences, you should see a dictionary called 粵典 words.hk, check the box to the left to enable words.hk. Now, you should be able to search all entries in words.hk like any other native Apple dictionaries.
 
+## Generate json files for words.hk app
+Update the all.csv url by requesting a new one from words.hk, then run
+```
+cargo run --release
+```
+
 ## Doc
 https://alienkevin.github.io/wordshk-tools/
 
