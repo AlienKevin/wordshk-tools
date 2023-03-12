@@ -1,7 +1,36 @@
+use wordshk_tools::dict::Entry;
 use wordshk_tools::parse::parse_dict;
 
 fn main() {
     static DATA_FILE: &'static str = include_str!("../../wordshk.csv");
-    let dict = parse_dict(DATA_FILE.as_bytes());
-    println!("{:?}", dict);
+    let dict = parse_dict(DATA_FILE.as_bytes()).expect("Failed to parse dict");
+    // Show offensive words in the dictionary
+    let mut offensive_words = vec![];
+    'outer: for entry in dict.values() {
+        if is_offensive(entry) {
+            for word in entry.variants.0.iter().map(|variant| &variant.word) {
+                // Filter words that are ambiguously used as a non-offensive word
+                for other_entry in dict.values() {
+                    if other_entry.id != entry.id
+                        && other_entry
+                            .variants
+                            .0
+                            .iter()
+                            .any(|variant| variant.word == *word)
+                        && !is_offensive(other_entry)
+                    {
+                        continue 'outer;
+                    }
+                }
+                offensive_words.push(word.clone());
+            }
+        }
+    }
+    for word in offensive_words {
+        println!("{}", word);
+    }
+}
+
+fn is_offensive(entry: &Entry) -> bool {
+    entry.labels.contains(&"黃賭毒".to_string()) || entry.labels.contains(&"粗俗".to_string())
 }
