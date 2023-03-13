@@ -23,20 +23,16 @@ fn show_colloquial_words(dict: &Dict) {
         }
         if entry.labels.contains(&"口語".to_string()) || entry.labels.contains(&"潮語".to_string())
         {
-            for word in entry.variants.0.iter().map(|variant| &variant.word) {
-                words.insert((word, true));
-            }
+            words.insert((get_variants(&entry), true));
         } else {
-            for word in entry.variants.0.iter().map(|variant| &variant.word) {
-                words.insert((word, false));
-            }
+            words.insert((get_variants(&entry), false));
         }
     }
     for (word, is_colloquial) in words {
         if is_colloquial {
-            println!("{}\tcolloquial", word);
+            println!("{}\tcolloquial", word.join(","));
         } else {
-            println!("{}", word);
+            println!("{}", word.join(","));
         }
     }
 }
@@ -46,7 +42,7 @@ fn show_offensive(dict: &Dict) {
     let mut offensive_words = vec![];
     'outer: for entry in dict.values() {
         if is_offensive(entry) {
-            for word in entry.variants.0.iter().map(|variant| &variant.word) {
+            for word in get_variants(&entry) {
                 // Filter words that are ambiguously used as a non-offensive word
                 for other_entry in dict.values() {
                     if other_entry.id != entry.id
@@ -71,4 +67,8 @@ fn show_offensive(dict: &Dict) {
 
 fn is_offensive(entry: &Entry) -> bool {
     entry.labels.contains(&"黃賭毒".to_string()) || entry.labels.contains(&"粗俗".to_string())
+}
+
+fn get_variants(entry: &Entry) -> Vec<String> {
+    entry.variants.0.iter().map(|variant| variant.word.clone()).collect()
 }
