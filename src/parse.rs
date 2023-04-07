@@ -25,70 +25,72 @@ use std::io;
 /// Parse the whole words.hk CSV database into a [Dict]
 pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
     // Build the CSV reader and iterate over each record.
-    let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_reader(input);
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_reader(input);
     let mut dict: Dict = HashMap::new();
     for result in rdr.records() {
         let entry = result?;
-        if &entry[4] == "OK" {
-            let id: usize = entry[0].parse().unwrap();
-            let head = &entry[1];
-            let content = &entry[2];
-            let published = &entry[5] == "已公開";
-            // entry[3] is always an empty string
-            let head_parse_result = sequence(
-                "",
-                succeed!(|word, prs| Variant { word, prs })
-                    .keep(take_chomped(chomp_while1c(&(|c: &char| c != &':'), "word")))
-                    .keep(
-                        sequence(
-                            ":",
-                            BoxedParser::new(
-                                take_chomped(chomp_while1c(
-                                    &(|c: &char| c != &':' && c != &','),
-                                    "jyutping",
-                                ))
-                                .map(|pr_str| parse_pr(&pr_str)),
-                            ),
-                            ":",
-                            space0(),
-                            "",
-                            Trailing::Forbidden,
-                        )
-                        .map(|prs: Vec<LaxJyutPing>| LaxJyutPings(prs)),
-                    ),
-                ",",
-                space0(),
-                "",
-                Trailing::Forbidden,
-            )
-            .run(head, ());
-            let entry: Option<Entry> = match head_parse_result {
+        // if &entry[4] == "OK" {
+        let id: usize = entry[0].parse().unwrap();
+        let head = &entry[1];
+        let content = &entry[2];
+        let published = &entry[5] == "已公開";
+        // entry[3] is always an empty string
+        let head_parse_result = sequence(
+            "",
+            succeed!(|word, prs| Variant { word, prs })
+                .keep(take_chomped(chomp_while1c(&(|c: &char| c != &':'), "word")))
+                .keep(
+                    sequence(
+                        ":",
+                        BoxedParser::new(
+                            take_chomped(chomp_while1c(
+                                &(|c: &char| c != &':' && c != &','),
+                                "jyutping",
+                            ))
+                            .map(|pr_str| parse_pr(&pr_str)),
+                        ),
+                        ":",
+                        space0(),
+                        "",
+                        Trailing::Forbidden,
+                    )
+                    .map(|prs: Vec<LaxJyutPing>| LaxJyutPings(prs)),
+                ),
+            ",",
+            space0(),
+            "",
+            Trailing::Forbidden,
+        )
+        .run(head, ());
+        let entry: Option<Entry> = match head_parse_result {
+            ParseResult::Ok {
+                output: head_result,
+                ..
+            } => match parse_content(id, Variants(head_result), published).run(content, ()) {
                 ParseResult::Ok {
-                    output: head_result,
+                    output: content_result,
                     ..
-                } => match parse_content(id, Variants(head_result), published).run(content, ()) {
-                    ParseResult::Ok {
-                        output: content_result,
-                        ..
-                    } => content_result,
-                    ParseResult::Err { message, .. } => {
-                        // println!("Error in #{}: {:?}", id, message);
-                        None
-                    }
-                },
+                } => content_result,
                 ParseResult::Err { message, .. } => {
                     // println!("Error in #{}: {:?}", id, message);
                     None
                 }
-            };
-            match entry {
-                Some(e) => {
-                    // println!("{:?}", e);
-                    dict.insert(id, e);
-                }
-                None => {}
-            };
-        }
+            },
+            ParseResult::Err { message, .. } => {
+                // println!("Error in #{}: {:?}", id, message);
+                None
+            }
+        };
+        match entry {
+            Some(e) => {
+                // println!("{:?}", e);
+                dict.insert(id, e);
+            }
+            None => {}
+        };
+        // }
     }
     Ok(dict)
 }
