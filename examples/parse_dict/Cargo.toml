@@ -6,4 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wordshk_tools = "1.0.0-beta.10"
+wordshk_tools = "3.15.5"
+serde_json = "1.0"
+itertools = "0.10.5"

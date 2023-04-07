@@ -4,5 +4,6 @@
 		"punc",
 		"PUNCS",
 		"segs"
-	]
+	],
+	"rust-analyzer.showUnlinkedFileNotification": false
 }
