@@ -7,7 +7,27 @@ fn main() {
     let dict = parse_dict(DATA_FILE.as_bytes()).expect("Failed to parse dict");
     // show_colloquial_words(&dict);
     // show_tagged_words(&dict, &["爭議"]);
-    get_eng_definitions(&dict);
+    // get_eng_definitions(&dict);
+    get_formal_words(&dict);
+}
+
+fn get_formal_words(dict: &Dict) {
+    use std::fs::File;
+    use std::io::BufWriter;
+    use std::io::Write;
+
+    let mut formal_words = HashSet::new();
+    for entry in dict.values() {
+        if entry.labels.contains(&"書面語".to_string()) {
+            formal_words.extend(entry.variants.0.iter().map(|variant| variant.word.clone()));
+        }
+    }
+    let file = File::create("formal_words.txt").unwrap();
+    let mut writer = BufWriter::new(file);
+    for word in formal_words {
+        writer.write((word + "\n").as_bytes()).unwrap();
+    }
+    writer.flush().unwrap();
 }
 
 fn get_eng_definitions(dict: &Dict) {
