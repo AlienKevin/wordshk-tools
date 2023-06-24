@@ -73,13 +73,19 @@ pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
                     output: content_result,
                     ..
                 } => content_result,
-                ParseResult::Err { message, .. } => {
-                    // println!("Error in #{}: {:?}", id, message);
+                ParseResult::Err {
+                    message, from, to, ..
+                } => {
+                    println!("Content error in #{}: {:?}", id, message);
+                    println!("{}\n\n", display_error(content, message, from, to));
                     None
                 }
             },
-            ParseResult::Err { message, .. } => {
-                // println!("Error in #{}: {:?}", id, message);
+            ParseResult::Err {
+                message, from, to, ..
+            } => {
+                println!("Header error in #{}: {:?}", id, message);
+                println!("{}\n\n", display_error(content, message, from, to));
                 None
             }
         };
@@ -275,7 +281,7 @@ pub fn parse_clause<'a>(expecting: &'static str) -> lip::BoxedParser<'a, Clause,
         {
             i += 1;
         }
-        for _ in 0..i-1 {
+        for _ in 0..i - 1 {
             all_lines.pop();
         }
         all_lines
@@ -410,8 +416,11 @@ pub fn parse_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, PrLine, ()>
     ))))
     .map(move |(line, pr)| match parse_line(name).run(&line, ()) {
         ParseResult::Ok { output, .. } => (output, pr),
-        ParseResult::Err { message, .. } => {
-            println!("Error in parse_line inside parse_pr_line: {:?}", message);
+        ParseResult::Err {
+            message, from, to, ..
+        } => {
+            println!("Pr line error: {:?}", message);
+            println!("{}\n\n", display_error(&line, message, from, to));
             (vec![], pr)
         }
     })
