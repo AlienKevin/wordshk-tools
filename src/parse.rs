@@ -116,6 +116,7 @@ pub fn parse_tags<'a>(name: &'static str) -> lip::BoxedParser<'a, Vec<String>, (
     return zero_or_more(
         succeed!(|tag| tag)
             .skip(token("("))
+            .backtrackable()
             .skip(token(name))
             .skip(token(":"))
             .keep(take_chomped(chomp_while1c(&(|c: &char| c != &')'), name)))
@@ -267,27 +268,43 @@ pub fn parse_clause<'a>(expecting: &'static str) -> lip::BoxedParser<'a, Clause,
     succeed!(|first_line: Line, lines: Clause| {
         let mut all_lines = vec![first_line];
         all_lines.extend(lines);
+        let mut i = 1;
+        while i <= all_lines.len()
+            && all_lines[all_lines.len() - i].len() == 1
+            && all_lines[all_lines.len() - i][0].1.is_empty()
+        {
+            i += 1;
+        }
+        for _ in 0..i-1 {
+            all_lines.pop();
+        }
         all_lines
     })
     .keep(parse_line(expecting))
     .keep(zero_or_more_until(
+        "line",
         succeed!(identity).skip(parse_br()).keep(one_of!(
             // non-empty line
             succeed!(identity).keep(parse_line(expecting)),
             // empty line
-            succeed!(|_| vec!((SegmentType::Text, "".to_string()))).keep(token(""))
+            succeed!(|_| vec![(SegmentType::Text, "".to_string())]).keep(token(""))
         )),
-        succeed!(|_| ()).skip(parse_br()).keep(one_of!(
-            succeed!(|_| ()).keep(token("<eg>")),
-            succeed!(|_| ()).keep(token("----")),
-            succeed!(|_| ())
-                .keep(chomp_ifc(|c| *c != '\r' && *c != '\n', "any char"))
-                .skip(chomp_ifc(|c| *c != '\r' && *c != '\n', "any char"))
-                .skip(chomp_ifc(|c| *c != '\r' && *c != '\n', "any char"))
-                .skip(chomp_ifc(|c| *c == ':', "colon `:`"))
+        "end of clause",
+        succeed!(|_| ()).keep(one_of!(
+            token("\n<eg>"),
+            token("\n----"),
+            token("\nzho:"),
+            token("\nyue:"),
+            token("\neng:"),
+            token("\njpn:"),
+            token("\nkor:"),
+            token("\npor:"),
+            token("\nvie:"),
+            token("\nlat:"),
+            token("\nfra:")
         )),
     ))
-    .skip(optional((), parse_br()))
+    .skip(optional(parse_br()))
 }
 
 /// Parse a named [Clause] (can be single or multiline)
@@ -336,30 +353,16 @@ pub fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause
 /// ```
 ///
 pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
-    (succeed!(|alt_lang: Located<String>, clause: Clause| (alt_lang, clause))
-        .keep(located(take_chomped(chomp_while1c(
-            |c: &char| *c != ':',
-            "alternative languages",
-        ))))
-        .skip(token(":"))
-        .keep(parse_clause("alternative language clause")))
-    .and_then(|(alt_lang, clause)| match &alt_lang.value[..] {
-        "jpn" => succeed!(|_| (AltLang::Jpn, clause)).keep(token("")),
-        "kor" => succeed!(|_| (AltLang::Kor, clause)).keep(token("")),
-        "por" => succeed!(|_| (AltLang::Por, clause)).keep(token("")),
-        "vie" => succeed!(|_| (AltLang::Vie, clause)).keep(token("")),
-        "lat" => succeed!(|_| (AltLang::Lat, clause)).keep(token("")),
-        "fra" => succeed!(|_| (AltLang::Fra, clause)).keep(token("")),
-        _ => {
-            let from = alt_lang.from;
-            let to = alt_lang.to;
-            problem(
-                format!("Invalid alternative language: {}", alt_lang.value),
-                move |_| from,
-                move |_| to,
-            )
-        }
-    })
+    succeed!(|alt_lang: AltLang, clause: Clause| (alt_lang, clause))
+        .keep(one_of!(
+            succeed!(|_| AltLang::Jpn).keep(token("jpn:")),
+            succeed!(|_| AltLang::Kor).keep(token("kor:")),
+            succeed!(|_| AltLang::Por).keep(token("por:")),
+            succeed!(|_| AltLang::Vie).keep(token("vie:")),
+            succeed!(|_| AltLang::Lat).keep(token("lat:")),
+            succeed!(|_| AltLang::Fra).keep(token("fra:"))
+        ))
+        .keep(parse_clause("alternative language clause"))
 }
 
 /// Parse a Jyutping pronunciation line, for Cantonese (yue) and Mandarin (zho)
@@ -443,21 +446,11 @@ pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
     succeed!(|zho, yue, eng| Eg { zho, yue, eng })
         .skip(token("<eg>"))
         .skip(parse_br())
-        .keep(optional(
-            None,
-            succeed!(Some)
-                .keep(parse_pr_line("zho"))
-                .skip(optional((), parse_br())),
-        ))
-        .keep(optional(
-            None,
-            succeed!(Some)
-                .keep(parse_pr_line("yue"))
-                .skip(optional((), parse_br())),
-        ))
+        .keep(optional(parse_pr_line("zho").skip(optional(parse_br()))))
+        .keep(optional(parse_pr_line("yue").skip(optional(parse_br()))))
         // only a single line is accepted in eg
-        .keep(optional(None, succeed!(Some).keep(parse_named_line("eng"))))
-        .skip(optional((), parse_br()))
+        .keep(optional(parse_named_line("eng")))
+        .skip(optional(parse_br()))
 }
 
 /// Parse a rich definition
@@ -514,14 +507,11 @@ pub fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
     .skip(token("<explanation>"))
     .skip(parse_br())
     .keep(parse_named_clause("yue"))
-    .keep(optional(
-        None,
-        succeed!(Some).keep(parse_named_clause("eng")),
-    ))
+    .keep(optional(parse_named_clause("eng")))
     .keep(zero_or_more(
         succeed!(|clause| clause)
             .keep(parse_alt_clause())
-            .skip(optional((), parse_br())),
+            .skip(optional(parse_br())),
     ))
     .keep(one_or_more(parse_eg()))
 }
@@ -559,14 +549,11 @@ pub fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
         alts
     })
     .keep(parse_named_clause("yue"))
-    .keep(optional(
-        None,
-        succeed!(Some).keep(parse_named_clause("eng")),
-    ))
+    .keep(optional(parse_named_clause("eng")))
     .keep(zero_or_more(
         succeed!(|clause| clause)
             .keep(parse_alt_clause())
-            .skip(optional((), parse_br())),
+            .skip(optional(parse_br())),
     ))
 }
 
@@ -619,10 +606,7 @@ pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
     succeed!(|defs| defs).keep(one_or_more(
         succeed!(|def| def)
             .keep(one_of!(parse_simple_def(), parse_rich_def()))
-            .skip(optional(
-                (),
-                succeed!(|_| ()).keep(token("----")).skip(parse_br()),
-            )),
+            .skip(optional(token("----").skip(parse_br()))),
     ))
 }
 

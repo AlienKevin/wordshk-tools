@@ -344,7 +344,7 @@ eng:opq:rst:
 
 uvw",
         Def {
-            yue: vec![vec![text("abc:def:ghi")], vec![text("")], vec![text("")]],
+            yue: vec![vec![text("abc:def:ghi")]],
             eng: Some(vec![
                 vec![text("opq:rst:")],
                 vec![text("")],

@@ -7,10 +7,10 @@ edition = "2018"
 license = "MIT"
 
 [dependencies]
-lip = "5.1.1"
+lip = "7.0"
 csv = "1.1"
 lazy_static = "1.4.0"
-indoc = "1.0"
+indoc = "2.0"
 unicode-segmentation = "1.8.0"
 unicode-normalization = "0.1.19"
 unicode_names2 = "0.6.0"
