@@ -559,9 +559,9 @@ checksum = "ef53942eb7bf7ff43a617b3e2c1c4a5ecf5944a7c1bc12d7ee39bbb15e5c1519"
 
 [[package]]
 name = "lip"
-version = "8.0.1"
+version = "8.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2153ab6ecc213f2207fe5448cb9d1552ade1ae8b12916c84499423d3df9bdcb2"
+checksum = "4f6ff63e37f1f491f246ff2ccb178284df0dc7f7f4ff298afe61b50d8fbbaea5"
 dependencies = [
  "itertools 0.10.5",
  "unicode-segmentation",

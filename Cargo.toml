@@ -7,7 +7,7 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
-lip = "8.0.1"
+lip = "8.0.2"
 csv = "1.1"
 lazy_static = "1.4.0"
 indoc = "2.0"
