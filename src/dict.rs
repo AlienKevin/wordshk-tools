@@ -49,11 +49,7 @@ impl Variants {
         self.0.iter().map(|variant| &variant.word[..]).collect()
     }
     pub fn to_words_set(&self) -> HashSet<&str> {
-        self.0
-            .iter()
-            .map(|variant| &variant.word[..])
-            .into_iter()
-            .collect()
+        self.0.iter().map(|variant| &variant.word[..]).collect()
     }
 }
 
@@ -117,7 +113,7 @@ pub fn line_to_string(line: &Line) -> String {
 pub type Clause = Vec<Line>; // can be multiline
 
 pub fn clause_to_string(clause: &Clause) -> String {
-    clause.iter().map(|line| line_to_string(line)).join("\n")
+    clause.iter().map(line_to_string).join("\n")
 }
 
 /// A definition of a word

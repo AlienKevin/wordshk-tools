@@ -57,7 +57,7 @@ pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
                             succeed!(),
                             Trailing::Forbidden,
                         )
-                        .map(|prs: Vec<LaxJyutPing>| LaxJyutPings(prs)),
+                        .map(LaxJyutPings),
                     )
             },
             || token(","),
@@ -91,12 +91,9 @@ pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
                 None
             }
         };
-        match entry {
-            Some(e) => {
-                // println!("{:?}", e);
-                dict.insert(id, e);
-            }
-            None => {}
+        if let Some(e) = entry {
+            // println!("{:?}", e);
+            dict.insert(id, e);
         };
         // }
     }
@@ -120,7 +117,7 @@ pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
 /// # );
 /// ```
 ///
-pub fn parse_tags<'a>(name: &'a str) -> impl lip::Parser<'a, Output = Vec<String>, State = ()> {
+pub fn parse_tags(name: &str) -> impl lip::Parser<Output = Vec<String>, State = ()> {
     return zero_or_more(
         succeed!(|tag| tag)
             .skip(token("("))
@@ -156,7 +153,7 @@ fn parse_br<'a>() -> impl lip::Parser<'a, Output = (), State = ()> {
 /// vec![(Text, "My headphone cord was knotted.".into())]
 /// # );
 /// ```
-pub fn parse_line<'a>(name: &'a str) -> impl lip::Parser<'a, Output = Line, State = ()> {
+pub fn parse_line(name: &str) -> impl lip::Parser<Output = Line, State = ()> {
     succeed!(remove_extra_spaces_around_link).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
             succeed!(|string| (SegmentType::Link, string))
                 .skip(token("#"))
@@ -245,7 +242,7 @@ fn remove_extra_spaces_around_link(segs: Vec<Segment>) -> Vec<Segment> {
 /// # );
 /// ```
 ///
-pub fn parse_named_line<'a>(name: &'a str) -> impl lip::Parser<'a, Output = Line, State = ()> {
+pub fn parse_named_line(name: &str) -> impl lip::Parser<Output = Line, State = ()> {
     succeed!(|clause| clause)
         .skip(token(name))
         .skip(token(":"))
@@ -272,7 +269,7 @@ pub fn parse_named_line<'a>(name: &'a str) -> impl lip::Parser<'a, Output = Line
 /// # );
 /// ```
 ///
-pub fn parse_clause<'a>(expecting: &'a str) -> impl lip::Parser<'a, Output = Clause, State = ()> {
+pub fn parse_clause(expecting: &str) -> impl lip::Parser<Output = Clause, State = ()> {
     succeed!(|first_line: Line, lines: Clause| {
         let mut all_lines = vec![first_line];
         all_lines.extend(lines);
@@ -335,7 +332,7 @@ pub fn parse_clause<'a>(expecting: &'a str) -> impl lip::Parser<'a, Output = Cla
 /// # );
 /// ```
 ///
-pub fn parse_named_clause<'a>(name: &'a str) -> impl lip::Parser<'a, Output = Clause, State = ()> {
+pub fn parse_named_clause(name: &str) -> impl lip::Parser<Output = Clause, State = ()> {
     succeed!(identity)
         .skip(token(name))
         .skip(token(":"))
@@ -391,24 +388,24 @@ pub fn parse_alt_clause<'a>() -> impl lip::Parser<'a, Output = AltClause, State 
 /// # );
 /// ```
 ///
-pub fn parse_pr_line<'a>(name: &'a str) -> impl lip::Parser<'a, Output = PrLine, State = ()> {
+pub fn parse_pr_line(name: &str) -> impl lip::Parser<Output = PrLine, State = ()> {
     (succeed!(|line: String| {
         let open_paren_index = line.rfind('(');
         // println!("open_paren_index: {:?}", open_paren_index);
         // println!("line.chars().next_back(): {:?}", line.chars().next_back());
-        if open_paren_index.is_some() && line.chars().next_back() == Some(')') {
+        if open_paren_index.is_some() && line.ends_with(')') {
             let open_paren = open_paren_index.unwrap();
             let paren_segment = &line[open_paren + 1..line.len() - 1];
             // println!("paren_segment: {:?}", paren_segment);
-            if looks_like_pr(&paren_segment, Romanization::Jyutping) {
+            if looks_like_pr(paren_segment, Romanization::Jyutping) {
                 // println!("Found pr line with pr: {paren_segment}");
                 return (
-                    (&line[0..open_paren]).to_string(),
+                    line[0..open_paren].to_string(),
                     Some(paren_segment.to_string()),
                 );
             }
         }
-        return (line.to_string(), None);
+        (line, None)
     })
     .skip(token(name))
     .skip(token(":"))

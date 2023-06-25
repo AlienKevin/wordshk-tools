@@ -55,7 +55,7 @@ pub fn rich_dict_to_variants_map(dict: &RichDict) -> VariantsMap {
 
 pub fn create_combo_variants(
     trad_variants: &Variants,
-    simp_variant_strings: &Vec<String>,
+    simp_variant_strings: &[String],
 ) -> ComboVariants {
     trad_variants
         .0
@@ -180,7 +180,7 @@ pub fn compare_jyutping(pr1: &JyutPing, pr2: &JyutPing) -> Score {
         (if pr1.initial == pr2.initial {
             40
         } else if let (Some(i1), Some(i2)) = (pr1.initial.as_ref(), pr2.initial.as_ref()) {
-            if classify_initial(&i1) == classify_initial(&i2) {
+            if classify_initial(i1) == classify_initial(i2) {
                 24
             } else {
                 0
@@ -191,7 +191,7 @@ pub fn compare_jyutping(pr1: &JyutPing, pr2: &JyutPing) -> Score {
             32
         } else if let (Some(n1), Some(n2)) = (pr1.nucleus.as_ref(), pr2.nucleus.as_ref()) {
             let ((backness1, height1, roundedness1), (backness2, height2, roundedness2)) =
-                (classify_nucleus(&n1), classify_nucleus(&n2));
+                (classify_nucleus(n1), classify_nucleus(n2));
             if backness1 == backness2 && height1 == height2 && roundedness1 == roundedness2 {
                 32 - 4
             } else {
@@ -205,7 +205,7 @@ pub fn compare_jyutping(pr1: &JyutPing, pr2: &JyutPing) -> Score {
         }) + (if pr1.coda == pr2.coda {
             24
         } else if let (Some(i1), Some(i2)) = (pr1.coda.as_ref(), pr2.coda.as_ref()) {
-            if classify_coda(&i1) == classify_coda(&i2) {
+            if classify_coda(i1) == classify_coda(i2) {
                 18
             } else {
                 0
@@ -214,10 +214,6 @@ pub fn compare_jyutping(pr1: &JyutPing, pr2: &JyutPing) -> Score {
             0
         }) + (if pr1.tone == pr2.tone { 4 } else { 0 })
     }
-}
-
-fn compare_string(s1: &str, s2: &str) -> Score {
-    normalize_score(normalized_levenshtein(s1, s2))
 }
 
 fn normalize_score(s: f64) -> Score {
@@ -310,7 +306,7 @@ pub fn get_entry_id(variants_map: &VariantsMap, query: &str, script: Script) -> 
 }
 
 pub fn get_entry_group(dict: &RichDict, id: &usize) -> Vec<RichEntry> {
-    let query_entry = dict.get(&id).unwrap();
+    let query_entry = dict.get(id).unwrap();
     sort_entry_group(
         dict.iter()
             .filter_map(|(_, entry)| {
@@ -319,7 +315,7 @@ pub fn get_entry_group(dict: &RichDict, id: &usize) -> Vec<RichEntry> {
                     .to_words_set()
                     .intersection(&entry.variants.to_words_set())
                     .next()
-                    != None
+                    .is_some()
                 {
                     Some(entry.clone())
                 } else {
@@ -350,7 +346,7 @@ fn sort_entry_group(entry_group: Vec<RichEntry>) -> Vec<RichEntry> {
     general.iter().map(|entry| (*entry).clone()).collect()
 }
 
-fn sort_entries_by_frequency(entries: &mut Vec<&RichEntry>) {
+fn sort_entries_by_frequency(entries: &mut [&RichEntry]) {
     entries.sort_by(|a, b| {
         get_entry_frequency(a.id)
             .cmp(&get_entry_frequency(b.id))
@@ -370,47 +366,41 @@ pub fn pr_search(
 ) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
     let jyutpings = convert_to_jyutpings(&unicode::normalize(query), romanization);
-    match jyutpings {
-        Some(queries) => {
-            queries.iter().for_each(|query| {
-                variants_map.iter().for_each(|(id, variants)| {
-                    variants
-                        .iter()
-                        .enumerate()
-                        .for_each(|(variant_index, variant)| {
-                            let (score, pr_start_index, pr_index) =
-                                variant.prs.0.iter().enumerate().fold(
-                                    (0, 0, 0),
-                                    |(max_score, max_pr_start_index, max_pr_index),
-                                     (pr_index, pr)| {
-                                        match pr.to_jyutpings() {
-                                            Some(pr) => {
-                                                let (score, pr_start_index) =
-                                                    score_pr_query(&pr, &query);
-                                                if score > max_score {
-                                                    (score, pr_start_index, pr_index)
-                                                } else {
-                                                    (max_score, max_pr_start_index, max_pr_index)
-                                                }
+    if let Some(queries) = jyutpings {
+        queries.iter().for_each(|query| {
+            variants_map.iter().for_each(|(id, variants)| {
+                variants
+                    .iter()
+                    .enumerate()
+                    .for_each(|(variant_index, variant)| {
+                        let (score, pr_start_index, pr_index) =
+                            variant.prs.0.iter().enumerate().fold(
+                                (0, 0, 0),
+                                |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
+                                    match pr.to_jyutpings() {
+                                        Some(pr) => {
+                                            let (score, pr_start_index) =
+                                                score_pr_query(&pr, query);
+                                            if score > max_score {
+                                                (score, pr_start_index, pr_index)
+                                            } else {
+                                                (max_score, max_pr_start_index, max_pr_index)
                                             }
-                                            None => (max_score, max_pr_start_index, max_pr_index),
                                         }
-                                    },
-                                );
-                            ranks.push(PrSearchRank {
-                                id: *id,
-                                variant_index,
-                                pr_index,
-                                score,
-                                pr_start_index,
-                            });
+                                        None => (max_score, max_pr_start_index, max_pr_index),
+                                    }
+                                },
+                            );
+                        ranks.push(PrSearchRank {
+                            id: *id,
+                            variant_index,
+                            pr_index,
+                            score,
+                            pr_start_index,
                         });
-                });
+                    });
             });
-        }
-        None => {
-            // do nothing
-        }
+        });
     }
     ranks
 }
@@ -509,7 +499,7 @@ pub fn variant_search(
             .enumerate()
             .for_each(|(variant_index, variant)| {
                 let (occurrence_index, levenshtein_score) =
-                    score_variant_query(&variant, query_normalized, query_script);
+                    score_variant_query(variant, query_normalized, query_script);
                 if occurrence_index < usize::MAX || levenshtein_score >= 80 {
                     ranks.push(VariantSearchRank {
                         id: *id,
@@ -545,12 +535,12 @@ pub fn combined_search(
 
     // if the query has CJK characters, it can only be a variant
     if query.chars().any(unicode::is_cjk) {
-        return CombinedSearchRank::Variant(variant_search(&variants_map, query, script));
+        return CombinedSearchRank::Variant(variant_search(variants_map, query, script));
     }
 
     // if the query looks like standard jyutping (with tones), it can only be a pr
     if looks_like_pr(query, romanization) {
-        return CombinedSearchRank::Pr(pr_search(&variants_map, query, romanization));
+        return CombinedSearchRank::Pr(pr_search(variants_map, query, romanization));
     }
 
     // otherwise if the query doesn't have a very strong feature,
@@ -572,7 +562,7 @@ pub fn combined_search(
             .enumerate()
             .for_each(|(variant_index, variant)| {
                 let (occurrence_index, levenshtein_score) =
-                    score_variant_query(&variant, query_normalized, query_script);
+                    score_variant_query(variant, query_normalized, query_script);
                 if occurrence_index < usize::MAX || levenshtein_score >= 80 {
                     variants_ranks.push(VariantSearchRank {
                         id: *id,
@@ -630,12 +620,12 @@ pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishI
     let results = english_index
         .get(&query)
         .unwrap_or(fuzzy_english_search(
-            &english_index,
-            &vec![query.clone()],
+            english_index,
+            &[query.clone()],
             &default_results,
         ))
         .to_vec();
-    if results.len() == 0 {
+    if results.is_empty() {
         let synonyms = thesaurus::synonyms(query);
         if synonyms.is_empty() {
             results
@@ -660,7 +650,7 @@ pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishI
                     },
                 )
                 .unwrap_or(fuzzy_english_search(
-                    &english_index,
+                    english_index,
                     &synonyms,
                     &default_results,
                 ))
@@ -673,7 +663,7 @@ pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishI
 
 fn fuzzy_english_search<'a>(
     english_index: &'a EnglishIndex,
-    queries: &Vec<String>,
+    queries: &[String],
     default_results: &'a Vec<EnglishIndexData>,
 ) -> &'a Vec<EnglishIndexData> {
     english_index
@@ -683,7 +673,7 @@ fn fuzzy_english_search<'a>(
             |(max_score, max_entries), (phrase, entries)| {
                 let (mut next_max_score, mut next_max_entries) = (max_score, max_entries);
                 queries.iter().for_each(|query| {
-                    let current_score = score_english_query(&query, phrase);
+                    let current_score = score_english_query(query, phrase);
                     if current_score > max_score {
                         (next_max_score, next_max_entries) = (current_score, entries)
                     }

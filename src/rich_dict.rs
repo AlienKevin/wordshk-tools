@@ -185,7 +185,7 @@ fn find_variants(haystack: &[&str], needle: &[&str]) -> Vec<(usize, usize)> {
         .collect()
 }
 
-pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
+pub fn tokenize(variants: &[&str], text: &str) -> Vec<Word> {
     let mut i = 0;
     let mut words: Vec<Word> = vec![];
     let gs = unicode::to_graphemes(text);
@@ -196,11 +196,8 @@ pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
             .iter()
             .for_each(|(start_index, end_index)| {
                 // filter out short variants
-                start_end_pairs = start_end_pairs
-                    .iter()
-                    .filter(|(start, end)| !(*start_index <= *start && *end <= *end_index))
-                    .cloned()
-                    .collect();
+                start_end_pairs
+                    .retain(|(start, end)| !(*start_index <= *start && *end <= *end_index));
                 // add variant indices if a longer variant does not already exist
                 if !start_end_pairs
                     .iter()
@@ -249,18 +246,15 @@ pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
                     bold_end_index = Some(j);
                     is_bolded = false;
                 }
-                match (bold_start_index, bold_end_index) {
-                    (Some(start), Some(end)) => {
-                        let prev_end = prev_bold_end_index.map(|x| x + 1).unwrap_or(i);
-                        if prev_end < start {
-                            word.push((TextStyle::Normal, gs[prev_end..start].join("").into()));
-                        }
-                        word.push((TextStyle::Bold, gs[start..end + 1].join("").into()));
-                        prev_bold_end_index = bold_end_index;
-                        bold_start_index = None;
-                        bold_end_index = None;
+                if let (Some(start), Some(end)) = (bold_start_index, bold_end_index) {
+                    let prev_end = prev_bold_end_index.map(|x| x + 1).unwrap_or(i);
+                    if prev_end < start {
+                        word.push((TextStyle::Normal, gs[prev_end..start].join("")));
                     }
-                    (_, _) => {}
+                    word.push((TextStyle::Bold, gs[start..end + 1].join("")));
+                    prev_bold_end_index = bold_end_index;
+                    bold_start_index = None;
+                    bold_end_index = None;
                 }
                 j += 1;
             }
@@ -275,7 +269,7 @@ pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
             if let Some(bold_end) = prev_bold_end_index {
                 if bold_end + 1 < word_end {
                     let rest = gs[bold_end + 1..word_end].join("").trim_end().to_string();
-                    if rest.len() > 0 {
+                    if !rest.is_empty() {
                         word.push((TextStyle::Normal, rest));
                     }
                 }
@@ -326,7 +320,7 @@ pub fn tokenize(variants: &Vec<&str>, text: &str) -> Vec<Word> {
 ///
 /// Tokens are units of pronunciation matching (see [match_ruby])
 ///
-pub fn flatten_line(variants: &Vec<&str>, line: &Line) -> WordLine {
+pub fn flatten_line(variants: &[&str], line: &Line) -> WordLine {
     let mut bit_line: WordLine = vec![];
     line.iter().for_each(|(seg_type, seg): &Segment| {
         bit_line.extend::<WordLine>(
@@ -351,7 +345,7 @@ fn unflatten_word_line(line: &WordLine) -> WordLine {
                 break;
             }
         }
-        if link_word.len() > 0 {
+        if !link_word.is_empty() {
             unflattened_line.push((SegmentType::Link, Word(link_word)));
         } else {
             unflattened_line.push(line[i].clone());
@@ -371,7 +365,7 @@ fn create_ruby_segment(seg_type: &SegmentType, word: &Word, prs: &[&str]) -> Rub
 }
 
 /// Match a [Line] to its pronunciations and bold the variants
-pub fn match_ruby(variants: &Vec<&str>, line: &Line, prs: &Vec<&str>) -> RubyLine {
+pub fn match_ruby(variants: &[&str], line: &Line, prs: &Vec<&str>) -> RubyLine {
     let line = flatten_line(variants, line);
     let pr_scores = match_ruby_construct_table(&line, prs);
     let pr_map = match_ruby_backtrack(&line, prs, &pr_scores);
@@ -396,7 +390,7 @@ pub fn match_ruby(variants: &Vec<&str>, line: &Line, prs: &Vec<&str>) -> RubyLin
                 } else {
                     let start = {
                         let mut j = i;
-                        while j >= 1 && pr_map.get(&j) == None {
+                        while j >= 1 && pr_map.get(&j).is_none() {
                             j -= 1;
                         }
                         match pr_map.get(&j) {
@@ -406,7 +400,7 @@ pub fn match_ruby(variants: &Vec<&str>, line: &Line, prs: &Vec<&str>) -> RubyLin
                     };
                     let end = {
                         let mut j = i + 1;
-                        while j < line.len() && pr_map.get(&j) == None {
+                        while j < line.len() && pr_map.get(&j).is_none() {
                             j += 1;
                         }
                         match pr_map.get(&j) {
@@ -421,8 +415,7 @@ pub fn match_ruby(variants: &Vec<&str>, line: &Line, prs: &Vec<&str>) -> RubyLin
                     unicode::test_g(unicode::is_cjk, &word_str)
                     {
                         let next_char_is_inaccurate_cjk = line
-                                .iter()
-                                .nth(i + 1)
+                                .get(i + 1)
                                 .map(|(_segment_type, word)| {
                                     unicode::test_g(unicode::is_cjk, &word.to_string())
                                 })
@@ -430,8 +423,7 @@ pub fn match_ruby(variants: &Vec<&str>, line: &Line, prs: &Vec<&str>) -> RubyLin
                                 // next char also has inaccurate jyutping
                             && pr_map.get(&(i + 1)).is_none();
                         let prev_char_is_inaccurate_cjk = i >= 1 && line
-                                .iter()
-                                .nth(i - 1)
+                                .get(i - 1)
                                 .map(|(_segment_type, word)| {
                                     unicode::test_g(unicode::is_cjk, &word.to_string())
                                 })
@@ -473,7 +465,7 @@ fn unflatten_ruby_line(line: &RubyLine) -> RubyLine {
                 break;
             }
         }
-        if link_pairs.len() > 0 {
+        if !link_pairs.is_empty() {
             unflattened_line.push(RubySegment::LinkedWord(link_pairs));
         } else {
             unflattened_line.push(line[i].clone());
@@ -503,7 +495,7 @@ fn match_pr(seg: &str, pr: &str) -> PrMatch {
     }
     let c = seg.chars().next().unwrap();
     if unicode::is_chinese_punc(c) {
-        return PrMatch::Zero;
+        PrMatch::Zero
     } else {
         match CHARLIST.get(&c) {
             Some(c_prs) => {
@@ -515,7 +507,7 @@ fn match_pr(seg: &str, pr: &str) -> PrMatch {
                             .iter()
                             .map(|pr| {
                                 if let Some(tail) = pr.chars().last() {
-                                    if tail.is_digit(10) {
+                                    if tail.is_ascii_digit() {
                                         &pr[0..pr.len() - 1]
                                     } else {
                                         pr
@@ -526,7 +518,7 @@ fn match_pr(seg: &str, pr: &str) -> PrMatch {
                             })
                             .collect::<Vec<&str>>();
                         // found the half pr
-                        if half_c_prs.contains(&&pr[..]) {
+                        if half_c_prs.contains(&pr) {
                             PrMatch::Half
                         } else {
                             PrMatch::Zero
@@ -567,7 +559,7 @@ fn match_ruby_construct_table(line: &WordLine, prs: &Vec<&str>) -> Vec<Vec<usize
 
 fn match_ruby_backtrack(
     line: &WordLine,
-    prs: &Vec<&str>,
+    prs: &[&str],
     pr_scores: &Vec<Vec<usize>>,
 ) -> HashMap<usize, usize> {
     let mut pr_map = HashMap::new();
@@ -577,7 +569,7 @@ fn match_ruby_backtrack(
     while i > 0 && j > 0 {
         // println!("i: {}, j: {}", i, j);
         let (_, word) = &line[i - 1];
-        match match_pr(&word.to_string(), &prs[j - 1]) {
+        match match_pr(&word.to_string(), prs[j - 1]) {
             PrMatch::Full | PrMatch::Half => {
                 pr_map.insert(i - 1, j - 1);
                 // backtrack to the top left
@@ -624,15 +616,13 @@ pub fn enrich_dict(dict: &Dict, options: &EnrichDictOptions) -> RichDict {
                     let alts: Vec<AltClause> = def
                         .alts
                         .iter()
-                        .map(|(alt_lang, alt)| {
-                            (alt_lang.clone(), enrich_clause(alt, dict, options))
-                        })
+                        .map(|(alt_lang, alt)| (*alt_lang, enrich_clause(alt, dict, options)))
                         .collect();
                     RichDef {
                         yue,
                         yue_simp,
-                        eng: eng,
-                        alts: alts,
+                        eng,
+                        alts,
                         egs: def
                             .egs
                             .iter()
@@ -700,7 +690,7 @@ pub fn enrich_line(line: &Line, dict: &Dict, options: &EnrichDictOptions) -> Lin
 }
 
 pub fn enrich_sims_or_ants(
-    sims_or_ants: &Vec<String>,
+    sims_or_ants: &[String],
     dict: &Dict,
     options: &EnrichDictOptions,
 ) -> Vec<Segment> {
@@ -725,11 +715,11 @@ pub fn enrich_sims_or_ants(
 
 fn is_live_link(link: &str, dict: &Dict) -> bool {
     dict.iter()
-        .any(|(id, entry)| entry.variants.to_words_set().contains(link))
+        .any(|(_id, entry)| entry.variants.to_words_set().contains(link))
 }
 
 pub fn enrich_pr_line(
-    variants: &Vec<&str>,
+    variants: &[&str],
     pr_line: &PrLine,
     dict: &Dict,
     options: &EnrichDictOptions,
@@ -741,12 +731,7 @@ pub fn enrich_pr_line(
     }
 }
 
-pub fn enrich_eg(
-    variants: &Vec<&str>,
-    eg: &Eg,
-    dict: &Dict,
-    options: &EnrichDictOptions,
-) -> RichEg {
+pub fn enrich_eg(variants: &[&str], eg: &Eg, dict: &Dict, options: &EnrichDictOptions) -> RichEg {
     let eng = eg.eng.as_ref().map(|eng| enrich_line(eng, dict, options));
     let zho = eg
         .zho
@@ -759,7 +744,7 @@ pub fn enrich_eg(
     let yue = eg
         .yue
         .as_ref()
-        .map(|yue| enrich_pr_line(variants, &yue, dict, options));
+        .map(|yue| enrich_pr_line(variants, yue, dict, options));
     let yue_simp = eg
         .yue
         .as_ref()
@@ -773,7 +758,7 @@ pub fn enrich_eg(
     }
 }
 
-pub fn get_simplified_rich_line(simp_line: &String, trad_line: &RichLine) -> RichLine {
+pub fn get_simplified_rich_line(simp_line: &str, trad_line: &RichLine) -> RichLine {
     let mut simp_line_chars = simp_line.chars().peekable();
     match trad_line {
         RichLine::Ruby(ruby_line) => RichLine::Ruby(
@@ -846,7 +831,7 @@ pub fn replace_contents_in_word(
 
 pub fn get_simplified_variants(
     trad_variants: &Variants,
-    simp_variant_strings: &Vec<String>,
+    simp_variant_strings: &[String],
 ) -> Variants {
     Variants(
         trad_variants
@@ -861,7 +846,7 @@ pub fn get_simplified_variants(
     )
 }
 
-fn get_simplified_variant_strings(trad_variants: &Variants, defs: &Vec<Def>) -> Vec<String> {
+fn get_simplified_variant_strings(trad_variants: &Variants, defs: &[Def]) -> Vec<String> {
     let mut lines: Vec<Line> = defs
         .iter()
         .flat_map(|def| {
@@ -892,7 +877,7 @@ fn get_simplified_variant_strings(trad_variants: &Variants, defs: &Vec<Def>) -> 
                     let variant_end_index = variant_start_index + trad_variant.len();
                     simp_variants.insert(
                         variant_index,
-                        (&line_str_simp[variant_start_index..variant_end_index]).to_string(),
+                        (line_str_simp[variant_start_index..variant_end_index]).to_string(),
                     );
                 }
             });
@@ -911,7 +896,7 @@ fn get_simplified_variant_strings(trad_variants: &Variants, defs: &Vec<Def>) -> 
         .collect()
 }
 
-fn get_simplified_sims_or_ants(sims_or_ants: &Vec<String>) -> Vec<String> {
+fn get_simplified_sims_or_ants(sims_or_ants: &[String]) -> Vec<String> {
     sims_or_ants
         .iter()
         .map(|sim_or_ant| unicode::to_simplified(sim_or_ant))

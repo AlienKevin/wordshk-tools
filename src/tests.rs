@@ -671,7 +671,7 @@ fn test_tokenize() {
     use super::rich_dict::tokenize;
 
     assert_eq!(
-        tokenize(&vec!["upgrade".into()], "我 upgrade 咗做 Win 10 之後"),
+        tokenize(&vec!["upgrade"], "我 upgrade 咗做 Win 10 之後"),
         vec![
             normal_word("我"),
             bold_word("upgrade"),
@@ -683,7 +683,7 @@ fn test_tokenize() {
         ]
     );
     assert_eq!(
-        tokenize(&vec!["沽".into()], "唔該幫我13蚊沽200股。"),
+        tokenize(&vec!["沽"], "唔該幫我13蚊沽200股。"),
         vec![
             normal_word("唔"),
             normal_word("該"),
@@ -698,7 +698,7 @@ fn test_tokenize() {
         ]
     );
     assert_eq!(
-        tokenize(&vec!["好耐".into()], "「你好耐。」「55」"),
+        tokenize(&vec!["好耐"], "「你好耐。」「55」"),
         vec![
             normal_word("「"),
             normal_word("你"),
@@ -712,7 +712,7 @@ fn test_tokenize() {
         ]
     );
     assert_eq!(
-        tokenize(&vec!["I mean".into()], "I mean，廣東話。"),
+        tokenize(&vec!["I mean"], "I mean，廣東話。"),
         vec![
             bold_word("I mean"),
             normal_word("，"),
@@ -723,7 +723,7 @@ fn test_tokenize() {
         ]
     );
     assert_eq!(
-        tokenize(&vec!["hi-fi".into()], "佢屋企套hi-fi值幾十萬"),
+        tokenize(&vec!["hi-fi"], "佢屋企套hi-fi值幾十萬"),
         vec![
             normal_word("佢"),
             normal_word("屋"),
@@ -744,7 +744,7 @@ fn test_flatten_line() {
 
     assert_eq!(
         flatten_line(
-            &vec!["upgrade".into()],
+            &vec!["upgrade"],
             &vec![text("我 "), link("upgrade"), text(" 咗做 Win 10 之後")]
         ),
         vec![
@@ -758,7 +758,7 @@ fn test_flatten_line() {
         ]
     );
     assert_eq!(
-        flatten_line(&vec!["I mean".into()], &vec![text("I mean，廣東話。")]),
+        flatten_line(&vec!["I mean"], &vec![text("I mean，廣東話。")]),
         vec![
             text_word(bold_word("I mean")),
             text_word(normal_word("，")),
@@ -770,7 +770,7 @@ fn test_flatten_line() {
     );
     assert_eq!(
         flatten_line(
-            &vec!["I mean".into()],
+            &vec!["I mean"],
             &vec![text("I mean，"), link("廣東話"), text("。")]
         ),
         vec![
@@ -783,7 +783,7 @@ fn test_flatten_line() {
         ]
     );
     assert_eq!(
-        flatten_line(&vec!["hi-fi".into()], &vec![text("佢屋企套hi-fi值幾十萬")]),
+        flatten_line(&vec!["hi-fi"], &vec![text("佢屋企套hi-fi值幾十萬")]),
         vec![
             text_word(normal_word("佢")),
             text_word(normal_word("屋")),
@@ -804,7 +804,7 @@ fn test_match_ruby() {
 
     assert_eq!(
         match_ruby(
-            &vec!["I mean".into()],
+            &vec!["I mean"],
             &vec![text("I mean，廣東話。")],
             &vec!["aai6", "min1", "gwong2", "dung1", "waa2"]
         ),
@@ -820,7 +820,7 @@ fn test_match_ruby() {
 
     assert_eq!(
         match_ruby(
-            &vec!["沽".into()],
+            &vec!["沽"],
             &vec![text("唔該，幫我13蚊沽200股。")],
             &"m4 goi1 bong1 ngo5 sap6 saam1 man1 gu1 ji6 baak3 gu2"
                 .split_whitespace()
@@ -843,7 +843,7 @@ fn test_match_ruby() {
 
     assert_eq!(
         match_ruby(
-            &vec!["upgrade".into()],
+            &vec!["upgrade"],
             &vec![text("我 "), link("upgrade"), text(" 咗做 Win 10 之後。")],
             &"ngo5 ap1 gwei1 zo2 zou6 win1 sap6 zi1 hau6"
                 .split_whitespace()
@@ -867,7 +867,7 @@ fn test_match_ruby() {
     // two full matches
     assert_eq!(
         match_ruby(
-            &vec!["經理".into()],
+            &vec!["經理"],
             &vec![link("經理")],
             &vec!["ging1".into(), "lei5".into()]
         ),
@@ -880,7 +880,7 @@ fn test_match_ruby() {
     // one half match
     assert_eq!(
         match_ruby(
-            &vec!["經理".into()],
+            &vec!["經理"],
             &vec![link("經理")],
             &vec!["ging1".into(), "lei".into()]
         ),
@@ -893,7 +893,7 @@ fn test_match_ruby() {
     // two half matches
     assert_eq!(
         match_ruby(
-            &vec!["經理".into()],
+            &vec!["經理"],
             &vec![link("經理")],
             &vec!["ging".into(), "lei".into()]
         ),
@@ -906,7 +906,7 @@ fn test_match_ruby() {
     // decimal number "1.5"
     assert_eq!(
         match_ruby(
-            &vec!["volt".into()],
+            &vec!["volt"],
             &vec![text("筆芯電嘅電壓係1.5 volt。")],
             &vec![
                 "bat1", "sam1", "din6", "ge3", "din6", "aat3", "hai6", "jat1", "dim2", "ng5",
@@ -932,7 +932,7 @@ fn test_match_ruby() {
     // typo in jyutping "能" nan4 should be nang4
     assert_eq!(
         match_ruby(
-            &vec!["懷春".into()],
+            &vec!["懷春"],
             &vec![text("能曾經有懷春嘅日子。")],
             &vec!["nan4", "cang4", "ging1", "jau5", "waai4", "ceon1", "ge3", "jat6", "zi2"]
         ),
@@ -953,7 +953,7 @@ fn test_match_ruby() {
     // typo in jyutping "曾" can4 should be cang4
     assert_eq!(
         match_ruby(
-            &vec!["懷春".into()],
+            &vec!["懷春"],
             &vec![text("能曾經有懷春嘅日子。")],
             &vec!["nang4", "can4", "ging1", "jau5", "waai4", "ceon1", "ge3", "jat6", "zi2"]
         ),
@@ -974,7 +974,7 @@ fn test_match_ruby() {
     // typo in jyutping "能" nan4 should be nang4, "曾" can4 should be cang4
     assert_eq!(
         match_ruby(
-            &vec!["懷春".into()],
+            &vec!["懷春"],
             &vec![text("能曾經有懷春嘅日子。")],
             &vec!["nan4", "can4", "ging1", "jau5", "waai4", "ceon1", "ge3", "jat6", "zi2"]
         ),
@@ -995,7 +995,7 @@ fn test_match_ruby() {
     // normalization of "Ｉ" FULLWIDTH LATIN CAPITAL LETTER I into "i" LATIN SMALL LETTER I
     assert_eq!(
         match_ruby(
-            &vec!["II".into()],
+            &vec!["II"],
             &vec![text("個ＩＩ，")],
             &vec!["go3", "aai1", "aai1"]
         ),
@@ -1009,7 +1009,7 @@ fn test_match_ruby() {
     // Normalization of uppercase "H" into lowercase "h"
     assert_eq!(
         match_ruby(
-            &vec!["hello".into(), "哈佬".into()],
+            &vec!["hello".into(), "哈佬"],
             &vec![text("Hello，好耐冇見。")],
             &vec!["haa1", "lou3", "hou2", "noi6", "mou5", "gin3"]
         ),
@@ -1027,7 +1027,7 @@ fn test_match_ruby() {
     // "-" HYPHEN-MINUS in the middle of a word
     assert_eq!(
         match_ruby(
-            &vec!["hi-fi".into()],
+            &vec!["hi-fi"],
             &vec![text("佢屋企套hi-fi值幾十萬")],
             &vec![
                 "keoi5", "uk1", "kei2", "tou3", "haai1", "faai1", "zik6", "gei2", "sap6", "maan6"
@@ -1049,7 +1049,7 @@ fn test_match_ruby() {
     // "FULLWIDTH COMMA" between english words
     // assert_eq!(
     //     match_ruby(
-    //         &vec!["M".into()],
+    //         &vec!["M"],
     //         &vec![text("好M唔M，M套？")],
     //         &vec![
     //             "hou2", "em1", "m4", "em1", "em1", "tou3"
@@ -1070,7 +1070,7 @@ fn test_match_ruby() {
     // one Chinese character two prs
     assert_eq!(
         match_ruby(
-            &vec!["卅".into()],
+            &vec!["卅"],
             &vec![text("卅幾")],
             &vec!["saa1", "aa6", "gei2"]
         ),
@@ -1082,7 +1082,7 @@ fn test_match_ruby() {
 
     assert_eq!(
         match_ruby(
-            &vec!["卅".into()],
+            &vec!["卅"],
             &vec![link("年卅晚")],
             &vec!["nin4", "saa1", "aa6", "maan5"]
         ),
@@ -1093,11 +1093,7 @@ fn test_match_ruby() {
         ])]
     );
     assert_eq!(
-        match_ruby(
-            &vec!["卌".into()],
-            &vec![text("卌二")],
-            &vec!["se3", "aa6", "ji6"]
-        ),
+        match_ruby(&vec!["卌"], &vec![text("卌二")], &vec!["se3", "aa6", "ji6"]),
         vec![
             Word(bold_word("卌"), vec!["se3".into(), "aa6".into()]),
             Word(normal_word("二"), vec!["ji6".into()]),

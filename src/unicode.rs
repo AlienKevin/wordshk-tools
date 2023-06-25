@@ -71,15 +71,15 @@ pub fn is_latin(c: char) -> bool {
 
 pub fn is_alphanumeric(c: char) -> bool {
     let cp = c as i32;
-    (0x30 <= cp && cp < 0x40) || is_latin(c)
+    (0x30..0x40).contains(&cp) || is_latin(c)
 }
 
 pub fn is_cjk(c: char) -> bool {
     let cp = c as i32;
-    (0x3400 <= cp && cp <= 0x4DBF)
-        || (0x4E00 <= cp && cp <= 0x9FFF)
-        || (0xF900 <= cp && cp <= 0xFAFF)
-        || (0x20000 <= cp && cp <= 0x2FFFF)
+    (0x3400..=0x4DBF).contains(&cp)
+        || (0x4E00..=0x9FFF).contains(&cp)
+        || (0xF900..=0xFAFF).contains(&cp)
+        || (0x20000..=0x2FFFF).contains(&cp)
 }
 
 pub fn test_g(f: fn(char) -> bool, g: &str) -> bool {
@@ -103,15 +103,12 @@ pub fn to_hk_safe_variant(str: &str) -> String {
     to_graphemes(str)
         .iter()
         .map(|g| {
-            if test_g(is_cjk, g) {
-                if g.chars().count() == 1 {
-                    if let Some(c) = g.chars().next() {
-                        return match HONG_KONG_VARIANT_MAP_SAFE.get(&c) {
-                            Some(s) => s.to_string(),
-                            None => g.to_string(),
-                        };
-                    }
-                }
+            if test_g(is_cjk, g) && g.chars().count() == 1 {
+                let c = g.chars().next().unwrap();
+                return match HONG_KONG_VARIANT_MAP_SAFE.get(&c) {
+                    Some(s) => s.to_string(),
+                    None => g.to_string(),
+                };
             }
             g.to_string()
         })

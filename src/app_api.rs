@@ -50,7 +50,7 @@ impl Api {
 
     fn generate_index(app_dir: &str, dict: &RichDict) {
         let index_path = Path::new(app_dir).join("english_index.json");
-        let english_index = generate_english_index(&dict);
+        let english_index = generate_english_index(dict);
         fs::write(index_path, serde_json::to_string(&english_index).unwrap())
             .expect("Unable to output serailized Index");
     }

@@ -1,4 +1,4 @@
-use super::dict::{Clause, Segment, SegmentType, line_to_strings};
+use super::dict::{line_to_strings, Clause, Segment, SegmentType};
 use super::jyutping::LaxJyutPingSegment;
 use super::rich_dict::{
     RichDef, RichDict, RichEntry, RichLine, RubySegment, TextStyle, Word, WordLine, WordSegment,
@@ -38,13 +38,13 @@ fn word_to_xml(word: &Word) -> String {
 
 /// Escape '<' and '&' in an XML string
 fn xml_escape(s: &str) -> String {
-    s.replace("<", "&lt;").replace("&", "&amp;")
+    s.replace('<', "&lt;").replace('&', "&amp;")
 }
 
 fn word_segment_to_xml((seg_type, word): &WordSegment) -> String {
     match seg_type {
         SegmentType::Text => word_to_xml(word),
-        SegmentType::Link => link_to_xml(&word.to_string(), &word_to_xml(&word)),
+        SegmentType::Link => link_to_xml(&word.to_string(), &word_to_xml(word)),
     }
 }
 
@@ -77,7 +77,7 @@ fn clause_to_xml_with_class_name(class_name: &str, clause: &Clause) -> String {
 fn segment_to_xml((seg_type, seg): &Segment) -> String {
     match seg_type {
         SegmentType::Text => xml_escape(seg),
-        SegmentType::Link => link_to_xml(&xml_escape(&seg), &xml_escape(&seg)),
+        SegmentType::Link => link_to_xml(&xml_escape(seg), &xml_escape(seg)),
     }
 }
 
@@ -124,7 +124,7 @@ fn rich_line_to_xml(line: &RichLine) -> String {
             output += "\n</ruby>";
             output
         }
-        RichLine::Text(line) => word_line_to_xml(&line),
+        RichLine::Text(line) => word_line_to_xml(line),
     }
 }
 
@@ -144,7 +144,7 @@ fn to_xml_badge(tag: &str) -> String {
     to_xml_badge_helper(false, tag)
 }
 
-fn rich_defs_to_xml(defs: &Vec<RichDef>) -> String {
+fn rich_defs_to_xml(defs: &[RichDef]) -> String {
     "<ol>\n".to_string() + &defs
         .iter()
         .map(|def| {
@@ -228,11 +228,11 @@ fn rich_entry_to_xml(entry: &RichEntry) -> String {
                             pr_indices = variant.prs.0.iter().map(|pr| {
                                 let word_and_pr = variant.word.clone() + " " + &pr.to_string();
                                 format!(r#"<d:index d:value="{pr}" d:title="{word_and_pr}" d:priority="2"/>{pr_without_tone}"#,
-                                    pr = pr.to_string(),
+                                    pr = pr,
                                     word_and_pr = word_and_pr,
                                     pr_without_tone = {
                                         if pr.0.iter().any(|pr_seg|
-                                            if let LaxJyutPingSegment::Nonstandard(_) = pr_seg { true } else { false }
+                                            matches!(pr_seg, LaxJyutPingSegment::Nonstandard(_))
                                         ){
                                             "".to_string()
                                         } else {
@@ -264,10 +264,10 @@ fn rich_entry_to_xml(entry: &RichEntry) -> String {
                     .collect::<Vec<String>>()
                     .join("\n"),
                 tags = "<div class=\"tags\">\n".to_string()
-            + &(if entry.poses.len() > 0 { format!("<span>詞性：{}</span>\n", entry.poses.iter().map(|pos| to_xml_badge_em(pos)).collect::<Vec<String>>().join("，")) } else { "".to_string() })
-            + &(if entry.labels.len() > 0 { format!("<span> ｜ 標籤：{}</span>\n", entry.labels.iter().map(|label| to_xml_badge(label)).collect::<Vec<String>>().join("，")) } else { "".to_string() })
-            + &(if entry.sims.len() > 0 { format!("<span> ｜ 近義：{}</span>\n", line_to_strings(&entry.sims).join("，")) } else { "".to_string() })
-            + &(if entry.ants.len() > 0 { format!("<span> ｜ 反義：{}</span>\n", line_to_strings(&entry.ants).join("，")) } else { "".to_string() })
+            + &(if !entry.poses.is_empty() { format!("<span>詞性：{}</span>\n", entry.poses.iter().map(|pos| to_xml_badge_em(pos)).collect::<Vec<String>>().join("，")) } else { "".to_string() })
+            + &(if !entry.labels.is_empty() { format!("<span> ｜ 標籤：{}</span>\n", entry.labels.iter().map(|label| to_xml_badge(label)).collect::<Vec<String>>().join("，")) } else { "".to_string() })
+            + &(if !entry.sims.is_empty() { format!("<span> ｜ 近義：{}</span>\n", line_to_strings(&entry.sims).join("，")) } else { "".to_string() })
+            + &(if !entry.ants.is_empty() { format!("<span> ｜ 反義：{}</span>\n", line_to_strings(&entry.ants).join("，")) } else { "".to_string() })
             // TODO: add refs 
             // TODO: add imgs
             + "</div>",
@@ -280,10 +280,12 @@ fn rich_entry_to_xml(entry: &RichEntry) -> String {
 /// Convert a [RichDict] to Apple Dictionary XML format
 pub fn rich_dict_to_xml(dict: RichDict) -> String {
     let front_back_matter_filename = "apple_dict/front_back_matter.html";
-    let front_back_matter = fs::read_to_string(front_back_matter_filename).expect(&format!(
-        "Something went wrong when I tried to read {}",
-        front_back_matter_filename
-    ));
+    let front_back_matter = fs::read_to_string(front_back_matter_filename).unwrap_or_else(|_| {
+        panic!(
+            "Something went wrong when I tried to read {}",
+            front_back_matter_filename
+        )
+    });
 
     let header = format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -296,9 +298,9 @@ pub fn rich_dict_to_xml(dict: RichDict) -> String {
     );
 
     let entries = dict
-        .iter()
-        .map(|(_id, entry)| rich_entry_to_xml(entry))
+        .values()
+        .map(rich_entry_to_xml)
         .collect::<Vec<String>>()
         .join("\n\n");
-    header.to_string() + &entries + "\n</d:dictionary>\n"
+    header + &entries + "\n</d:dictionary>\n"
 }

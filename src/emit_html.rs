@@ -1,4 +1,4 @@
-use super::dict::{Clause, Segment, SegmentType, line_to_strings};
+use super::dict::{line_to_strings, Clause, Segment, SegmentType};
 use super::rich_dict::{
     RichDef, RichEg, RichEntry, RichLine, RubySegment, TextStyle, Word, WordLine, WordSegment,
 };
@@ -36,13 +36,13 @@ fn word_to_xml(word: &Word) -> String {
 
 /// Escape '<' and '&' in an XML string
 fn xml_escape(s: &str) -> String {
-    s.replace("<", "&lt;").replace("&", "&amp;")
+    s.replace('<', "&lt;").replace('&', "&amp;")
 }
 
 fn word_segment_to_xml((seg_type, word): &WordSegment) -> String {
     match seg_type {
         SegmentType::Text => word_to_xml(word),
-        SegmentType::Link => link_to_xml(&word.to_string(), &word_to_xml(&word)),
+        SegmentType::Link => link_to_xml(&word.to_string(), &word_to_xml(word)),
     }
 }
 
@@ -53,7 +53,7 @@ fn link_to_xml(link: &str, word: &str) -> String {
 fn segment_to_xml((seg_type, seg): &Segment) -> String {
     match seg_type {
         SegmentType::Text => xml_escape(seg),
-        SegmentType::Link => link_to_xml(&xml_escape(&seg), &xml_escape(&seg)),
+        SegmentType::Link => link_to_xml(&xml_escape(seg), &xml_escape(seg)),
     }
 }
 
@@ -93,22 +93,14 @@ fn rich_line_to_xml(line: &RichLine) -> String {
                     let mut ruby = "<ruby>".to_string();
                     let mut word_str = String::new();
                     pairs.iter().for_each(|(word, prs)| {
-                        ruby += &format!(
-                            "\n{}<rt>{}</rt>",
-                            word_to_xml(word),
-                            prs.join(" ")
-                        );
+                        ruby += &format!("\n{}<rt>{}</rt>", word_to_xml(word), prs.join(" "));
                         word_str += &word.to_string();
                     });
                     ruby += "\n</ruby>";
                     output += &format!("{}<rt></rt>", &link_to_xml(&word_str, &ruby));
                 }
                 RubySegment::Word(word, prs) => {
-                    output += &format!(
-                        "\n{}<rt>{}</rt>",
-                        word_to_xml(word),
-                        prs.join(" ")
-                    );
+                    output += &format!("\n{}<rt>{}</rt>", word_to_xml(word), prs.join(" "));
                 }
                 RubySegment::Punc(punc) => {
                     output += &format!("\n{}<rt></rt>", punc);
@@ -117,7 +109,7 @@ fn rich_line_to_xml(line: &RichLine) -> String {
             output += "\n</ruby>";
             output
         }
-        RichLine::Text(line) => word_line_to_xml(&line),
+        RichLine::Text(line) => word_line_to_xml(line),
     }
 }
 
@@ -153,7 +145,7 @@ fn rich_eg_to_xml(eg: &RichEg) -> String {
         + "</div>"
 }
 
-fn rich_defs_to_xml(defs: &Vec<RichDef>) -> String {
+fn rich_defs_to_xml(defs: &[RichDef]) -> String {
     "<ol>\n".to_string()
         + &defs
             .iter()
@@ -232,10 +224,10 @@ pub fn rich_entry_to_xml(entry: &RichEntry) -> String {
                 .collect::<Vec<String>>()
                 .join("\n"),
             tags = "<div class=\"tags\">\n".to_string()
-            + &(if entry.poses.len() > 0 { format!("<span>詞性：{}</span>\n", entry.poses.iter().map(|pos| to_xml_badge_em(pos)).collect::<Vec<String>>().join("，")) } else { "".to_string() })
-            + &(if entry.labels.len() > 0 { format!("<span> ｜ 標籤：{}</span>\n", entry.labels.iter().map(|label| to_xml_badge(label)).collect::<Vec<String>>().join("，")) } else { "".to_string() })
-            + &(if entry.sims.len() > 0 { format!("<span> ｜ 近義：{}</span>\n", line_to_strings(&entry.sims).join("，")) } else { "".to_string() })
-            + &(if entry.ants.len() > 0 { format!("<span> ｜ 反義：{}</span>\n", line_to_strings(&entry.ants).join("，")) } else { "".to_string() })
+            + &(if !entry.poses.is_empty() { format!("<span>詞性：{}</span>\n", entry.poses.iter().map(|pos| to_xml_badge_em(pos)).collect::<Vec<String>>().join("，")) } else { "".to_string() })
+            + &(if !entry.labels.is_empty() { format!("<span> ｜ 標籤：{}</span>\n", entry.labels.iter().map(|label| to_xml_badge(label)).collect::<Vec<String>>().join("，")) } else { "".to_string() })
+            + &(if !entry.sims.is_empty() { format!("<span> ｜ 近義：{}</span>\n", line_to_strings(&entry.sims).join("，")) } else { "".to_string() })
+            + &(if !entry.ants.is_empty() { format!("<span> ｜ 反義：{}</span>\n", line_to_strings(&entry.ants).join("，")) } else { "".to_string() })
             // TODO: add refs 
             // TODO: add imgs
             + "</div>",
