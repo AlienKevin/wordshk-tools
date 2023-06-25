@@ -1214,7 +1214,7 @@ fn test_match_ruby() {
 #[test]
 fn test_parse_jyutping() {
     assert_eq!(
-        parse_jyutping(&"ging1".to_string()),
+        parse_jyutping("ging1"),
         Some(JyutPing {
             initial: Some(JyutPingInitial::G),
             nucleus: Some(JyutPingNucleus::I),
@@ -1224,7 +1224,7 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
-        parse_jyutping(&"gwok3".to_string()),
+        parse_jyutping("gwok3"),
         Some(JyutPing {
             initial: Some(JyutPingInitial::Gw),
             nucleus: Some(JyutPingNucleus::O),
@@ -1234,7 +1234,7 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
-        parse_jyutping(&"aa".to_string()),
+        parse_jyutping("aa"),
         Some(JyutPing {
             initial: None,
             nucleus: Some(JyutPingNucleus::Aa),
@@ -1244,7 +1244,7 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
-        parse_jyutping(&"a2".to_string()),
+        parse_jyutping("a2"),
         Some(JyutPing {
             initial: None,
             nucleus: Some(JyutPingNucleus::A),
@@ -1254,7 +1254,7 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
-        parse_jyutping(&"a".to_string()),
+        parse_jyutping("a"),
         Some(JyutPing {
             initial: None,
             nucleus: Some(JyutPingNucleus::A),
@@ -1264,7 +1264,7 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
-        parse_jyutping(&"seoi5".to_string()),
+        parse_jyutping("seoi5"),
         Some(JyutPing {
             initial: Some(JyutPingInitial::S),
             nucleus: Some(JyutPingNucleus::Eo),
@@ -1274,7 +1274,7 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
-        parse_jyutping(&"baau".to_string()),
+        parse_jyutping("baau"),
         Some(JyutPing {
             initial: Some(JyutPingInitial::B),
             nucleus: Some(JyutPingNucleus::Aa),
@@ -1284,7 +1284,7 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
-        parse_jyutping(&"ng".to_string()),
+        parse_jyutping("ng"),
         Some(JyutPing {
             initial: Some(JyutPingInitial::Ng),
             nucleus: None,
@@ -1294,7 +1294,7 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
-        parse_jyutping(&"ng4".to_string()),
+        parse_jyutping("ng4"),
         Some(JyutPing {
             initial: Some(JyutPingInitial::Ng),
             nucleus: None,
@@ -1304,7 +1304,7 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
-        parse_jyutping(&"ng5".to_string()),
+        parse_jyutping("ng5"),
         Some(JyutPing {
             initial: Some(JyutPingInitial::Ng),
             nucleus: None,
@@ -1314,7 +1314,7 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
-        parse_jyutping(&"m".to_string()),
+        parse_jyutping("m"),
         Some(JyutPing {
             initial: Some(JyutPingInitial::M),
             nucleus: None,
@@ -1324,7 +1324,7 @@ fn test_parse_jyutping() {
     );
 
     assert_eq!(
-        parse_jyutping(&"m4".to_string()),
+        parse_jyutping("m4"),
         Some(JyutPing {
             initial: Some(JyutPingInitial::M),
             nucleus: None,
@@ -1334,21 +1334,21 @@ fn test_parse_jyutping() {
     );
 
     // english
-    assert_eq!(parse_jyutping(&"firework".to_string()), None);
-    assert_eq!(parse_jyutping(&"good".to_string()), None);
-    assert_eq!(parse_jyutping(&"manifest".to_string()), None);
+    assert_eq!(parse_jyutping("firework"), None);
+    assert_eq!(parse_jyutping("good"), None);
+    assert_eq!(parse_jyutping("manifest"), None);
 
     // nonstandard jyutping (simple)
-    assert_eq!(parse_jyutping(&"!".to_string()), None);
+    assert_eq!(parse_jyutping("!"), None);
 
     // nonstandard jyutping (complex)
-    assert_eq!(parse_jyutping(&"!sdet6".to_string()), None);
+    assert_eq!(parse_jyutping("!sdet6"), None);
 }
 
 #[test]
 fn test_parse_pr() {
     assert_eq!(
-        parse_pr(&"seoi5 ng".to_string()),
+        parse_pr("seoi5 ng"),
         LaxJyutPing(vec![
             LaxJyutPingSegment::Standard(JyutPing {
                 initial: Some(JyutPingInitial::S),
@@ -1366,7 +1366,7 @@ fn test_parse_pr() {
     );
 
     assert_eq!(
-        parse_pr(&"! sap6".to_string()),
+        parse_pr("! sap6"),
         LaxJyutPing(vec![
             LaxJyutPingSegment::Nonstandard("!".into()),
             LaxJyutPingSegment::Standard(JyutPing {
@@ -1379,7 +1379,7 @@ fn test_parse_pr() {
     );
 
     assert_eq!(
-        parse_pr(&"sap6 !".to_string()),
+        parse_pr("sap6 !"),
         LaxJyutPing(vec![
             LaxJyutPingSegment::Standard(JyutPing {
                 initial: Some(JyutPingInitial::S),
@@ -1392,7 +1392,7 @@ fn test_parse_pr() {
     );
 
     assert_eq!(
-        parse_pr(&"sap6 !sdet6".to_string()),
+        parse_pr("sap6 !sdet6"),
         LaxJyutPing(vec![
             LaxJyutPingSegment::Standard(JyutPing {
                 initial: Some(JyutPingInitial::S),
@@ -1405,12 +1405,12 @@ fn test_parse_pr() {
     );
 
     assert_eq!(
-        parse_pr(&"!".to_string()),
+        parse_pr("!"),
         LaxJyutPing(vec![LaxJyutPingSegment::Nonstandard("!".into())]),
     );
 
     assert_eq!(
-        parse_pr(&"!sdet6".to_string()),
+        parse_pr("!sdet6"),
         LaxJyutPing(vec![LaxJyutPingSegment::Nonstandard("!sdet6".into())]),
     );
 }
@@ -1419,7 +1419,7 @@ fn test_parse_pr() {
 fn test_parse_jyutpings() {
     // all valid jyutpings
     assert_eq!(
-        parse_jyutpings(&"jyut6 ping3".to_string()),
+        parse_jyutpings("jyut6 ping3"),
         Some(vec![
             JyutPing {
                 initial: Some(JyutPingInitial::J),
@@ -1437,14 +1437,14 @@ fn test_parse_jyutpings() {
     );
 
     // a single invalid jyutping
-    assert_eq!(parse_jyutpings(&"jyut6 pingg".to_string()), None);
+    assert_eq!(parse_jyutpings("jyut6 pingg"), None);
 }
 
 #[test]
 fn test_parse_continuous_jyutpings() {
     // valid jyutping
     assert_eq!(
-        parse_continuous_prs(&"zinaan", Romanization::Jyutping),
+        parse_continuous_prs("zinaan", Romanization::Jyutping),
         Some(vec![
             vec![
                 JyutPing {
@@ -1518,7 +1518,7 @@ fn test_parse_continuous_jyutpings() {
     );
 
     assert_eq!(
-        parse_continuous_prs(&"zi5naan", Romanization::Jyutping),
+        parse_continuous_prs("zi5naan", Romanization::Jyutping),
         Some(vec![
             vec![
                 JyutPing {
@@ -1558,14 +1558,11 @@ fn test_parse_continuous_jyutpings() {
     );
 
     // invalid jyutping
-    assert_eq!(
-        parse_continuous_prs(&"zinagn", Romanization::Jyutping),
-        None
-    );
+    assert_eq!(parse_continuous_prs("zinagn", Romanization::Jyutping), None);
 
     // valid yale
     assert_eq!(
-        parse_continuous_prs(&"yauji", Romanization::YaleNumbers),
+        parse_continuous_prs("yauji", Romanization::YaleNumbers),
         Some(vec![vec![
             JyutPing {
                 initial: Some(JyutPingInitial::J),
@@ -1583,7 +1580,7 @@ fn test_parse_continuous_jyutpings() {
     );
 
     assert_eq!(
-        parse_continuous_prs(&"yau4", Romanization::YaleNumbers),
+        parse_continuous_prs("yau4", Romanization::YaleNumbers),
         Some(vec![vec![JyutPing {
             initial: Some(JyutPingInitial::J),
             nucleus: Some(JyutPingNucleus::A),
@@ -1651,7 +1648,7 @@ fn test_convert_to_jyutpings() {
 
     // Make sure the first data line of the TSV is not discarded
     assert_eq!(
-        convert_to_jyutpings(&"a1", YaleNumbers),
+        convert_to_jyutpings("a1", YaleNumbers),
         parse_jyutpings("aa1").map(|jyutpings| vec![jyutpings])
     );
 
@@ -1660,55 +1657,55 @@ fn test_convert_to_jyutpings() {
     let expected_jyutpings2 =
         parse_jyutpings("je6 loi4 fung1 jyu5 sing1").map(|jyutpings| vec![jyutpings]);
     assert_eq!(
-        convert_to_jyutpings(&"cheun1 min4 bat1 gok3 hiu2", YaleNumbers),
+        convert_to_jyutpings("cheun1 min4 bat1 gok3 hiu2", YaleNumbers),
         expected_jyutpings1
     );
     assert_eq!(
-        convert_to_jyutpings(&"ye6 loi4 fung1 yu5 sing1", YaleNumbers),
+        convert_to_jyutpings("ye6 loi4 fung1 yu5 sing1", YaleNumbers),
         expected_jyutpings2
     );
 
     // assert_eq!(
-    //     convert_to_jyutpings(&"cheūn mìhn bāt gok hiú", YaleDiacritics),
+    //     convert_to_jyutpings("cheūn mìhn bāt gok hiú", YaleDiacritics),
     //     expected_jyutpings1
     // );
     // assert_eq!(
-    //     convert_to_jyutpings(&"yeh lòih fūng yúh sīng", YaleDiacritics),
+    //     convert_to_jyutpings("yeh lòih fūng yúh sīng", YaleDiacritics),
     //     expected_jyutpings2
     // );
 
     assert_eq!(
-        convert_to_jyutpings(&"tsoen1 min4 bat7 gok8 hiu2", CantonesePinyin),
+        convert_to_jyutpings("tsoen1 min4 bat7 gok8 hiu2", CantonesePinyin),
         expected_jyutpings1
     );
     assert_eq!(
-        convert_to_jyutpings(&"je6 loi4 fung1 jy5 sing1", CantonesePinyin),
+        convert_to_jyutpings("je6 loi4 fung1 jy5 sing1", CantonesePinyin),
         expected_jyutpings2
     );
     // assert_eq!(
-    //     convert_to_jyutpings(&"cên1 min4 bed1 gog3 hiu2", Guangdong),
+    //     convert_to_jyutpings("cên1 min4 bed1 gog3 hiu2", Guangdong),
     //     expected_jyutpings1
     // );
     // assert_eq!(
-    //     convert_to_jyutpings(&"yé6 loi4 fung1 yu5 xing1", Guangdong),
+    //     convert_to_jyutpings("yé6 loi4 fung1 yu5 xing1", Guangdong),
     //     expected_jyutpings2
     // );
 
     assert_eq!(
-        convert_to_jyutpings(&"chun1 min4 bat1 gok3 hiu2", SidneyLau),
+        convert_to_jyutpings("chun1 min4 bat1 gok3 hiu2", SidneyLau),
         expected_jyutpings1
     );
     assert_eq!(
-        convert_to_jyutpings(&"ye6 loi4 fung1 yue5 sing1", SidneyLau),
+        convert_to_jyutpings("ye6 loi4 fung1 yue5 sing1", SidneyLau),
         expected_jyutpings2
     );
 
     // assert_eq!(
-    //     convert_to_jyutpings(&"tsʰɵn˥ miːn˨˩ pɐt˥ kɔːk˧ hiːu˧˥", Ipa),
+    //     convert_to_jyutpings("tsʰɵn˥ miːn˨˩ pɐt˥ kɔːk˧ hiːu˧˥", Ipa),
     //     expected_jyutpings1
     // );
     // assert_eq!(
-    //     convert_to_jyutpings(&"jɛː˨ lɔːi˨˩ fʊŋ˥ jyː˩˧ sɪŋ˥", Ipa),
+    //     convert_to_jyutpings("jɛː˨ lɔːi˨˩ fʊŋ˥ jyː˩˧ sɪŋ˥", Ipa),
     //     expected_jyutpings2
     // );
 
@@ -1728,10 +1725,10 @@ fn test_convert_to_jyutpings() {
     ]]);
 
     // continous jyutpings with tones
-    assert_eq!(convert_to_jyutpings(&"zi5naan4", Jyutping), zi5naan4);
+    assert_eq!(convert_to_jyutpings("zi5naan4", Jyutping), zi5naan4);
 
     // continous yale with tones
-    assert_eq!(convert_to_jyutpings(&"ji5naan4", YaleNumbers), zi5naan4);
+    assert_eq!(convert_to_jyutpings("ji5naan4", YaleNumbers), zi5naan4);
 }
 
 #[test]

@@ -113,7 +113,7 @@ pub fn to_hk_safe_variant(str: &str) -> String {
                     }
                 }
             }
-            return g.to_string();
+            g.to_string()
         })
         .join("")
 }
