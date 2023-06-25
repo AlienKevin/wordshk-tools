@@ -1,0 +1,7 @@
+[package]
+name = "export_apple_dict"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wordshk_tools = { path = "../../" }
