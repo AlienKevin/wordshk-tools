@@ -1,5 +1,3 @@
-#[macro_use]
-mod tests;
 pub mod app_api;
 #[path = "../data/char_jyutpings/charlist.rs"]
 mod charlist;
@@ -18,6 +16,8 @@ pub mod lean_rich_dict;
 pub mod parse;
 pub mod rich_dict;
 pub mod search;
+#[cfg(test)]
+mod tests;
 pub mod unicode;
 #[path = "../data/variant_to_us_english.rs"]
 mod variant_to_us_english;

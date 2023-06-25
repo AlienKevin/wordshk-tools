@@ -27,7 +27,7 @@ pub type Dict = HashMap<usize, Entry>;
 ///
 /// \[defs\] a list of definitions for this word
 ///
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Entry {
     pub id: usize,
     pub variants: Variants,
@@ -132,7 +132,7 @@ pub fn clause_to_string(clause: &Clause) -> String {
 ///
 /// \[egs\] Example sentences usually with Jyutping pronunciations and English translations
 ///
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Def {
     pub yue: Clause,
     pub eng: Option<Clause>,

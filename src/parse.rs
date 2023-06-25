@@ -38,29 +38,31 @@ pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
         let published = &entry[5] == "已公開";
         // entry[3] is always an empty string
         let head_parse_result = sequence(
-            "",
-            succeed!(|word, prs| Variant { word, prs })
-                .keep(take_chomped(chomp_while1c(&(|c: &char| c != &':'), "word")))
-                .keep(
-                    sequence(
-                        ":",
-                        BoxedParser::new(
-                            take_chomped(chomp_while1c(
-                                &(|c: &char| c != &':' && c != &','),
-                                "jyutping",
-                            ))
-                            .map(|pr_str| parse_pr(&pr_str)),
-                        ),
-                        ":",
-                        space0(),
-                        "",
-                        Trailing::Forbidden,
+            succeed!(),
+            || {
+                succeed!(|word, prs| Variant { word, prs })
+                    .keep(take_chomped(chomp_while1c(&(|c: char| c != ':'), "word")))
+                    .keep(
+                        sequence(
+                            token(":"),
+                            || {
+                                take_chomped(chomp_while1c(
+                                    &(|c: char| c != ':' && c != ','),
+                                    "jyutping",
+                                ))
+                                .map(|pr_str| parse_pr(&pr_str))
+                            },
+                            || token(":"),
+                            space0,
+                            succeed!(),
+                            Trailing::Forbidden,
+                        )
+                        .map(|prs: Vec<LaxJyutPing>| LaxJyutPings(prs)),
                     )
-                    .map(|prs: Vec<LaxJyutPing>| LaxJyutPings(prs)),
-                ),
-            ",",
-            space0(),
-            "",
+            },
+            || token(","),
+            space0,
+            succeed!(),
             Trailing::Forbidden,
         )
         .run(head, ());
@@ -118,14 +120,14 @@ pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
 /// # );
 /// ```
 ///
-pub fn parse_tags<'a>(name: &'static str) -> lip::BoxedParser<'a, Vec<String>, ()> {
+pub fn parse_tags<'a>(name: &'a str) -> impl lip::Parser<'a, Output = Vec<String>, State = ()> {
     return zero_or_more(
         succeed!(|tag| tag)
             .skip(token("("))
             .backtrackable()
             .skip(token(name))
             .skip(token(":"))
-            .keep(take_chomped(chomp_while1c(&(|c: &char| c != &')'), name)))
+            .keep(take_chomped(chomp_while1c(&(|c: char| c != ')'), name)))
             .skip(token(")")),
     );
 }
@@ -133,7 +135,7 @@ pub fn parse_tags<'a>(name: &'static str) -> lip::BoxedParser<'a, Vec<String>, (
 /// Parse a newline character
 ///
 /// Supports both Windows "\r\n" and Unix "\n"
-fn parse_br<'a>() -> lip::BoxedParser<'a, (), ()> {
+fn parse_br<'a>() -> impl lip::Parser<'a, Output = (), State = ()> {
     chomp_if(|c| c == "\r\n" || c == "\n", "a newline")
 }
 
@@ -154,16 +156,16 @@ fn parse_br<'a>() -> lip::BoxedParser<'a, (), ()> {
 /// vec![(Text, "My headphone cord was knotted.".into())]
 /// # );
 /// ```
-pub fn parse_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
+pub fn parse_line<'a>(name: &'a str) -> impl lip::Parser<'a, Output = Line, State = ()> {
     succeed!(remove_extra_spaces_around_link).keep(one_or_more(succeed!(|seg| seg).keep(one_of!(
             succeed!(|string| (SegmentType::Link, string))
                 .skip(token("#"))
                 .keep(take_chomped(chomp_while1c(
-                    &(|c: &char| !unicode::is_punc(*c) && !c.is_whitespace()),
+                    &(|c: char| !unicode::is_punc(c) && !c.is_whitespace()),
                     name
                 ))),
             succeed!(|string| (SegmentType::Text, string)).keep(take_chomped(chomp_while1c(
-                &(|c: &char| *c != '#' && *c != '\n' && *c != '\r'),
+                &(|c: char| c != '#' && c != '\n' && c != '\r'),
                 name
             )))
         ))))
@@ -243,7 +245,7 @@ fn remove_extra_spaces_around_link(segs: Vec<Segment>) -> Vec<Segment> {
 /// # );
 /// ```
 ///
-pub fn parse_named_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()> {
+pub fn parse_named_line<'a>(name: &'a str) -> impl lip::Parser<'a, Output = Line, State = ()> {
     succeed!(|clause| clause)
         .skip(token(name))
         .skip(token(":"))
@@ -270,7 +272,7 @@ pub fn parse_named_line<'a>(name: &'static str) -> lip::BoxedParser<'a, Line, ()
 /// # );
 /// ```
 ///
-pub fn parse_clause<'a>(expecting: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
+pub fn parse_clause<'a>(expecting: &'a str) -> impl lip::Parser<'a, Output = Clause, State = ()> {
     succeed!(|first_line: Line, lines: Clause| {
         let mut all_lines = vec![first_line];
         all_lines.extend(lines);
@@ -293,7 +295,7 @@ pub fn parse_clause<'a>(expecting: &'static str) -> lip::BoxedParser<'a, Clause,
             // non-empty line
             succeed!(identity).keep(parse_line(expecting)),
             // empty line
-            succeed!(|_| vec![(SegmentType::Text, "".to_string())]).keep(token(""))
+            succeed!(|_| vec![(SegmentType::Text, "".to_string())]).keep(succeed!())
         )),
         "end of clause",
         succeed!(|_| ()).keep(one_of!(
@@ -333,7 +335,7 @@ pub fn parse_clause<'a>(expecting: &'static str) -> lip::BoxedParser<'a, Clause,
 /// # );
 /// ```
 ///
-pub fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause, ()> {
+pub fn parse_named_clause<'a>(name: &'a str) -> impl lip::Parser<'a, Output = Clause, State = ()> {
     succeed!(identity)
         .skip(token(name))
         .skip(token(":"))
@@ -358,7 +360,7 @@ pub fn parse_named_clause<'a>(name: &'static str) -> lip::BoxedParser<'a, Clause
 /// # );
 /// ```
 ///
-pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
+pub fn parse_alt_clause<'a>() -> impl lip::Parser<'a, Output = AltClause, State = ()> {
     succeed!(|alt_lang: AltLang, clause: Clause| (alt_lang, clause))
         .keep(one_of!(
             succeed!(|_| AltLang::Jpn).keep(token("jpn:")),
@@ -389,7 +391,7 @@ pub fn parse_alt_clause<'a>() -> lip::BoxedParser<'a, AltClause, ()> {
 /// # );
 /// ```
 ///
-pub fn parse_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, PrLine, ()> {
+pub fn parse_pr_line<'a>(name: &'a str) -> impl lip::Parser<'a, Output = PrLine, State = ()> {
     (succeed!(|line: String| {
         let open_paren_index = line.rfind('(');
         // println!("open_paren_index: {:?}", open_paren_index);
@@ -411,7 +413,7 @@ pub fn parse_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, PrLine, ()>
     .skip(token(name))
     .skip(token(":"))
     .keep(take_chomped(chomp_while1c(
-        &(|c: &char| c != &'\n' && c != &'\r'),
+        &(|c: char| c != '\n' && c != '\r'),
         "line",
     ))))
     .map(move |(line, pr)| match parse_line(name).run(&line, ()) {
@@ -451,7 +453,7 @@ pub fn parse_pr_line<'a>(name: &'static str) -> lip::BoxedParser<'a, PrLine, ()>
 /// # );
 /// ```
 ///
-pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
+pub fn parse_eg<'a>() -> impl lip::Parser<'a, Output = Eg, State = ()> {
     succeed!(|zho, yue, eng| Eg { zho, yue, eng })
         .skip(token("<eg>"))
         .skip(parse_br())
@@ -506,7 +508,7 @@ pub fn parse_eg<'a>() -> lip::BoxedParser<'a, Eg, ()> {
 /// # );
 /// ```
 ///
-pub fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
+pub fn parse_rich_def<'a>() -> impl lip::Parser<'a, Output = Def, State = ()> {
     succeed!(|yue, eng, alts, egs| Def {
         yue,
         eng,
@@ -550,7 +552,7 @@ pub fn parse_rich_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
 /// # );
 /// ```
 ///
-pub fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
+pub fn parse_simple_def<'a>() -> impl lip::Parser<'a, Output = Def, State = ()> {
     succeed!(|yue, eng, alts| Def {
         yue,
         eng,
@@ -611,7 +613,7 @@ pub fn parse_simple_def<'a>() -> lip::BoxedParser<'a, Def, ()> {
 /// # );
 /// ```
 ///
-pub fn parse_defs<'a>() -> lip::BoxedParser<'a, Vec<Def>, ()> {
+pub fn parse_defs<'a>() -> impl lip::Parser<'a, Output = Vec<Def>, State = ()> {
     succeed!(|defs| defs).keep(one_or_more(
         succeed!(|def| def)
             .keep(one_of!(parse_simple_def(), parse_rich_def()))
@@ -668,7 +670,7 @@ pub fn parse_content<'a>(
     id: usize,
     variants: Variants,
     published: bool,
-) -> lip::BoxedParser<'a, Option<Entry>, ()> {
+) -> impl lip::Parser<'a, Output = Option<Entry>, State = ()> {
     one_of!(
         succeed!(|poses, labels, sims, ants, refs, imgs, defs| Some(Entry {
             id,
