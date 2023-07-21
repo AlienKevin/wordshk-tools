@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use wordshk_tools::dict::{clause_to_string, Dict, Entry};
 use wordshk_tools::parse::parse_dict;
+use wordshk_tools::rich_dict;
 
 fn main() {
     static DATA_FILE: &'static str = include_str!("../../wordshk.csv");
@@ -8,7 +9,69 @@ fn main() {
     // show_colloquial_words(&dict);
     // show_tagged_words(&dict, &["爭議"]);
     // get_eng_definitions(&dict);
-    get_formal_words(&dict);
+    // get_formal_words(&dict);
+    get_jyutping_egs(&dict);
+}
+
+fn get_jyutping_egs(dict: &Dict) {
+    let rich_dict = rich_dict::enrich_dict(
+        &dict,
+        &rich_dict::EnrichDictOptions {
+            remove_dead_links: true,
+        },
+    );
+
+    let mut sentences = vec![];
+
+    use kdam::tqdm;
+    for entry in tqdm!(rich_dict.values()) {
+        for def in &entry.defs {
+            for eg in &def.egs {
+                if let Some(line) = &eg.yue {
+                    if let rich_dict::RichLine::Ruby(line) = &line {
+                        let mut sentence = "".to_string();
+                        let mut prs = vec![];
+                        for segment in line {
+                            match segment {
+                                rich_dict::RubySegment::Punc(punc) => {
+                                    sentence.push_str(&punc);
+                                }
+                                rich_dict::RubySegment::Word(word, word_prs) => {
+                                    for (_, text) in &word.0 {
+                                        sentence.push_str(&text);
+                                    }
+                                    prs.append(&mut word_prs.clone());
+                                }
+                                rich_dict::RubySegment::LinkedWord(words) => {
+                                    for (word, word_prs) in words {
+                                        for (_, text) in &word.0 {
+                                            sentence.push_str(&text);
+                                        }
+                                        prs.append(&mut word_prs.clone());
+                                    }
+                                }
+                            }
+                        }
+                        if sentence.contains("\n") {
+                            println!("Found multiline sentence: {sentence}");
+                        }
+                        sentences.push((sentence, prs.join(" ")));
+                    }
+                }
+            }
+        }
+    }
+
+    let file = std::fs::File::create("jyutping_sentences.txt").unwrap();
+    let mut writer = std::io::BufWriter::new(file);
+    use std::io::Write;
+    sentences.sort_by(|a, b| a.0.len().cmp(&b.0.len()));
+    for (sentence, prs) in sentences {
+        writer
+            .write((sentence + "\n" + &prs + "\n\n").as_bytes())
+            .unwrap();
+    }
+    writer.flush().unwrap();
 }
 
 fn get_formal_words(dict: &Dict) {

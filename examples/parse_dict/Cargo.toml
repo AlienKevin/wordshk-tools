@@ -9,3 +9,4 @@ edition = "2021"
 wordshk_tools = { path = "../../" }
 serde_json = "1.0"
 itertools = "0.11.0"
+kdam = "0.3.0"
