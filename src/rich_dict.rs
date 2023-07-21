@@ -600,7 +600,8 @@ pub struct EnrichDictOptions {
 }
 
 pub fn enrich_dict(dict: &Dict, options: &EnrichDictOptions) -> RichDict {
-    dict.iter()
+    use rayon::prelude::*;
+    dict.par_iter()
         .map(|(id, entry)| {
             let variants = &entry.variants.to_words();
             let rich_defs = entry
