@@ -19,23 +19,16 @@ fn serialize_api<P: AsRef<Path>>(output_path: &P, api: &Api) {
 }
 
 impl Api {
-    pub fn new(app_dir: &str, csv_url: &str) -> Self {
+    pub fn new(app_dir: &str, csv: &str) -> Self {
         let api_path = Path::new(app_dir).join("api.json");
-        let api = Api::get_new_dict(&api_path, csv_url);
+        let api = Api::get_new_dict(&api_path, csv);
         Api::generate_index(app_dir, &api.dict);
         api
     }
 
-    fn get_new_dict<P: AsRef<Path>>(api_path: &P, csv_url: &str) -> Api {
-        let csv_gz_data = reqwest::blocking::get(csv_url).unwrap().bytes().unwrap();
-        let mut gz = GzDecoder::new(&csv_gz_data[..]);
-        let mut csv_data = String::new();
-        gz.read_to_string(&mut csv_data).unwrap();
-        let csv_data_remove_first_line = csv_data.get(csv_data.find('\n').unwrap() + 1..).unwrap();
-        let csv_data_remove_two_lines = csv_data_remove_first_line
-            .get(csv_data_remove_first_line.find('\n').unwrap() + 1..)
-            .unwrap();
-        let dict = parse_dict(csv_data_remove_two_lines.as_bytes()).unwrap();
+    fn get_new_dict<P: AsRef<Path>>(api_path: &P, csv: &str) -> Api {
+        let dict = parse_dict(csv.as_bytes()).unwrap();
+        let dict = crate::dict::filter_unfinished_entries(dict);
         let new_api = Api {
             dict: enrich_dict(
                 &dict,

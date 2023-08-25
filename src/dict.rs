@@ -195,3 +195,37 @@ pub struct Eg {
 /// Eg: 可唔可以見面？ (ho2 m4 ho2 ji5 gin3 min6?)
 ///
 pub type PrLine = (Line, Option<String>);
+
+fn is_unfinished_line(line: &Line) -> bool {
+    line.iter()
+        .any(|seg| seg.1.contains("XX") || seg.1.contains("xxx") || seg.1.contains("[ChatGPT]"))
+        || *line == vec![(SegmentType::Text, "X".to_string())]
+}
+
+pub fn filter_unfinished_entries(dict: Dict) -> Dict {
+    dict.into_iter()
+        .filter(|(_, entry)| {
+            // no definition should contain unfinished lines
+            !entry.defs.iter().any(|def| {
+                def.yue.iter().any(is_unfinished_line)
+                    || def
+                        .eng
+                        .as_ref()
+                        .map_or(false, |clause| clause.iter().any(is_unfinished_line))
+                    || def.egs.iter().any(|eg| {
+                        eg.zho
+                            .as_ref()
+                            .map_or(false, |(line, _)| is_unfinished_line(line))
+                            || eg
+                                .yue
+                                .as_ref()
+                                .map_or(false, |(line, _)| is_unfinished_line(line))
+                            || eg
+                                .eng
+                                .as_ref()
+                                .map_or(false, |line| is_unfinished_line(line))
+                    })
+            })
+        })
+        .collect()
+}
