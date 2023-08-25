@@ -2,6 +2,8 @@ use super::english_index::generate_english_index;
 use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, EnrichDictOptions, RichDict};
 use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -14,8 +16,10 @@ pub struct Api {
 }
 
 fn serialize_api<P: AsRef<Path>>(output_path: &P, api: &Api) {
-    fs::write(output_path, serde_json::to_string(&api).unwrap())
-        .expect("Unable to output serialized RichDict");
+    let mut e = GzEncoder::new(Vec::new(), Compression::default());
+    e.write_all(serde_json::to_string(&api).unwrap().as_bytes())
+        .unwrap();
+    fs::write(output_path, e.finish().unwrap()).expect("Unable to output serialized RichDict");
 }
 
 impl Api {
@@ -44,7 +48,9 @@ impl Api {
     fn generate_index(app_dir: &str, dict: &RichDict) {
         let index_path = Path::new(app_dir).join("english_index.json");
         let english_index = generate_english_index(dict);
-        fs::write(index_path, serde_json::to_string(&english_index).unwrap())
-            .expect("Unable to output serailized Index");
+        let mut e = GzEncoder::new(Vec::new(), Compression::default());
+        e.write_all(serde_json::to_string(&english_index).unwrap().as_bytes())
+            .unwrap();
+        fs::write(index_path, e.finish().unwrap()).expect("Unable to output serailized Index");
     }
 }
