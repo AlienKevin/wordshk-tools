@@ -1,4 +1,4 @@
-use wordshk_tools::app_api::Api;
+use wordshk_tools::{app_api::Api, jyutping::Romanization};
 
 const APP_TMP_DIR: &str = "./app_tmp";
 
@@ -8,5 +8,9 @@ fn main() {
 }
 
 fn generate_api_json() {
-    let _ = Api::new(APP_TMP_DIR, include_str!("../../wordshk.csv"));
+    let _ = Api::new(
+        APP_TMP_DIR,
+        include_str!("../../wordshk.csv"),
+        Romanization::Yale,
+    );
 }

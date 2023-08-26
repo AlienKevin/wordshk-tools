@@ -1,10 +1,11 @@
+use crate::jyutping::Romanization;
+use crate::pr_index::generate_pr_indices;
+
 use super::english_index::generate_english_index;
 use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, EnrichDictOptions, RichDict};
-use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use reqwest;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::prelude::*;
@@ -23,10 +24,10 @@ fn serialize_api<P: AsRef<Path>>(output_path: &P, api: &Api) {
 }
 
 impl Api {
-    pub fn new(app_dir: &str, csv: &str) -> Self {
+    pub fn new(app_dir: &str, csv: &str, romanization: Romanization) -> Self {
         let api_path = Path::new(app_dir).join("api.json");
         let api = Api::get_new_dict(&api_path, csv);
-        Api::generate_index(app_dir, &api.dict);
+        Api::generate_index(app_dir, &api.dict, romanization);
         api
     }
 
@@ -45,12 +46,20 @@ impl Api {
         new_api
     }
 
-    fn generate_index(app_dir: &str, dict: &RichDict) {
+    fn generate_index(app_dir: &str, dict: &RichDict, romanization: Romanization) {
         let index_path = Path::new(app_dir).join("english_index.json");
         let english_index = generate_english_index(dict);
         let mut e = GzEncoder::new(Vec::new(), Compression::default());
         e.write_all(serde_json::to_string(&english_index).unwrap().as_bytes())
             .unwrap();
-        fs::write(index_path, e.finish().unwrap()).expect("Unable to output serailized Index");
+        fs::write(index_path, e.finish().unwrap())
+            .expect("Unable to output serailized english index");
+
+        let index_path = Path::new(app_dir).join("pr_indices.json");
+        let pr_indices = generate_pr_indices(dict, romanization);
+        let mut e = GzEncoder::new(Vec::new(), Compression::default());
+        e.write_all(serde_json::to_string(&pr_indices).unwrap().as_bytes())
+            .unwrap();
+        fs::write(index_path, e.finish().unwrap()).expect("Unable to output serailized pr index");
     }
 }

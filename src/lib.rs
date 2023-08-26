@@ -14,6 +14,7 @@ mod iconic_trads;
 pub mod jyutping;
 pub mod lean_rich_dict;
 pub mod parse;
+pub mod pr_index;
 pub mod rich_dict;
 pub mod search;
 #[cfg(test)]

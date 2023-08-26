@@ -1,24 +1,18 @@
-use super::unicode;
-use csv;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
-use std::collections::HashMap;
 use std::fmt;
 use std::ops::Range;
 use std::str::FromStr;
 
+use crate::unicode;
+
 #[derive(Copy, Clone, Debug)]
 pub enum Romanization {
     Jyutping,
-    YaleNumbers,
-    YaleDiacritics,
-    CantonesePinyin,
-    Guangdong,
-    SidneyLau,
-    Ipa,
+    Yale,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -92,6 +86,14 @@ impl JyutPing {
                 .map(|i| i.to_string())
                 .unwrap_or("".to_string())
     }
+
+    pub fn to_yale_no_diacritics(&self) -> String {
+        self.initial
+            .as_ref()
+            .map(|i| i.to_yale_no_diacritics())
+            .unwrap_or("".to_string())
+            + &to_yale_rime_no_diacritics(self.nucleus, self.coda, self.tone)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -125,6 +127,24 @@ impl LaxJyutPing {
             }
         }
         Some(jyutpings)
+    }
+
+    pub fn is_standard_jyutping(&self) -> bool {
+        self.0.iter().all(|seg| match seg {
+            LaxJyutPingSegment::Standard(_) => true,
+            LaxJyutPingSegment::Nonstandard(_) => false,
+        })
+    }
+
+    pub fn to_yale_no_diacritics(&self) -> String {
+        self.0
+            .iter()
+            .map(|seg| match seg {
+                LaxJyutPingSegment::Standard(jyutping) => jyutping.to_yale_no_diacritics(),
+                LaxJyutPingSegment::Nonstandard(s) => s.to_string(),
+            })
+            .collect::<Vec<String>>()
+            .join(" ")
     }
 }
 
@@ -163,7 +183,9 @@ impl LaxJyutPingSegment {
 ///
 /// Eg: 's' in "sap6"
 ///
-#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    strum::EnumString, strum::Display, Debug, Clone, Copy, PartialEq, Serialize, Deserialize,
+)]
 #[strum(ascii_case_insensitive)]
 #[strum(serialize_all = "lowercase")]
 pub enum JyutPingInitial {
@@ -188,11 +210,24 @@ pub enum JyutPingInitial {
     J,
 }
 
+impl JyutPingInitial {
+    pub fn to_yale_no_diacritics(&self) -> String {
+        match self {
+            Self::Z => "j".to_string(),
+            Self::C => "ch".to_string(),
+            Self::J => "y".to_string(),
+            _ => self.to_string(),
+        }
+    }
+}
+
 /// Nucleus segment of a Jyutping, not required in case of /ng/ and /m/
 ///
 /// Eg: 'a' in "sap6"
 ///
-#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    strum::EnumString, strum::Display, Debug, Clone, Copy, PartialEq, Serialize, Deserialize,
+)]
 #[strum(ascii_case_insensitive)]
 #[strum(serialize_all = "lowercase")]
 pub enum JyutPingNucleus {
@@ -207,11 +242,65 @@ pub enum JyutPingNucleus {
     Eo,
 }
 
+pub fn to_yale_rime_no_diacritics(
+    nucleus: Option<JyutPingNucleus>,
+    coda: Option<JyutPingCoda>,
+    tone: Option<JyutPingTone>,
+) -> String {
+    fn is_lower_tone(tone: &JyutPingTone) -> bool {
+        match tone {
+            JyutPingTone::T4 => true,
+            JyutPingTone::T5 => true,
+            JyutPingTone::T6 => true,
+            _ => false,
+        }
+    }
+    let tone_mark = if let Some(tone) = tone {
+        if is_lower_tone(&tone) {
+            "h"
+        } else {
+            ""
+        }
+    } else {
+        ""
+    };
+
+    match (nucleus.as_ref(), coda.as_ref()) {
+        (Some(JyutPingNucleus::Aa), None) => "a".to_string() + tone_mark,
+        (Some(JyutPingNucleus::Oe | JyutPingNucleus::Eo), coda) => match coda {
+            Some(JyutPingCoda::I | JyutPingCoda::U) => {
+                "eu".to_string()
+                    + &coda.map(|c| c.to_string()).unwrap_or("".to_string())
+                    + tone_mark
+            }
+            _ => {
+                "eu".to_string()
+                    + tone_mark
+                    + &coda.map(|c| c.to_string()).unwrap_or("".to_string())
+            }
+        },
+        _ => match coda {
+            Some(JyutPingCoda::I | JyutPingCoda::U) => {
+                nucleus.map(|c| c.to_string()).unwrap_or("".to_string())
+                    + &coda.map(|c| c.to_string()).unwrap_or("".to_string())
+                    + tone_mark
+            }
+            _ => {
+                nucleus.map(|c| c.to_string()).unwrap_or("".to_string())
+                    + tone_mark
+                    + &coda.map(|c| c.to_string()).unwrap_or("".to_string())
+            }
+        },
+    }
+}
+
 /// Coda segment of a Jyutping, optional
 ///
 /// Eg: 'p' in "sap6"
 ///
-#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    strum::EnumString, strum::Display, Debug, Clone, Copy, PartialEq, Serialize, Deserialize,
+)]
 #[strum(ascii_case_insensitive)]
 #[strum(serialize_all = "lowercase")]
 pub enum JyutPingCoda {
@@ -230,7 +319,9 @@ pub enum JyutPingCoda {
 ///
 /// Eg: '6' in "sap6"
 ///
-#[derive(strum::EnumString, strum::Display, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    strum::EnumString, strum::Display, Debug, Clone, Copy, PartialEq, Serialize, Deserialize,
+)]
 pub enum JyutPingTone {
     #[strum(serialize = "1")]
     T1,
@@ -271,150 +362,6 @@ pub fn parse_jyutpings(str: &str) -> Option<JyutPings> {
         }
     }
     Some(jyutpings)
-}
-
-pub fn parse_continuous_prs(str: &str, romanization: Romanization) -> Option<Vec<JyutPings>> {
-    if let Some(last_char) = str.chars().next_back() {
-        if last_char.is_ascii_digit() {
-            let jyutping = lookup_romanization_with_tone(str, romanization);
-
-            match jyutping {
-                Some(jyutping) => {
-                    return Some(vec![vec![jyutping]]);
-                }
-                None => {
-                    return None;
-                }
-            }
-        }
-    }
-    let results = parse_continuous_prs_helper(str, romanization);
-    if results.is_empty() {
-        None
-    } else {
-        Some(results)
-    }
-}
-
-fn parse_continuous_prs_helper(str: &str, romanization: Romanization) -> Vec<JyutPings> {
-    use Romanization::*;
-
-    let standard_check = match romanization {
-        Jyutping => is_standard_jyutping_optional_tone,
-        YaleNumbers => is_standard_yale_with_numbers_optional_tone,
-        CantonesePinyin => is_standard_cantonese_pinyin_optional_tone,
-        SidneyLau => is_standard_sidney_lau_optional_tone,
-        _ => panic!(
-            "Unsupported romanization {:?} in parse_continuous_prs_helper()",
-            romanization
-        ),
-    };
-    let mut jyutpings = vec![];
-    let mut i = 1;
-    while i <= str.len() {
-        let head_word = &str[0..i];
-        if standard_check(head_word) {
-            if let Some(head_jyutping) = convert_to_jyutping(head_word, romanization) {
-                if i == str.len() {
-                    jyutpings.push(vec![head_jyutping]);
-                } else {
-                    let sub_jyutpings = parse_continuous_prs_helper(&str[i..], romanization);
-                    for sub_jyutping in sub_jyutpings {
-                        let mut sub_jyutping: JyutPings = sub_jyutping.clone();
-                        sub_jyutping.insert(0, head_jyutping.clone());
-                        jyutpings.push(sub_jyutping);
-                    }
-                }
-            }
-        }
-        i += 1;
-    }
-    jyutpings
-}
-
-fn lookup_romanization_with_tone(s: &str, romanization: Romanization) -> Option<JyutPing> {
-    use Romanization::*;
-
-    let jyutping_index = match romanization {
-        YaleNumbers => ROMANIZATION_MAPS.yale_numbers_to_jyutping.get(s),
-        CantonesePinyin => ROMANIZATION_MAPS.cantonese_pinyin_to_jyutping.get(s),
-        SidneyLau => ROMANIZATION_MAPS.sidney_lau_to_jyutping.get(s),
-        Jyutping => {
-            return parse_jyutping(s);
-        }
-        _ => panic!(
-            "Unsupported romanization {:?} in convert_to_jyutping()",
-            romanization
-        ),
-    };
-
-    match jyutping_index {
-        Some(jyutping_index) => {
-            let jyutping = ROMANIZATION_MAPS.jyutpings[*jyutping_index].clone();
-            Some(jyutping)
-        }
-        None => None,
-    }
-}
-
-pub fn convert_to_jyutping(s: &str, romanization: Romanization) -> Option<JyutPing> {
-    let jyutping = lookup_romanization_with_tone(s, romanization);
-
-    match jyutping {
-        Some(_) => jyutping,
-        None => {
-            use Romanization::*;
-            let jyutping_index = match romanization {
-				YaleNumbers => ROMANIZATION_MAPS.yale_numbers_without_tone_to_jyutping.get(s),
-				CantonesePinyin => ROMANIZATION_MAPS.cantonese_pinyin_without_tone_to_jyutping.get(s),
-				SidneyLau => ROMANIZATION_MAPS.sidney_lau_without_tone_to_jyutping.get(s),
-				Jyutping => panic!("Should never reach this line. Jyutping without tone should be handled in parse_jyutping() already"),
-				_ => panic!("Unsupported romanization {:?} in convert_to_jyutping()", romanization)
-			};
-            match jyutping_index {
-                Some(jyutping_index) => {
-                    let mut jyutping = ROMANIZATION_MAPS.jyutpings[*jyutping_index].clone();
-                    jyutping.tone = None;
-                    Some(jyutping)
-                }
-                None => None,
-            }
-        }
-    }
-}
-
-pub fn convert_to_jyutpings(s: &str, romanization: Romanization) -> Option<Vec<JyutPings>> {
-    let jyutping_segments_re = Regex::new(r"^\s*([a-z]+[0-9]?\s*)+$").unwrap();
-    if !jyutping_segments_re.is_match(s) {
-        return None;
-    }
-    let jyutping_segment_re = Regex::new(r"[a-z]+[0-9]?").unwrap();
-    let mut jyutping_possibilities: Vec<JyutPings> = vec![];
-    for seg in jyutping_segment_re.find_iter(s) {
-        match parse_continuous_prs(seg.as_str(), romanization) {
-            Some(jyutpings) => {
-                if jyutping_possibilities.is_empty() {
-                    jyutping_possibilities = jyutpings;
-                } else {
-                    jyutping_possibilities = jyutping_possibilities
-                        .iter()
-                        .flat_map(|possibility| {
-                            jyutpings.iter().map(move |jyutping| {
-                                let mut result = possibility.clone();
-                                result.extend(jyutping.clone());
-                                result
-                            })
-                        })
-                        .collect();
-                }
-                continue;
-            }
-            None => {
-                return None;
-            }
-        }
-    }
-    Some(jyutping_possibilities)
 }
 
 /// Parse [JyutPing] pronunciation
@@ -503,126 +450,25 @@ fn get_slice(s: &str, range: Range<usize>) -> Option<&str> {
 
 lazy_static! {
     static ref JYUTPING_WITHOUT_TONE_REGEX: &'static str = r"^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|z|c|s|j)?(i|ip|it|ik|im|in|ing|iu|yu|yut|yun|u|ut|uk|um|un|ung|ui|e|ep|et|ek|em|en|eng|ei|eu|eot|eon|eoi|oe|oet|oek|oeng|o|ot|ok|on|ong|oi|ou|op|om|a|ap|at|ak|am|an|ang|ai|au|aa|aap|aat|aak|aam|aan|aang|aai|aau|m|ng)";
-    static ref YALE_WITHOUT_TONE_REGEX: &'static str = r"^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|j|ch|s|y)?(i|ip|it|ik|im|in|ing|iu|yu|yut|yun|u|ut|uk|um|un|ung|ui|e|ep|et|ek|em|en|eng|ei|eeu|eui|eu|eut|euk|eun|eung|o|ot|ok|on|ong|oi|ou|op|om|a|ap|at|ak|am|an|ang|ai|au|a|aap|aat|aak|aam|aan|aang|aai|aau|m|ng)";
-    static ref CANTONESE_PINYIN_WITHOUT_TONE_REGEX: &'static str = r"^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|dz|ts|s|j)?(i|ip|it|ik|im|in|ing|iu|y|yt|yn|u|ut|uk|um|un|ung|ui|e|ep|et|ek|em|en|eng|ei|eu|eot|eon|eoy|oe|oet|oek|oeng|o|ot|ok|on|ong|oi|ou|op|om|a|ap|at|ak|am|an|ang|ai|au|aa|aap|aat|aak|aam|aan|aang|aai|aau|m|ng)";
-    static ref SIDNEY_LAU_WITHOUT_TONE_REGEX: &'static str = r"^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|j|ch|s|y)?(i|ip|it|ik|im|in|ing|iu|ue|uet|uen|oo|oot|uk|um|oon|ung|ooi|e|ep|et|ek|em|en|eng|ei|euh|ui|eu|ut|euk|un|eung|o|ot|ok|on|ong|oh|oi|ou|op|om|a|ap|at|ak|am|an|ang|ai|au|a|aap|aat|aak|aam|aan|aang|aai|aau|m|ng)";
+    static ref JYUTPING_WITH_TONE_REGEX: Regex =
+        Regex::new(&(JYUTPING_WITHOUT_TONE_REGEX.to_owned() + r"[1-6]$")).unwrap();
 }
 
 // Source: lib/cantonese.py:is_valid_jyutping_form
 fn is_standard_jyutping(s: &str) -> bool {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(&(JYUTPING_WITHOUT_TONE_REGEX.to_owned() + r"[1-6]$")).unwrap();
-    }
-    RE.is_match(s)
-}
-
-fn is_standard_jyutping_optional_tone(s: &str) -> bool {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(&(JYUTPING_WITHOUT_TONE_REGEX.to_owned() + r"[1-6]?$")).unwrap();
-    }
-    RE.is_match(s)
-}
-
-// source: https://jyutping.org/blog/table/
-fn is_standard_yale_with_numbers(s: &str) -> bool {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(&(YALE_WITHOUT_TONE_REGEX.to_owned() + r"[1-6]$")).unwrap();
-    }
-    RE.is_match(s)
-}
-
-fn is_standard_yale_with_numbers_optional_tone(s: &str) -> bool {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(&(YALE_WITHOUT_TONE_REGEX.to_owned() + r"[1-6]?$")).unwrap();
-    }
-    RE.is_match(s)
-}
-
-// source: https://jyutping.org/blog/table/
-// We are ignoring diacritics here
-// fn is_standard_yale_with_diacritics(s: &str) -> bool {
-// 	lazy_static! {
-// 		static ref RE: Regex = Regex::new(r"^(b|p|m|f|d|t|n|l|g|k|ng|h|gw|kw|w|j|ch|s|y)?(i|ih|ip|ihp|it|iht|ik|ihk|im|ihm|in|ihn|ing|ihng|iu|iuhng|yu|yuh|yut|yuht|yun|yuhn|u|uh|ut|uht|uk|uhk|um|uhm|un|uhn|ung|uhng|ui|uih|e|eh|ep|ehp|et|eht|ek|ehk|em|ehm|en|ehn|eng|ehng|ei|eih|eeu|eeuh|eui|euih|eu|euh|eut|euht|euk|euhk|eun|euhn|eung|euhng|o|oh|ot|oht|ok|ohk|on|ohn|ong|ohng|oi|oih|ou|ouh|op|ohp|om|ohm|a|ah|ap|ahp|at|aht|ak|ahk|am|ahm|an|ahn|ang|ahng|ai|aih|au|auh|aap|aahp|aat|aaht|aak|aahk|aam|aahm|aan|aahn|aang|aahng|aai|aaih|aau|aauh|m|mh|ng|ngh)$").unwrap();
-// 	}
-
-// 	RE.is_match(&remove_diacritics(&unicode::normalize(&s), find_yale_diacritics))
-// }
-
-// fn remove_diacritics(s: &str, find_diacritics: fn(char) -> char) -> String {
-// 	let chars = s.chars();
-//     chars.fold("".to_string(), |acc, c| acc + &find_diacritics(c).to_string())
-// }
-
-// fn find_yale_diacritics(c: char) -> char {
-// 	match c {
-// 		'ā'|'á'|'à' => 'a',
-// 		'ē'|'é'|'è' => 'e',
-// 		'ī'|'í'|'ì' => 'i',
-// 		'ō'|'ó'|'ò' => 'o',
-// 		'ū'|'ú'|'ù' => 'u',
-// 		_ => c
-// 	}
-// }
-
-// Source: https://jyutping.org/blog/table/
-fn is_standard_cantonese_pinyin(s: &str) -> bool {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(&(CANTONESE_PINYIN_WITHOUT_TONE_REGEX.to_owned() + r"[1-9]$")).unwrap();
-    }
-    RE.is_match(s)
-}
-
-fn is_standard_cantonese_pinyin_optional_tone(s: &str) -> bool {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(&(CANTONESE_PINYIN_WITHOUT_TONE_REGEX.to_owned() + r"[1-9]?$")).unwrap();
-    }
-    RE.is_match(s)
-}
-
-// Source: https://jyutping.org/blog/table/
-fn is_standard_sidney_lau(s: &str) -> bool {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(&(SIDNEY_LAU_WITHOUT_TONE_REGEX.to_owned() + r"[1-6]$")).unwrap();
-    }
-    RE.is_match(s)
-}
-
-fn is_standard_sidney_lau_optional_tone(s: &str) -> bool {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(&(SIDNEY_LAU_WITHOUT_TONE_REGEX.to_owned() + r"[1-6]?$")).unwrap();
-    }
-    RE.is_match(s)
+    JYUTPING_WITH_TONE_REGEX.is_match(s)
 }
 
 // Source: zidin/definition.py:looks_like_jyutping
-pub fn looks_like_pr(s: &str, romanization: Romanization) -> bool {
-    use Romanization::*;
+pub fn looks_like_jyutping(s: &str) -> bool {
     let s_lower = s.to_ascii_lowercase();
     let segs = s_lower.split_whitespace();
-    let standard_check = match romanization {
-        Jyutping => is_standard_jyutping,
-        YaleNumbers => is_standard_yale_with_numbers,
-        CantonesePinyin => is_standard_cantonese_pinyin,
-        SidneyLau => is_standard_sidney_lau,
-        _ => panic!(
-            "Unsupported romanization {:?} in looks_like_pr()",
-            romanization
-        ),
-    };
     let similarity_score: u32 = segs
         .clone()
         .map(|seg| {
             let mut cleaned_seg = seg.to_string();
             cleaned_seg.retain(|c| !unicode::is_english_punc(c));
-            if standard_check(&cleaned_seg) {
+            if is_standard_jyutping(&cleaned_seg) {
                 1
             } else {
                 0
@@ -630,44 +476,4 @@ pub fn looks_like_pr(s: &str, romanization: Romanization) -> bool {
         })
         .sum();
     (similarity_score as f64 / segs.count() as f64) > 0.7
-}
-
-#[derive(Default)]
-struct RomanizationMaps {
-    pub yale_numbers_to_jyutping: RomanizationMap,
-    pub yale_numbers_without_tone_to_jyutping: RomanizationMap,
-    pub cantonese_pinyin_to_jyutping: RomanizationMap,
-    pub cantonese_pinyin_without_tone_to_jyutping: RomanizationMap,
-    pub sidney_lau_to_jyutping: RomanizationMap,
-    pub sidney_lau_without_tone_to_jyutping: RomanizationMap,
-
-    pub jyutpings: Vec<JyutPing>,
-}
-
-type RomanizationMap = HashMap<String, usize>;
-
-lazy_static! {
-    static ref ROMANIZATION_MAPS: RomanizationMaps = {
-        let tsv = include_str!("cantonese_romanizations.tsv");
-        let mut rdr = csv::ReaderBuilder::new()
-            .delimiter(b'\t')
-            .from_reader(tsv.as_bytes());
-        let mut maps: RomanizationMaps = RomanizationMaps::default();
-        for (i, result) in rdr.records().enumerate() {
-            let entry = result.unwrap();
-            maps.jyutpings.push(parse_jyutping(&entry[0]).unwrap());
-            maps.yale_numbers_to_jyutping
-                .insert(entry[1].to_string(), i);
-            maps.yale_numbers_without_tone_to_jyutping
-                .insert(unicode::remove_last_char(&entry[1]), i);
-            maps.cantonese_pinyin_to_jyutping
-                .insert(entry[2].to_string(), i);
-            maps.cantonese_pinyin_without_tone_to_jyutping
-                .insert(unicode::remove_last_char(&entry[2]), i);
-            maps.sidney_lau_to_jyutping.insert(entry[3].to_string(), i);
-            maps.sidney_lau_without_tone_to_jyutping
-                .insert(unicode::remove_last_char(&entry[3]), i);
-        }
-        maps
-    };
 }

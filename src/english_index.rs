@@ -2,6 +2,7 @@ use super::dict::clause_to_string;
 use super::rich_dict::{RichDict, RichEntry};
 use super::unicode;
 use itertools::Itertools;
+use kdam::tqdm;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
@@ -49,7 +50,7 @@ type Counter = HashMap<String, u32>;
 
 pub fn generate_english_index(dict: &RichDict) -> EnglishIndex {
     let mut counter: Counter = HashMap::new();
-    dict.iter().for_each(|(_, entry)| {
+    for (_, entry) in tqdm!(dict.iter(), desc = "Building English index") {
         let mut repeated_terms = HashSet::new();
         // for _, terms in indexer.tokenize_word(word):
         tokenize_entry(entry).iter().for_each(|terms_of_defs| {
@@ -64,7 +65,7 @@ pub fn generate_english_index(dict: &RichDict) -> EnglishIndex {
                 });
             });
         });
-    });
+    }
 
     let mut index = HashMap::new();
 

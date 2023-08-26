@@ -1,18 +1,17 @@
+use crate::pr_index::{PrIndex, PrIndices, PrLocation};
+
 use super::charlist::CHARLIST;
 use super::dict::{Variant, Variants};
 use super::english_index::{EnglishIndex, EnglishIndexData};
 use super::iconic_simps::ICONIC_SIMPS;
 use super::iconic_trads::ICONIC_TRADS;
-use super::jyutping::{
-    convert_to_jyutpings, looks_like_pr, JyutPing, JyutPingCoda, JyutPingInitial, JyutPingNucleus,
-    JyutPings, LaxJyutPings, Romanization,
-};
+use super::jyutping::{LaxJyutPings, Romanization};
 use super::rich_dict::{RichDict, RichEntry};
 use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
 use std::cmp::Ordering;
-use std::collections::BinaryHeap;
 use std::collections::HashMap;
+use std::collections::{BinaryHeap, HashSet};
 use strsim::{generic_levenshtein, normalized_levenshtein};
 use thesaurus;
 use unicode_segmentation::UnicodeSegmentation;
@@ -69,182 +68,8 @@ pub fn create_combo_variants(
         .collect()
 }
 
-/// Manners of articulation of initials
-///
-/// source: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
-/// (page 9)
-#[derive(Debug, PartialEq)]
-enum InitialCategories {
-    Plosive,
-    Nasal,
-    Fricative,
-    Affricate,
-    TongueRolled,
-    SemiVowel,
-}
-
-/// Classify initials based on their manner of articulation
-///
-/// source: https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf
-/// (page 7)
-fn classify_initial(initial: &JyutPingInitial) -> InitialCategories {
-    use InitialCategories::*;
-    use JyutPingInitial::*;
-    match initial {
-        B | P | D | T | G | K | Gw | Kw => Plosive,
-        M | N | Ng => Nasal,
-        S | F | H => Fricative,
-        C | Z => Affricate,
-        L => TongueRolled,
-        W | J => SemiVowel,
-    }
-}
-
-/// Categories of nucleus
-type NucleusCategories = (VowelBackness, VowelHeight, VowelRoundedness);
-
-#[derive(Debug, PartialEq)]
-enum VowelBackness {
-    Front,
-    Central,
-    Back,
-}
-
-#[derive(Debug, PartialEq)]
-enum VowelHeight {
-    Close,
-    Mid,
-    Open,
-}
-
-#[derive(Debug, PartialEq)]
-enum VowelRoundedness {
-    Rounded,
-    Unrounded,
-}
-
-/// Classify nucleus based on their backness, height, and roundedness
-///
-/// source: <https://www.wikiwand.com/en/Cantonese_phonology#/Vowels_and_terminals>
-fn classify_nucleus(nucleus: &JyutPingNucleus) -> NucleusCategories {
-    use JyutPingNucleus::*;
-    use VowelBackness::*;
-    use VowelHeight::*;
-    use VowelRoundedness::*;
-    match nucleus {
-        I => (Front, Close, Unrounded),
-        Yu => (Front, Close, Rounded),
-        E => (Front, Mid, Unrounded),
-        Oe | Eo => (Front, Mid, Rounded),
-        A | Aa => (Central, Open, Unrounded),
-        U => (Back, Close, Rounded),
-        O => (Back, Mid, Rounded),
-    }
-}
-
-/// Categories of coda
-#[derive(Debug, PartialEq)]
-enum CodaCategories {
-    Stop,
-    Nasal,
-    VowelI,
-    VowelU,
-}
-
-/// Classify coda based on whether they are stops, nasals, or vowels
-fn classify_coda(coda: &JyutPingCoda) -> CodaCategories {
-    use CodaCategories::*;
-    use JyutPingCoda::*;
-    match coda {
-        P | T | K => Stop,
-        M | N | Ng => Nasal,
-        I => VowelI,
-        U => VowelU,
-    }
-}
-
-/// Weighted jyutping comparison
-///
-/// Highest score when identical: 100
-///
-/// Score is split into four parts:
-/// * Initial: 40
-/// * Nucleus: 32
-/// * Coda: 24
-/// * Tone: 4
-///
-pub fn compare_jyutping(pr1: &JyutPing, pr2: &JyutPing) -> Score {
-    if pr1 == pr2 {
-        100
-    } else {
-        (if pr1.initial == pr2.initial {
-            40
-        } else if let (Some(i1), Some(i2)) = (pr1.initial.as_ref(), pr2.initial.as_ref()) {
-            if classify_initial(i1) == classify_initial(i2) {
-                24
-            } else {
-                0
-            }
-        } else {
-            0
-        }) + (if pr1.nucleus == pr2.nucleus {
-            32
-        } else if let (Some(n1), Some(n2)) = (pr1.nucleus.as_ref(), pr2.nucleus.as_ref()) {
-            let ((backness1, height1, roundedness1), (backness2, height2, roundedness2)) =
-                (classify_nucleus(n1), classify_nucleus(n2));
-            if backness1 == backness2 && height1 == height2 && roundedness1 == roundedness2 {
-                32 - 4
-            } else {
-                32 - 3
-                    - (if backness1 == backness2 { 0 } else { 4 })
-                    - (if height1 == height2 { 0 } else { 4 })
-                    - (if roundedness1 == roundedness2 { 0 } else { 3 })
-            }
-        } else {
-            0
-        }) + (if pr1.coda == pr2.coda {
-            24
-        } else if let (Some(i1), Some(i2)) = (pr1.coda.as_ref(), pr2.coda.as_ref()) {
-            if classify_coda(i1) == classify_coda(i2) {
-                18
-            } else {
-                0
-            }
-        } else {
-            0
-        }) + (if pr1.tone == pr2.tone { 4 } else { 0 })
-    }
-}
-
 fn normalize_score(s: f64) -> Score {
     (s * MAX_SCORE as f64).round() as usize
-}
-
-fn compare_jyutpings(pr1: &JyutPings, pr2: &JyutPings) -> Score {
-    if pr1.len() != pr2.len() {
-        0
-    } else {
-        let score: Score = pr1
-            .iter()
-            .zip(pr2)
-            .map(|(pr1, pr2)| compare_jyutping(pr1, pr2))
-            .sum();
-        score / pr1.len()
-    }
-}
-
-pub fn score_pr_query(entry_pr: &JyutPings, query: &JyutPings) -> (Score, Index) {
-    entry_pr
-        .windows(query.len())
-        .enumerate()
-        .fold((0, 0), |(max_score, max_index), (i, _seg)| {
-            let score = compare_jyutpings(entry_pr, query);
-            if score > max_score {
-                (score, i)
-            } else {
-                (max_score, max_index)
-            }
-        })
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -253,14 +78,11 @@ pub struct PrSearchRank {
     pub variant_index: Index,
     pub pr_index: Index,
     pub score: Score,
-    pub pr_start_index: Index,
 }
 
 impl Ord for PrSearchRank {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.score
-            .cmp(&other.score)
-            .then_with(|| other.pr_start_index.cmp(&self.pr_start_index))
+        self.score.cmp(&other.score)
     }
 }
 
@@ -359,48 +181,89 @@ fn get_entry_frequency(entry_id: usize) -> u8 {
     *WORD_FREQUENCIES.get(&(entry_id as u32)).unwrap_or(&50)
 }
 
+fn get_deletions(deletions: usize, s: &str) -> HashSet<String> {
+    assert!(deletions < s.len());
+    if deletions == 0 {
+        return HashSet::from_iter([s.to_string()]);
+    } else {
+        let mut results = HashSet::new();
+        for (i, _) in s.char_indices() {
+            let mut s = s.to_string();
+            s.remove(i);
+            results.extend(get_deletions(deletions - 1, &s));
+        }
+        results
+    }
+}
+
 pub fn pr_search(
-    variants_map: &VariantsMap,
+    pr_indices: &PrIndices,
     query: &str,
     romanization: Romanization,
 ) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
-    let jyutpings = convert_to_jyutpings(&unicode::normalize(query), romanization);
-    if let Some(queries) = jyutpings {
-        queries.iter().for_each(|query| {
-            variants_map.iter().for_each(|(id, variants)| {
-                variants
-                    .iter()
-                    .enumerate()
-                    .for_each(|(variant_index, variant)| {
-                        let (score, pr_start_index, pr_index) =
-                            variant.prs.0.iter().enumerate().fold(
-                                (0, 0, 0),
-                                |(max_score, max_pr_start_index, max_pr_index), (pr_index, pr)| {
-                                    match pr.to_jyutpings() {
-                                        Some(pr) => {
-                                            let (score, pr_start_index) =
-                                                score_pr_query(&pr, query);
-                                            if score > max_score {
-                                                (score, pr_start_index, pr_index)
-                                            } else {
-                                                (max_score, max_pr_start_index, max_pr_index)
-                                            }
-                                        }
-                                        None => (max_score, max_pr_start_index, max_pr_index),
-                                    }
-                                },
-                            );
-                        ranks.push(PrSearchRank {
-                            id: *id,
-                            variant_index,
-                            pr_index,
-                            score,
-                            pr_start_index,
-                        });
+    let query = unicode::normalize(query);
+    fn lookup_index(
+        query: &str,
+        deletions: usize,
+        index: &PrIndex,
+        ranks: &mut BinaryHeap<PrSearchRank>,
+    ) {
+        for query_variant in get_deletions(deletions, &query) {
+            if let Some(locations) = index.get(&query_variant) {
+                for PrLocation {
+                    entry_id,
+                    variant_index,
+                    pr_index,
+                } in locations
+                {
+                    ranks.push(PrSearchRank {
+                        id: *entry_id,
+                        variant_index: *variant_index,
+                        pr_index: *pr_index,
+                        score: MAX_SCORE - deletions,
                     });
-            });
-        });
+                }
+            }
+        }
+    }
+    match romanization {
+        Romanization::Jyutping => {
+            if query.contains(&['1', '2', '3', '4', '5', '6']) && query.contains(" ") {
+                for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
+                    lookup_index(&query, deletions, index, &mut ranks);
+                }
+            } else if query.contains(&['1', '2', '3', '4', '5', '6']) {
+                for (deletions, index) in pr_indices.tone.iter().enumerate() {
+                    lookup_index(&query, deletions, index, &mut ranks);
+                }
+            } else if query.contains(' ') {
+                for (deletions, index) in pr_indices.space.iter().enumerate() {
+                    lookup_index(&query, deletions, index, &mut ranks);
+                }
+            } else {
+                for (deletions, index) in pr_indices.none.iter().enumerate() {
+                    lookup_index(&query, deletions, index, &mut ranks);
+                }
+            }
+        }
+        Romanization::Yale => {
+            if query.contains(' ') {
+                for (deletions, index) in pr_indices.space.iter().enumerate() {
+                    lookup_index(&query, deletions, index, &mut ranks);
+                }
+                for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
+                    lookup_index(&query, deletions, index, &mut ranks);
+                }
+            } else {
+                for (deletions, index) in pr_indices.none.iter().enumerate() {
+                    lookup_index(&query, deletions, index, &mut ranks);
+                }
+                for (deletions, index) in pr_indices.tone.iter().enumerate() {
+                    lookup_index(&query, deletions, index, &mut ranks);
+                }
+            }
+        }
     }
     ranks
 }
@@ -526,28 +389,20 @@ pub enum CombinedSearchRank {
 // Auto recognize the type of the query
 pub fn combined_search(
     variants_map: &VariantsMap,
+    pr_indices: &PrIndices,
     english_index: &EnglishIndex,
     query: &str,
     script: Script,
     romanization: Romanization,
 ) -> CombinedSearchRank {
-    let mut variants_ranks = BinaryHeap::new();
-
     // if the query has CJK characters, it can only be a variant
     if query.chars().any(unicode::is_cjk) {
         return CombinedSearchRank::Variant(variant_search(variants_map, query, script));
     }
 
-    // if the query looks like standard jyutping (with tones), it can only be a pr
-    if looks_like_pr(query, romanization) {
-        return CombinedSearchRank::Pr(pr_search(variants_map, query, romanization));
-    }
-
     // otherwise if the query doesn't have a very strong feature,
     // it can be a variant, a jyutping or an english phrase
-    let mut pr_ranks = BinaryHeap::new();
     let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
-    let jyutpings = convert_to_jyutpings(query_normalized, romanization);
     let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
         // query contains iconic simplified characters
         Script::Simplified
@@ -556,59 +411,8 @@ pub fn combined_search(
     } else {
         script
     };
-    variants_map.iter().for_each(|(id, variants)| {
-        variants
-            .iter()
-            .enumerate()
-            .for_each(|(variant_index, variant)| {
-                let (occurrence_index, levenshtein_score) =
-                    score_variant_query(variant, query_normalized, query_script);
-                if occurrence_index < usize::MAX || levenshtein_score >= 80 {
-                    variants_ranks.push(VariantSearchRank {
-                        id: *id,
-                        variant_index,
-                        occurrence_index,
-                        levenshtein_score,
-                    });
-                }
-                match &jyutpings {
-                    Some(queries) => {
-                        queries.iter().for_each(|query| {
-                            let (score, pr_start_index, pr_index) =
-                                variant.prs.0.iter().enumerate().fold(
-                                    (0, 0, 0),
-                                    |(max_score, max_pr_start_index, max_pr_index),
-                                     (pr_index, pr)| {
-                                        match pr.to_jyutpings() {
-                                            Some(pr) => {
-                                                let (score, pr_start_index) =
-                                                    score_pr_query(&pr, query);
-                                                if score > max_score {
-                                                    (score, pr_start_index, pr_index)
-                                                } else {
-                                                    (max_score, max_pr_start_index, max_pr_index)
-                                                }
-                                            }
-                                            None => (max_score, max_pr_start_index, max_pr_index),
-                                        }
-                                    },
-                                );
-                            pr_ranks.push(PrSearchRank {
-                                id: *id,
-                                variant_index,
-                                pr_index,
-                                score,
-                                pr_start_index,
-                            });
-                        });
-                    }
-                    None => {
-                        // do nothing
-                    }
-                }
-            });
-    });
-
+    let variants_ranks = variant_search(variants_map, query, query_script);
+    let pr_ranks = pr_search(pr_indices, query, romanization);
     let english_results = english_search(english_index, query);
 
     CombinedSearchRank::All(variants_ranks, pr_ranks, english_results)
