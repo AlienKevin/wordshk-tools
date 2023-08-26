@@ -9,7 +9,7 @@ use std::{
 const MAX_DELETIONS: usize = 2;
 const MAX_CANDIDATES: usize = 10;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct PrIndices {
     pub tone_and_space: Vec<PrIndex>,
     pub tone: Vec<PrIndex>,
