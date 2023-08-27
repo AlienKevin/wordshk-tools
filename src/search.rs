@@ -223,13 +223,15 @@ pub fn pr_search(
                             .0[*pr_index as Index]
                             .to_string();
                         let distance = levenshtein(&query, &pr_variant_generator(pr.to_string()));
-                        ranks.push(PrSearchRank {
-                            id: *entry_id,
-                            variant_index: *variant_index as Index,
-                            pr_index: *pr_index as Index,
-                            pr,
-                            score: MAX_SCORE - distance,
-                        });
+                        if distance <= 3 {
+                            ranks.push(PrSearchRank {
+                                id: *entry_id,
+                                variant_index: *variant_index as Index,
+                                pr_index: *pr_index as Index,
+                                pr,
+                                score: MAX_SCORE - distance,
+                            });
+                        }
                     }
                 }
             }
