@@ -12,6 +12,7 @@ use super::word_frequencies::WORD_FREQUENCIES;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::{BinaryHeap, HashSet};
+use std::fmt::Binary;
 use strsim::{generic_levenshtein, normalized_levenshtein};
 use thesaurus;
 use unicode_segmentation::UnicodeSegmentation;
@@ -72,7 +73,7 @@ fn normalize_score(s: f64) -> Score {
     (s * MAX_SCORE as f64).round() as usize
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct PrSearchRank {
     pub id: usize,
     pub variant_index: Index,
@@ -182,21 +183,6 @@ fn get_entry_frequency(entry_id: usize) -> u8 {
     *WORD_FREQUENCIES.get(&(entry_id as u32)).unwrap_or(&50)
 }
 
-fn get_deletions(deletions: usize, s: &str) -> HashSet<String> {
-    assert!(deletions < s.len());
-    if deletions == 0 {
-        return HashSet::from_iter([s.to_string()]);
-    } else {
-        let mut results = HashSet::new();
-        for (i, _) in s.char_indices() {
-            let mut s = s.to_string();
-            s.remove(i);
-            results.extend(get_deletions(deletions - 1, &s));
-        }
-        results
-    }
-}
-
 pub fn pr_search(
     pr_indices: &PrIndices,
     dict: &RichDict,
@@ -212,8 +198,10 @@ pub fn pr_search(
         dict: &RichDict,
         ranks: &mut BinaryHeap<PrSearchRank>,
     ) {
-        if deletions < query.len() {
-            for query_variant in get_deletions(deletions, &query) {
+        if deletions < query.chars().count() {
+            for (query_variant, added_deletions) in
+                crate::pr_index::generate_deletion_neighborhood(&query, deletions)
+            {
                 if let Some(locations) = index.get(&query_variant) {
                     for PrLocation {
                         entry_id,
@@ -228,7 +216,7 @@ pub fn pr_search(
                             pr: dict.get(entry_id).unwrap().variants.0[*variant_index].prs.0
                                 [*pr_index]
                                 .to_string(),
-                            score: MAX_SCORE - deletions,
+                            score: MAX_SCORE - deletions - added_deletions,
                         });
                     }
                 }
@@ -273,7 +261,21 @@ pub fn pr_search(
             }
         }
     }
+
+    // deduplicate ranks
+    let mut seen_ids = HashSet::new();
     ranks
+        .into_sorted_vec()
+        .into_iter()
+        .rev()
+        .filter(|rank| {
+            if seen_ids.contains(&rank.id) {
+                false
+            } else {
+                seen_ids.insert(rank.id)
+            }
+        })
+        .collect()
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
