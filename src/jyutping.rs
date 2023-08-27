@@ -478,6 +478,10 @@ pub fn looks_like_jyutping(s: &str) -> bool {
     (similarity_score as f64 / segs.count() as f64) > 0.7
 }
 
+/// ```
+/// use wordshk_tools::jyutping::jyutping_to_yale;
+/// assert_eq!(jyutping_to_yale("hoi1 coi2".to_string()), "hoi choi".to_string());
+/// ```
 pub fn jyutping_to_yale(jyutping: String) -> String {
     jyutping
         .split(" ")
