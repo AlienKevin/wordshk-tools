@@ -113,6 +113,11 @@ impl JyutPing {
     /// assert_eq!(parse_jyutping("leot4").unwrap().to_yale_no_diacritics(), "leuht");
     /// assert_eq!(parse_jyutping("leot5").unwrap().to_yale_no_diacritics(), "leuht");
     /// assert_eq!(parse_jyutping("leot6").unwrap().to_yale_no_diacritics(), "leuht");
+    ///
+    /// assert_eq!(parse_jyutping("hoi1").unwrap().to_yale_no_diacritics(), "hoi");
+    /// assert_eq!(parse_jyutping("mui5").unwrap().to_yale_no_diacritics(), "muih");
+    /// assert_eq!(parse_jyutping("miu1").unwrap().to_yale_no_diacritics(), "miu");
+    /// assert_eq!(parse_jyutping("deu6").unwrap().to_yale_no_diacritics(), "deuh");
     /// ```
     pub fn to_yale_no_diacritics(&self) -> String {
         let result = self
@@ -150,6 +155,11 @@ impl JyutPing {
     /// assert_eq!(parse_jyutping("leot4").unwrap().to_yale(), "lèuht");
     /// assert_eq!(parse_jyutping("leot5").unwrap().to_yale(), "léuht");
     /// assert_eq!(parse_jyutping("leot6").unwrap().to_yale(), "leuht");
+    ///
+    /// assert_eq!(parse_jyutping("hoi1").unwrap().to_yale(), "hōi");
+    /// assert_eq!(parse_jyutping("mui5").unwrap().to_yale(), "múih");
+    /// assert_eq!(parse_jyutping("miu1").unwrap().to_yale(), "mīu");
+    /// assert_eq!(parse_jyutping("deu6").unwrap().to_yale(), "deuh");
     /// ```
     pub fn to_yale(&self) -> String {
         let result = self
@@ -371,66 +381,66 @@ fn to_yale_rime(
         }
     }
 
-    let add_diacritics = |rime: String| {
+    let add_diacritics = |nucleus: String| {
         if show_diacritics {
             match tone {
-                Some(JyutPingTone::T1) => ReplaceResult::NoChange(rime)
+                Some(JyutPingTone::T1) => ReplaceResult::NoChange(nucleus)
                     .replace_first('a', "ā")
                     .replace_first('e', "ē")
+                    .replace_first('o', "ō")
                     .replace_first('i', "ī")
                     .replace_first('u', "ū")
-                    .replace_first('o', "ō")
                     .unwrap(),
-                Some(JyutPingTone::T2 | JyutPingTone::T5) => ReplaceResult::NoChange(rime)
+                Some(JyutPingTone::T2 | JyutPingTone::T5) => ReplaceResult::NoChange(nucleus)
                     .replace_first('a', "á")
                     .replace_first('e', "é")
+                    .replace_first('o', "ó")
                     .replace_first('i', "í")
                     .replace_first('u', "ú")
-                    .replace_first('o', "ó")
                     .unwrap(),
-                Some(JyutPingTone::T4) => ReplaceResult::NoChange(rime)
+                Some(JyutPingTone::T4) => ReplaceResult::NoChange(nucleus)
                     .replace_first('a', "à")
                     .replace_first('e', "è")
+                    .replace_first('o', "ò")
                     .replace_first('i', "ì")
                     .replace_first('u', "ù")
-                    .replace_first('o', "ò")
                     .unwrap(),
-                _ => rime,
+                _ => nucleus,
             }
         } else {
-            rime
+            nucleus
         }
     };
 
     let result = match (nucleus.as_ref(), coda.as_ref()) {
-        (Some(JyutPingNucleus::Aa), None) => "a".to_string() + tone_mark,
+        (Some(JyutPingNucleus::Aa), None) => add_diacritics("a".to_string()) + tone_mark,
         (Some(JyutPingNucleus::Oe | JyutPingNucleus::Eo), coda) => match coda {
             Some(JyutPingCoda::I | JyutPingCoda::U) => {
-                "eu".to_string()
+                add_diacritics("eu".to_string())
                     + &coda.map(|c| c.to_string()).unwrap_or("".to_string())
                     + tone_mark
             }
             _ => {
-                "eu".to_string()
+                add_diacritics("eu".to_string())
                     + tone_mark
                     + &coda.map(|c| c.to_string()).unwrap_or("".to_string())
             }
         },
         _ => match coda {
             Some(JyutPingCoda::I | JyutPingCoda::U) => {
-                nucleus.map(|c| c.to_string()).unwrap_or("".to_string())
+                add_diacritics(nucleus.map(|c| c.to_string()).unwrap_or("".to_string()))
                     + &coda.map(|c| c.to_string()).unwrap_or("".to_string())
                     + tone_mark
             }
             _ => {
-                nucleus.map(|c| c.to_string()).unwrap_or("".to_string())
+                add_diacritics(nucleus.map(|c| c.to_string()).unwrap_or("".to_string()))
                     + tone_mark
                     + &coda.map(|c| c.to_string()).unwrap_or("".to_string())
             }
         },
     };
 
-    add_diacritics(result)
+    result
 }
 
 /// Coda segment of a Jyutping, optional
@@ -619,11 +629,13 @@ pub fn looks_like_jyutping(s: &str) -> bool {
 
 /// ```
 /// use wordshk_tools::jyutping::jyutping_to_yale;
-/// assert_eq!(jyutping_to_yale("hoi1 coi2".to_string()), "hoi choi".to_string());
+/// assert_eq!(jyutping_to_yale("hoi1 coi2".to_string()), "hōi chói".to_string());
+/// assert_eq!(jyutping_to_yale("m4 hou2 hai2 dou6".to_string()), "m̀ hóu hái douh".to_string());
+/// assert_eq!(jyutping_to_yale("tung4 joeng6".to_string()), "tùhng yeuhng".to_string());
 /// ```
 pub fn jyutping_to_yale(jyutping: String) -> String {
     jyutping
         .split(" ")
-        .map(|syllable| parse_jyutping(&syllable).unwrap().to_yale_no_diacritics())
+        .map(|syllable| parse_jyutping(&syllable).unwrap().to_yale())
         .join(" ")
 }
