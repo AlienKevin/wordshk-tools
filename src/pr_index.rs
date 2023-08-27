@@ -197,6 +197,10 @@ fn generate_pr_variants(
     }
 }
 
+lazy_static::lazy_static! {
+    pub static ref YALE_TONE_MARK_REGEX: Regex = Regex::new(r"([a-z])h").unwrap();
+}
+
 pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrIndices {
     let mut index = PrIndices::default();
     for (&entry_id, entry) in tqdm!(dict.iter(), desc = "Building pr index") {
@@ -215,22 +219,16 @@ pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrInd
                             &mut index,
                             |s| s.replace(&['1', '2', '3', '4', '5', '6'], ""),
                         ),
-                        Romanization::Yale => {
-                            lazy_static::lazy_static! {
-                                static ref TONE_MARK_REGEX: Regex = Regex::new(r"([a-z])h").unwrap();
-                            }
-
-                            generate_pr_variants(
-                                PrLocation {
-                                    entry_id: entry_id,
-                                    variant_index: variant_index.try_into().unwrap(),
-                                    pr_index: pr_index.try_into().unwrap(),
-                                },
-                                pr.to_yale_no_diacritics(),
-                                &mut index,
-                                |s| TONE_MARK_REGEX.replace_all(s, "$1").to_string(),
-                            )
-                        }
+                        Romanization::Yale => generate_pr_variants(
+                            PrLocation {
+                                entry_id: entry_id,
+                                variant_index: variant_index.try_into().unwrap(),
+                                pr_index: pr_index.try_into().unwrap(),
+                            },
+                            pr.to_yale_no_diacritics(),
+                            &mut index,
+                            |s| YALE_TONE_MARK_REGEX.replace_all(s, "$1").to_string(),
+                        ),
                     }
                 }
             }

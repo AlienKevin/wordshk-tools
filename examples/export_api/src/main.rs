@@ -156,4 +156,9 @@ fn test_yale_search() {
         "result: {:?}\n\n",
         pr_search(&pr_indices, &api.dict, "bok laam wui", Romanization::Yale,)
     );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "ming mei", Romanization::Yale,)
+    );
 }
