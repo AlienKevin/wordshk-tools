@@ -120,38 +120,40 @@ fn test_yale_search() {
     let pr_indices = rmp_serde::from_slice(&pr_indices_bytes[..])
         .expect("Failed to deserialize pr_indices from msgpack format");
 
-    // println!(
-    //     "result: {:?}\n\n",
-    //     pr_search(&pr_indices, &api.dict, "hou choi", Romanization::Yale,)
-    // );
-
-    // println!(
-    //     "result: {:?}\n\n",
-    //     pr_search(&pr_indices, &api.dict, "ho choi", Romanization::Yale,)
-    // );
-
-    // println!(
-    //     "result: {:?}\n\n",
-    //     pr_search(&pr_indices, &api.dict, "hou coi", Romanization::Yale,)
-    // );
-
-    // println!(
-    //     "result: {:?}\n\n",
-    //     pr_search(&pr_indices, &api.dict, "houchoi", Romanization::Yale,)
-    // );
-
-    // println!(
-    //     "result: {:?}\n\n",
-    //     pr_search(&pr_indices, &api.dict, "hochoi", Romanization::Yale,)
-    // );
-
-    // println!(
-    //     "result: {:?}\n\n",
-    //     pr_search(&pr_indices, &api.dict, "houcoi", Romanization::Yale,)
-    // );
+    println!("Loaded pr_indices and api");
 
     println!(
         "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "ou dei lei", Romanization::Yale,)
+        pr_search(&pr_indices, &api.dict, "hou choi", Romanization::Yale,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "ho choi", Romanization::Yale,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "hou coi", Romanization::Yale,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "houchoi", Romanization::Yale,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "hochoi", Romanization::Yale,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "houcoi", Romanization::Yale,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "bok laam wui", Romanization::Yale,)
     );
 }

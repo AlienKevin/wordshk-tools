@@ -1,5 +1,5 @@
 use crate::jyutping::parse_jyutpings;
-use crate::pr_index::{PrIndex, PrIndices, PrLocation};
+use crate::pr_index::{PrIndex, PrIndices, PrLocation, MAX_DELETIONS};
 
 use super::charlist::CHARLIST;
 use super::dict::{Variant, Variants};
@@ -206,11 +206,11 @@ pub fn pr_search(
         ranks: &mut BinaryHeap<PrSearchRank>,
         pr_variant_generator: fn(String) -> String,
     ) {
+        let max_deletions = (query.chars().count() - 1).min(MAX_DELETIONS);
         if deletions < query.chars().count() {
-            for (query_variant, _added_deletions) in crate::pr_index::generate_deletion_neighborhood(
-                &query,
-                query.chars().count() - 1.min(index.len()),
-            ) {
+            for (query_variant, _added_deletions) in
+                crate::pr_index::generate_deletion_neighborhood(&query, max_deletions)
+            {
                 if let Some(locations) = index.get(&xxh3_64(query_variant.as_bytes())) {
                     for PrLocation {
                         entry_id,

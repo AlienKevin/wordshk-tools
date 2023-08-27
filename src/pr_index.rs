@@ -8,7 +8,7 @@ use std::{
 };
 use xxhash_rust::xxh3::xxh3_64;
 
-const MAX_DELETIONS: usize = 1;
+pub const MAX_DELETIONS: usize = 1;
 const MAX_CANDIDATES: usize = 10;
 
 #[derive(Serialize, Deserialize, Default)]
