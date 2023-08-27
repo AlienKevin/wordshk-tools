@@ -477,3 +477,10 @@ pub fn looks_like_jyutping(s: &str) -> bool {
         .sum();
     (similarity_score as f64 / segs.count() as f64) > 0.7
 }
+
+pub fn jyutping_to_yale(jyutping: String) -> String {
+    jyutping
+        .split(" ")
+        .map(|syllable| parse_jyutping(&syllable).unwrap().to_yale_no_diacritics())
+        .join(" ")
+}

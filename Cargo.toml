@@ -2,7 +2,7 @@
 name = "wordshk_tools"
 description = "A combination of parsers and other tools for words.hk (粵典)"
 repository = "https://github.com/AlienKevin/wordshk-tools"
-version = "3.16.0-beta.2"
+version = "3.16.0-beta.3"
 authors = ["Kevin Li <kevinli020508@gmail.com>"]
 keywords = ["cantonese", "dictionary", "nlp"]
 edition = "2021"
