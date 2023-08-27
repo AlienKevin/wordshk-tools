@@ -72,17 +72,18 @@ fn normalize_score(s: f64) -> Score {
     (s * MAX_SCORE as f64).round() as usize
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct PrSearchRank {
     pub id: usize,
     pub variant_index: Index,
     pub pr_index: Index,
+    pub pr: String,
     pub score: Score,
 }
 
 impl Ord for PrSearchRank {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.score.cmp(&other.score)
+        self.score.cmp(&other.score).then(other.pr.cmp(&self.pr))
     }
 }
 
@@ -198,6 +199,7 @@ fn get_deletions(deletions: usize, s: &str) -> HashSet<String> {
 
 pub fn pr_search(
     pr_indices: &PrIndices,
+    dict: &RichDict,
     query: &str,
     romanization: Romanization,
 ) -> BinaryHeap<PrSearchRank> {
@@ -207,22 +209,28 @@ pub fn pr_search(
         query: &str,
         deletions: usize,
         index: &PrIndex,
+        dict: &RichDict,
         ranks: &mut BinaryHeap<PrSearchRank>,
     ) {
-        for query_variant in get_deletions(deletions, &query) {
-            if let Some(locations) = index.get(&query_variant) {
-                for PrLocation {
-                    entry_id,
-                    variant_index,
-                    pr_index,
-                } in locations
-                {
-                    ranks.push(PrSearchRank {
-                        id: *entry_id,
-                        variant_index: *variant_index,
-                        pr_index: *pr_index,
-                        score: MAX_SCORE - deletions,
-                    });
+        if deletions < query.len() {
+            for query_variant in get_deletions(deletions, &query) {
+                if let Some(locations) = index.get(&query_variant) {
+                    for PrLocation {
+                        entry_id,
+                        variant_index,
+                        pr_index,
+                    } in locations
+                    {
+                        ranks.push(PrSearchRank {
+                            id: *entry_id,
+                            variant_index: *variant_index,
+                            pr_index: *pr_index,
+                            pr: dict.get(entry_id).unwrap().variants.0[*variant_index].prs.0
+                                [*pr_index]
+                                .to_string(),
+                            score: MAX_SCORE - deletions,
+                        });
+                    }
                 }
             }
         }
@@ -231,36 +239,36 @@ pub fn pr_search(
         Romanization::Jyutping => {
             if query.contains(&['1', '2', '3', '4', '5', '6']) && query.contains(" ") {
                 for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks);
                 }
             } else if query.contains(&['1', '2', '3', '4', '5', '6']) {
                 for (deletions, index) in pr_indices.tone.iter().enumerate() {
-                    lookup_index(&query, deletions, index, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks);
                 }
             } else if query.contains(' ') {
                 for (deletions, index) in pr_indices.space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks);
                 }
             } else {
                 for (deletions, index) in pr_indices.none.iter().enumerate() {
-                    lookup_index(&query, deletions, index, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks);
                 }
             }
         }
         Romanization::Yale => {
             if query.contains(' ') {
                 for (deletions, index) in pr_indices.space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks);
                 }
                 for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks);
                 }
             } else {
                 for (deletions, index) in pr_indices.none.iter().enumerate() {
-                    lookup_index(&query, deletions, index, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks);
                 }
                 for (deletions, index) in pr_indices.tone.iter().enumerate() {
-                    lookup_index(&query, deletions, index, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks);
                 }
             }
         }
@@ -391,6 +399,7 @@ pub fn combined_search(
     variants_map: &VariantsMap,
     pr_indices: &PrIndices,
     english_index: &EnglishIndex,
+    dict: &RichDict,
     query: &str,
     script: Script,
     romanization: Romanization,
@@ -412,7 +421,7 @@ pub fn combined_search(
         script
     };
     let variants_ranks = variant_search(variants_map, query, query_script);
-    let pr_ranks = pr_search(pr_indices, query, romanization);
+    let pr_ranks = pr_search(pr_indices, dict, query, romanization);
     let english_results = english_search(english_index, query);
 
     CombinedSearchRank::All(variants_ranks, pr_ranks, english_results)
