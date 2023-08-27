@@ -270,6 +270,7 @@ dependencies = [
  "serde",
  "serde_json",
  "wordshk_tools",
+ "xxhash-rust",
 ]
 
 [[package]]
@@ -1556,7 +1557,7 @@ dependencies = [
 
 [[package]]
 name = "wordshk_tools"
-version = "3.16.0-beta.9"
+version = "3.16.0-beta.10"
 dependencies = [
  "csv",
  "deunicode",

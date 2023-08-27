@@ -12,7 +12,7 @@ use super::word_frequencies::WORD_FREQUENCIES;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::{BinaryHeap, HashSet};
-use strsim::{generic_levenshtein, normalized_levenshtein};
+use strsim::{generic_levenshtein, levenshtein, normalized_levenshtein};
 use thesaurus;
 use unicode_segmentation::UnicodeSegmentation;
 use xxhash_rust::xxh3::xxh3_64;
@@ -199,7 +199,7 @@ pub fn pr_search(
         ranks: &mut BinaryHeap<PrSearchRank>,
     ) {
         if deletions < query.chars().count() {
-            for (query_variant, added_deletions) in
+            for (query_variant, _added_deletions) in
                 crate::pr_index::generate_deletion_neighborhood(&query, deletions)
             {
                 if let Some(locations) = index.get(&xxh3_64(query_variant.as_bytes())) {
@@ -209,15 +209,17 @@ pub fn pr_search(
                         pr_index,
                     } in locations
                     {
+                        let pr = dict.get(&entry_id).unwrap().variants.0[*variant_index as Index]
+                            .prs
+                            .0[*pr_index as Index]
+                            .to_string();
+                        let distance = levenshtein(&query_variant, &pr);
                         ranks.push(PrSearchRank {
                             id: *entry_id,
                             variant_index: *variant_index as Index,
                             pr_index: *pr_index as Index,
-                            pr: dict.get(&entry_id).unwrap().variants.0[*variant_index as Index]
-                                .prs
-                                .0[*pr_index as Index]
-                                .to_string(),
-                            score: MAX_SCORE - deletions - added_deletions,
+                            pr,
+                            score: MAX_SCORE - deletions - distance,
                         });
                     }
                 }
@@ -226,7 +228,7 @@ pub fn pr_search(
     }
     match romanization {
         Romanization::Jyutping => {
-            if query.contains(&['1', '2', '3', '4', '5', '6']) && query.contains(" ") {
+            if query.contains(&['1', '2', '3', '4', '5', '6']) && query.contains(' ') {
                 for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
                     lookup_index(&query, deletions, index, dict, &mut ranks);
                 }

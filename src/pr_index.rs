@@ -163,7 +163,7 @@ fn generate_jyutping_variants(pr_location: PrLocation, pr: String, index: &mut P
                     locations.insert(pr_location);
                 }
             })
-            .or_insert(HashSet::new());
+            .or_insert(HashSet::from_iter([pr_location]));
     };
 
     if pr.contains(' ') {
