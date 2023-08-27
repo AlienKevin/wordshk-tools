@@ -5,6 +5,7 @@ use std::{
     collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
 };
+use xxhash_rust::xxh3::xxh3_64;
 
 const MAX_DELETIONS: usize = 2;
 const MAX_CANDIDATES: usize = 10;
@@ -34,10 +35,10 @@ pub struct PrLocation {
     pub entry_id: usize,
 
     #[serde(rename = "v")]
-    pub variant_index: usize,
+    pub variant_index: u8,
 
     #[serde(rename = "p")]
-    pub pr_index: usize,
+    pub pr_index: u8,
 }
 
 impl PartialEq for PrLocation {
@@ -54,8 +55,8 @@ impl Hash for PrLocation {
     }
 }
 
-// map from (deleted) pr to entry ids
-pub type PrIndex = HashMap<String, HashSet<PrLocation>>;
+// map from hash of permuted pr to entry ids
+pub type PrIndex = HashMap<u64, HashSet<PrLocation>>;
 
 /// Generate a deletion index for a string
 /// ```
@@ -156,7 +157,7 @@ fn generate_jyutping_variants(pr_location: PrLocation, pr: String, index: &mut P
 
     let insert = |index: &mut Vec<PrIndex>, variant: String, deletions: usize| {
         index[deletions]
-            .entry(variant)
+            .entry(xxh3_64(variant.as_bytes()))
             .and_modify(|locations| {
                 if locations.len() < MAX_CANDIDATES {
                     locations.insert(pr_location);
@@ -208,8 +209,8 @@ pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrInd
                         Romanization::Jyutping => generate_jyutping_variants(
                             PrLocation {
                                 entry_id,
-                                variant_index,
-                                pr_index,
+                                variant_index: variant_index.try_into().unwrap(),
+                                pr_index: pr_index.try_into().unwrap(),
                             },
                             pr.to_string(),
                             &mut index,
@@ -217,8 +218,8 @@ pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrInd
                         Romanization::Yale => generate_yale_variants(
                             PrLocation {
                                 entry_id,
-                                variant_index,
-                                pr_index,
+                                variant_index: variant_index.try_into().unwrap(),
+                                pr_index: pr_index.try_into().unwrap(),
                             },
                             pr.to_string(),
                             &mut index,

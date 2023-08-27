@@ -6,9 +6,10 @@ use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, EnrichDictOptions, RichDict};
 use flate2::write::GzEncoder;
 use flate2::Compression;
+use rmp_serde::Serializer;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::io::prelude::*;
+use std::io::Write;
 use std::path::Path;
 
 #[derive(Serialize, Deserialize)]
@@ -55,11 +56,14 @@ impl Api {
         fs::write(index_path, e.finish().unwrap())
             .expect("Unable to output serailized english index");
 
-        let index_path = Path::new(app_dir).join("pr_indices.json");
+        let index_path = Path::new(app_dir).join("pr_indices.msgpack");
         let pr_indices = generate_pr_indices(dict, romanization);
-        let mut e = GzEncoder::new(Vec::new(), Compression::default());
-        e.write_all(serde_json::to_string(&pr_indices).unwrap().as_bytes())
+        let mut buf = Vec::new();
+        pr_indices
+            .serialize(&mut Serializer::new(&mut buf))
             .unwrap();
-        fs::write(index_path, e.finish().unwrap()).expect("Unable to output serailized pr index");
+        let mut e = GzEncoder::new(Vec::new(), Compression::default());
+        e.write_all(&buf).unwrap();
+        fs::write(index_path, e.finish().unwrap()).expect("Unable to output serialized pr index");
     }
 }

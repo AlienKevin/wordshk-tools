@@ -12,10 +12,10 @@ use super::word_frequencies::WORD_FREQUENCIES;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::{BinaryHeap, HashSet};
-use std::fmt::Binary;
 use strsim::{generic_levenshtein, normalized_levenshtein};
 use thesaurus;
 use unicode_segmentation::UnicodeSegmentation;
+use xxhash_rust::xxh3::xxh3_64;
 
 /// Max score is 100
 type Score = usize;
@@ -202,7 +202,7 @@ pub fn pr_search(
             for (query_variant, added_deletions) in
                 crate::pr_index::generate_deletion_neighborhood(&query, deletions)
             {
-                if let Some(locations) = index.get(&query_variant) {
+                if let Some(locations) = index.get(&xxh3_64(query_variant.as_bytes())) {
                     for PrLocation {
                         entry_id,
                         variant_index,
@@ -211,10 +211,11 @@ pub fn pr_search(
                     {
                         ranks.push(PrSearchRank {
                             id: *entry_id,
-                            variant_index: *variant_index,
-                            pr_index: *pr_index,
-                            pr: dict.get(entry_id).unwrap().variants.0[*variant_index].prs.0
-                                [*pr_index]
+                            variant_index: *variant_index as Index,
+                            pr_index: *pr_index as Index,
+                            pr: dict.get(entry_id).unwrap().variants.0[*variant_index as Index]
+                                .prs
+                                .0[*pr_index as Index]
                                 .to_string(),
                             score: MAX_SCORE - deletions - added_deletions,
                         });
