@@ -94,61 +94,41 @@ fn generate_deletion_index(s: &str) -> HashMap<String, usize> {
 fn generate_pr_variants(pr_location: PrLocation, pr: String, index: &mut PrIndices) {
     let tones = &['1', '2', '3', '4', '5', '6'];
 
+    let insert = |index: &mut Vec<PrIndex>, variant: String, deletions: usize| {
+        index[deletions]
+            .entry(variant)
+            .and_modify(|locations| {
+                if locations.len() < MAX_CANDIDATES {
+                    locations.insert(pr_location);
+                }
+            })
+            .or_insert(HashSet::new());
+    };
+
     if pr.contains(' ') {
         for (variant, deletions) in generate_deletion_index(&pr) {
-            index.tone_and_space[deletions]
-                .entry(variant)
-                .and_modify(|locations| {
-                    if locations.len() < MAX_CANDIDATES {
-                        locations.insert(pr_location);
-                    }
-                })
-                .or_insert(HashSet::new());
+            insert(&mut index.tone_and_space, variant, deletions);
         }
 
         for (variant, deletions) in generate_deletion_index(&pr.replace(' ', "")) {
-            index.tone[deletions]
-                .entry(variant)
-                .and_modify(|locations| {
-                    if locations.len() < MAX_CANDIDATES {
-                        locations.insert(pr_location);
-                    }
-                })
-                .or_insert(HashSet::new());
+            insert(&mut index.tone, variant, deletions);
+        }
+
+        for (variant, deletions) in generate_deletion_index(&pr.replace(tones, "")) {
+            insert(&mut index.space, variant, deletions);
         }
 
         for (variant, deletions) in generate_deletion_index(&pr.replace(' ', "").replace(tones, ""))
         {
-            index.none[deletions]
-                .entry(variant)
-                .and_modify(|locations| {
-                    if locations.len() < MAX_CANDIDATES {
-                        locations.insert(pr_location);
-                    }
-                })
-                .or_insert(HashSet::new());
+            insert(&mut index.none, variant, deletions);
         }
     } else {
         for (variant, deletions) in generate_deletion_index(&pr) {
-            index.tone[deletions]
-                .entry(variant)
-                .and_modify(|locations| {
-                    if locations.len() < MAX_CANDIDATES {
-                        locations.insert(pr_location);
-                    }
-                })
-                .or_insert(HashSet::new());
+            insert(&mut index.tone, variant, deletions);
         }
 
         for (variant, deletions) in generate_deletion_index(&pr.replace(tones, "")) {
-            index.none[deletions]
-                .entry(variant)
-                .and_modify(|locations| {
-                    if locations.len() < MAX_CANDIDATES {
-                        locations.insert(pr_location);
-                    }
-                })
-                .or_insert(HashSet::new());
+            insert(&mut index.none, variant, deletions);
         }
     }
 }
