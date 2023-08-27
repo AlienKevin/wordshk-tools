@@ -1,5 +1,6 @@
 use crate::{jyutping::Romanization, rich_dict::RichDict};
 use kdam::tqdm;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -152,9 +153,12 @@ fn generate_deletion_index(s: &str) -> HashMap<String, usize> {
     generate_deletion_neighborhood(s, max_deletions)
 }
 
-fn generate_jyutping_variants(pr_location: PrLocation, pr: String, index: &mut PrIndices) {
-    let tones = &['1', '2', '3', '4', '5', '6'];
-
+fn generate_pr_variants(
+    pr_location: PrLocation,
+    pr: String,
+    index: &mut PrIndices,
+    remove_tones: fn(&str) -> String,
+) {
     let insert = |index: &mut Vec<PrIndex>, variant: String, deletions: usize| {
         index[deletions]
             .entry(xxh3_64(variant.as_bytes()))
@@ -175,12 +179,11 @@ fn generate_jyutping_variants(pr_location: PrLocation, pr: String, index: &mut P
             insert(&mut index.tone, variant, deletions);
         }
 
-        for (variant, deletions) in generate_deletion_index(&pr.replace(tones, "")) {
+        for (variant, deletions) in generate_deletion_index(&remove_tones(&pr)) {
             insert(&mut index.space, variant, deletions);
         }
 
-        for (variant, deletions) in generate_deletion_index(&pr.replace(' ', "").replace(tones, ""))
-        {
+        for (variant, deletions) in generate_deletion_index(&remove_tones(&pr).replace(' ', "")) {
             insert(&mut index.none, variant, deletions);
         }
     } else {
@@ -188,14 +191,10 @@ fn generate_jyutping_variants(pr_location: PrLocation, pr: String, index: &mut P
             insert(&mut index.tone, variant, deletions);
         }
 
-        for (variant, deletions) in generate_deletion_index(&pr.replace(tones, "")) {
+        for (variant, deletions) in generate_deletion_index(&remove_tones(&pr)) {
             insert(&mut index.none, variant, deletions);
         }
     }
-}
-
-fn generate_yale_variants(pr_location: PrLocation, pr: String, index: &mut PrIndices) {
-    todo!("add support for yale")
 }
 
 pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrIndices {
@@ -206,7 +205,7 @@ pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrInd
                 // only add standard jyutping to pr index
                 if pr.is_standard_jyutping() {
                     match romanization {
-                        Romanization::Jyutping => generate_jyutping_variants(
+                        Romanization::Jyutping => generate_pr_variants(
                             PrLocation {
                                 entry_id: entry_id,
                                 variant_index: variant_index.try_into().unwrap(),
@@ -214,16 +213,24 @@ pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrInd
                             },
                             pr.to_string(),
                             &mut index,
+                            |s| s.replace(&['1', '2', '3', '4', '5', '6'], ""),
                         ),
-                        Romanization::Yale => generate_yale_variants(
-                            PrLocation {
-                                entry_id: entry_id,
-                                variant_index: variant_index.try_into().unwrap(),
-                                pr_index: pr_index.try_into().unwrap(),
-                            },
-                            pr.to_string(),
-                            &mut index,
-                        ),
+                        Romanization::Yale => {
+                            lazy_static::lazy_static! {
+                                static ref TONE_MARK_REGEX: Regex = Regex::new(r"([a-z])h").unwrap();
+                            }
+
+                            generate_pr_variants(
+                                PrLocation {
+                                    entry_id: entry_id,
+                                    variant_index: variant_index.try_into().unwrap(),
+                                    pr_index: pr_index.try_into().unwrap(),
+                                },
+                                pr.to_yale_no_diacritics(),
+                                &mut index,
+                                |s| TONE_MARK_REGEX.replace_all(s, "$1").to_string(),
+                            )
+                        }
                     }
                 }
             }

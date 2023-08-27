@@ -1,3 +1,4 @@
+use crate::jyutping::parse_jyutpings;
 use crate::pr_index::{PrIndex, PrIndices, PrLocation};
 
 use super::charlist::CHARLIST;
@@ -9,6 +10,7 @@ use super::jyutping::{LaxJyutPings, Romanization};
 use super::rich_dict::{RichDict, RichEntry};
 use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
+use itertools::Itertools;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::{BinaryHeap, HashSet};
@@ -263,22 +265,44 @@ pub fn pr_search(
             }
         }
         Romanization::Yale => {
+            fn to_yale_no_diacritics(s: String) -> String {
+                parse_jyutpings(&s)
+                    .unwrap()
+                    .into_iter()
+                    .map(|jyutping| jyutping.to_yale_no_diacritics())
+                    .join(" ")
+            }
+
             if query.contains(' ') {
                 for (deletions, index) in pr_indices.space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| s);
+                    lookup_index(
+                        &query,
+                        deletions,
+                        index,
+                        dict,
+                        &mut ranks,
+                        to_yale_no_diacritics,
+                    );
                 }
                 for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| s);
+                    lookup_index(
+                        &query,
+                        deletions,
+                        index,
+                        dict,
+                        &mut ranks,
+                        to_yale_no_diacritics,
+                    );
                 }
             } else {
                 for (deletions, index) in pr_indices.none.iter().enumerate() {
                     lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
-                        s.replace(" ", "")
+                        to_yale_no_diacritics(s).replace(" ", "")
                     });
                 }
                 for (deletions, index) in pr_indices.tone.iter().enumerate() {
                     lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
-                        s.replace(" ", "")
+                        to_yale_no_diacritics(s).replace(" ", "")
                     });
                 }
             }
