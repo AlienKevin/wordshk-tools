@@ -40,12 +40,62 @@ fn test_pr_search() {
         .expect("Failed to deserialize pr_indices from msgpack format");
 
     println!(
-        "result: {:?}",
+        "result: {:?}\n\n",
         pr_search(&pr_indices, &api.dict, "hou coi", Romanization::Jyutping,)
     );
 
     println!(
-        "{:?}",
-        pr_indices.space[0].get(&xxh3_64("hou coi".as_bytes()))
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "ho coi", Romanization::Jyutping,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "hou choi", Romanization::Jyutping,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "hou2 coi", Romanization::Jyutping,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "hou5 coi2", Romanization::Jyutping,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "hou2 coi2", Romanization::Jyutping,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "houcoi", Romanization::Jyutping,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "hocoi", Romanization::Jyutping,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "houchoi", Romanization::Jyutping,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "hou2coi", Romanization::Jyutping,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "hou5coi2", Romanization::Jyutping,)
+    );
+
+    println!(
+        "result: {:?}\n\n",
+        pr_search(&pr_indices, &api.dict, "hou2coi2", Romanization::Jyutping,)
     );
 }

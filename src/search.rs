@@ -191,17 +191,24 @@ pub fn pr_search(
 ) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
     let query = unicode::normalize(query);
+
+    if query.is_empty() {
+        return ranks;
+    }
+
     fn lookup_index(
         query: &str,
         deletions: usize,
         index: &PrIndex,
         dict: &RichDict,
         ranks: &mut BinaryHeap<PrSearchRank>,
+        pr_variant_generator: fn(String) -> String,
     ) {
         if deletions < query.chars().count() {
-            for (query_variant, _added_deletions) in
-                crate::pr_index::generate_deletion_neighborhood(&query, deletions)
-            {
+            for (query_variant, _added_deletions) in crate::pr_index::generate_deletion_neighborhood(
+                &query,
+                query.chars().count() - 1.min(index.len()),
+            ) {
                 if let Some(locations) = index.get(&xxh3_64(query_variant.as_bytes())) {
                     for PrLocation {
                         entry_id,
@@ -213,53 +220,66 @@ pub fn pr_search(
                             .prs
                             .0[*pr_index as Index]
                             .to_string();
-                        let distance = levenshtein(&query_variant, &pr);
+                        let distance = levenshtein(&query, &pr_variant_generator(pr.to_string()));
                         ranks.push(PrSearchRank {
                             id: *entry_id,
                             variant_index: *variant_index as Index,
                             pr_index: *pr_index as Index,
                             pr,
-                            score: MAX_SCORE - deletions - distance,
+                            score: MAX_SCORE - distance,
                         });
                     }
                 }
             }
         }
     }
+
+    const TONES: [char; 6] = ['1', '2', '3', '4', '5', '6'];
+
     match romanization {
         Romanization::Jyutping => {
-            if query.contains(&['1', '2', '3', '4', '5', '6']) && query.contains(' ') {
+            if query.contains(TONES) && query.contains(' ') {
                 for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s: String| s);
                 }
-            } else if query.contains(&['1', '2', '3', '4', '5', '6']) {
+            } else if query.contains(TONES) {
                 for (deletions, index) in pr_indices.tone.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s: String| {
+                        s.replace(' ', "")
+                    });
                 }
             } else if query.contains(' ') {
                 for (deletions, index) in pr_indices.space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s: String| {
+                        s.replace(TONES, "")
+                    });
                 }
             } else {
                 for (deletions, index) in pr_indices.none.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s: String| {
+                        s.replace(TONES, "").replace(' ', "")
+                    });
                 }
             }
         }
         Romanization::Yale => {
             if query.contains(' ') {
                 for (deletions, index) in pr_indices.space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| s);
                 }
                 for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| s);
                 }
             } else {
                 for (deletions, index) in pr_indices.none.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
+                        s.replace(" ", "")
+                    });
                 }
                 for (deletions, index) in pr_indices.tone.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks);
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
+                        s.replace(" ", "")
+                    });
                 }
             }
         }
