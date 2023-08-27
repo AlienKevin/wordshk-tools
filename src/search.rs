@@ -213,7 +213,7 @@ pub fn pr_search(
                             id: *entry_id,
                             variant_index: *variant_index as Index,
                             pr_index: *pr_index as Index,
-                            pr: dict.get(entry_id).unwrap().variants.0[*variant_index as Index]
+                            pr: dict.get(&entry_id).unwrap().variants.0[*variant_index as Index]
                                 .prs
                                 .0[*pr_index as Index]
                                 .to_string(),

@@ -7,7 +7,7 @@ use std::{
 };
 use xxhash_rust::xxh3::xxh3_64;
 
-const MAX_DELETIONS: usize = 2;
+const MAX_DELETIONS: usize = 1;
 const MAX_CANDIDATES: usize = 10;
 
 #[derive(Serialize, Deserialize, Default)]
@@ -208,7 +208,7 @@ pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrInd
                     match romanization {
                         Romanization::Jyutping => generate_jyutping_variants(
                             PrLocation {
-                                entry_id,
+                                entry_id: entry_id,
                                 variant_index: variant_index.try_into().unwrap(),
                                 pr_index: pr_index.try_into().unwrap(),
                             },
@@ -217,7 +217,7 @@ pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrInd
                         ),
                         Romanization::Yale => generate_yale_variants(
                             PrLocation {
-                                entry_id,
+                                entry_id: entry_id,
                                 variant_index: variant_index.try_into().unwrap(),
                                 pr_index: pr_index.try_into().unwrap(),
                             },
