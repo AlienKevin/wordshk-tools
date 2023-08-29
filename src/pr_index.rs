@@ -1,5 +1,4 @@
 use crate::{jyutping::Romanization, rich_dict::RichDict};
-use kdam::tqdm;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -203,7 +202,7 @@ lazy_static::lazy_static! {
 
 pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrIndices {
     let mut index = PrIndices::default();
-    for (&entry_id, entry) in tqdm!(dict.iter(), desc = "Building pr index") {
+    for (&entry_id, entry) in dict.iter() {
         for (variant_index, variant) in entry.variants.0.iter().enumerate() {
             for (pr_index, pr) in variant.prs.0.iter().enumerate() {
                 // only add standard jyutping to pr index
