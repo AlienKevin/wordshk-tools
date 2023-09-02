@@ -604,7 +604,7 @@ lazy_static! {
 }
 
 // Source: lib/cantonese.py:is_valid_jyutping_form
-fn is_standard_jyutping(s: &str) -> bool {
+pub fn is_standard_jyutping(s: &str) -> bool {
     JYUTPING_WITH_TONE_REGEX.is_match(s)
 }
 
@@ -633,7 +633,7 @@ pub fn looks_like_jyutping(s: &str) -> bool {
 /// assert_eq!(jyutping_to_yale("m4 hou2 hai2 dou6".to_string()), "m̀ hóu hái douh".to_string());
 /// assert_eq!(jyutping_to_yale("tung4 joeng6".to_string()), "tùhng yeuhng".to_string());
 /// ```
-pub fn jyutping_to_yale(jyutping: String) -> String {
+pub fn jyutping_to_yale(jyutping: &str) -> String {
     jyutping
         .split(" ")
         .map(|syllable| parse_jyutping(&syllable).unwrap().to_yale())
