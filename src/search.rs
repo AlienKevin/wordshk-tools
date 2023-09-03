@@ -301,10 +301,20 @@ pub fn pr_search(
                     });
                 }
             } else if query.contains(' ') {
+                for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
+                    lookup_index(&query, deletions, index, dict, &mut ranks, to_yale);
+                }
+
                 for (deletions, index) in pr_indices.space.iter().enumerate() {
                     lookup_index(&query, deletions, index, dict, &mut ranks, to_yale_no_tones);
                 }
             } else {
+                for (deletions, index) in pr_indices.tone.iter().enumerate() {
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
+                        to_yale(s).replace(' ', "")
+                    });
+                }
+                
                 for (deletions, index) in pr_indices.none.iter().enumerate() {
                     lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
                         to_yale_no_tones(s).replace(' ', "")

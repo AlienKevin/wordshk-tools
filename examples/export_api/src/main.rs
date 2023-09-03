@@ -16,8 +16,8 @@ const APP_TMP_DIR: &str = "./app_tmp";
 fn main() {
     // std::fs::create_dir(APP_TMP_DIR).ok();
     // let api = generate_api_json();
-    test_jyutping_search();
-    // test_yale_search();
+    // test_jyutping_search();
+    test_yale_search();
     // generate_jyutping_to_yale(&api);
     // compare_yale();
 }
@@ -173,7 +173,7 @@ fn generate_api_json() -> Api {
     let api = Api::new(
         APP_TMP_DIR,
         include_str!("../../wordshk.csv"),
-        Romanization::Jyutping,
+        Romanization::Yale,
     );
     api
 }
@@ -298,4 +298,8 @@ fn test_yale_search() {
     test_pr_search("ming4 mei4", "mìhngmèih", 100);
     test_pr_search("ming4 mei4", "mìhng mèi", 99);
     test_pr_search("ming4 mei4", "mìhngmèi", 99);
+
+    test_pr_search("mei6", "meih", 100);
+    test_pr_search("jat6 jat6", "yaht yaht", 100);
+    test_pr_search("jat6 jat6", "yaht yat", 99);
 }
