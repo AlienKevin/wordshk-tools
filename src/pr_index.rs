@@ -1,4 +1,7 @@
-use crate::{jyutping::Romanization, rich_dict::RichDict};
+use crate::{
+    jyutping::{remove_yale_tones, Romanization},
+    rich_dict::RichDict,
+};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -196,10 +199,6 @@ fn generate_pr_variants(
     }
 }
 
-lazy_static::lazy_static! {
-    pub static ref YALE_TONE_MARK_REGEX: Regex = Regex::new(r"([a-z])h").unwrap();
-}
-
 pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrIndices {
     let mut index = PrIndices::default();
     for (&entry_id, entry) in dict.iter() {
@@ -224,9 +223,9 @@ pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrInd
                                 variant_index: variant_index.try_into().unwrap(),
                                 pr_index: pr_index.try_into().unwrap(),
                             },
-                            pr.to_yale_no_diacritics(),
+                            pr.to_yale(),
                             &mut index,
-                            |s| YALE_TONE_MARK_REGEX.replace_all(s, "$1").to_string(),
+                            remove_yale_tones,
                         ),
                     }
                 }

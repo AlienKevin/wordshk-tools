@@ -1,5 +1,5 @@
-use crate::jyutping::parse_jyutpings;
-use crate::pr_index::{PrIndex, PrIndices, PrLocation, MAX_DELETIONS, YALE_TONE_MARK_REGEX};
+use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, remove_yale_tones};
+use crate::pr_index::{PrIndex, PrIndices, PrLocation, MAX_DELETIONS};
 
 use super::charlist::CHARLIST;
 use super::dict::{Variant, Variants};
@@ -204,7 +204,7 @@ pub fn pr_search(
         index: &PrIndex,
         dict: &RichDict,
         ranks: &mut BinaryHeap<PrSearchRank>,
-        pr_variant_generator: fn(String) -> Vec<String>,
+        pr_variant_generator: fn(&str) -> String,
     ) {
         let max_deletions = (query.chars().count() - 1).min(MAX_DELETIONS);
         if deletions < query.chars().count() {
@@ -222,13 +222,7 @@ pub fn pr_search(
                             .prs
                             .0[*pr_index as Index]
                             .to_string();
-                        let distance = pr_variant_generator(pr.to_string())
-                            .iter()
-                            .map(|s| {
-                                levenshtein(&query, &s)
-                            })
-                            .min()
-                            .unwrap_or(usize::MAX); // should never happen
+                        let distance = levenshtein(&query, &pr_variant_generator(&pr));
                         if distance <= 3 {
                             ranks.push(PrSearchRank {
                                 id: *entry_id,
@@ -244,85 +238,76 @@ pub fn pr_search(
         }
     }
 
-    const TONES: [char; 6] = ['1', '2', '3', '4', '5', '6'];
-
     match romanization {
         Romanization::Jyutping => {
+            const TONES: [char; 6] = ['1', '2', '3', '4', '5', '6'];
+
             if query.contains(TONES) && query.contains(' ') {
                 for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s: String| {
-                        vec![s]
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
+                        s.to_string()
                     });
                 }
             } else if query.contains(TONES) {
                 for (deletions, index) in pr_indices.tone.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s: String| {
-                        vec![s.replace(' ', "")]
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
+                        s.replace(' ', "")
                     });
                 }
             } else if query.contains(' ') {
                 for (deletions, index) in pr_indices.space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s: String| {
-                        vec![s.replace(TONES, "")]
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
+                        s.replace(TONES, "")
                     });
                 }
             } else {
                 for (deletions, index) in pr_indices.none.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s: String| {
-                        vec![s.replace(TONES, "").replace(' ', "")]
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
+                        s.replace(TONES, "").replace(' ', "")
                     });
                 }
             }
         }
         Romanization::Yale => {
-            fn to_yale_no_diacritics(s: String) -> Vec<String> {
-                let yale_with_tone_mark = parse_jyutpings(&s)
+            fn to_yale(s: &str) -> String {
+                parse_jyutpings(s)
                     .unwrap()
                     .into_iter()
-                    .map(|jyutping| jyutping.to_yale_no_diacritics())
-                    .join(" ");
-                let yale_no_tone_mark = YALE_TONE_MARK_REGEX
-                    .replace_all(&yale_with_tone_mark, "$1")
-                    .to_string();
-                vec![yale_with_tone_mark, yale_no_tone_mark]
+                    .map(|jyutping| jyutping.to_yale())
+                    .join(" ")
             }
 
-            if query.contains(' ') {
-                for (deletions, index) in pr_indices.space.iter().enumerate() {
-                    lookup_index(
-                        &query,
-                        deletions,
-                        index,
-                        dict,
-                        &mut ranks,
-                        to_yale_no_diacritics,
-                    );
-                }
+            fn to_yale_no_tones(s: &str) -> String {
+                parse_jyutpings(s)
+                    .unwrap()
+                    .into_iter()
+                    .map(|mut jyutping| {
+                        jyutping.tone = None;
+                        jyutping.to_yale_no_diacritics()
+                    })
+                    .join(" ")
+            }
+
+            let has_tone = remove_yale_diacritics(&query) != query;
+
+            if has_tone && query.contains(' ') {
                 for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(
-                        &query,
-                        deletions,
-                        index,
-                        dict,
-                        &mut ranks,
-                        to_yale_no_diacritics,
-                    );
+                    lookup_index(&query, deletions, index, dict, &mut ranks, to_yale);
+                }
+            } else if has_tone {
+                for (deletions, index) in pr_indices.tone.iter().enumerate() {
+                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
+                        to_yale(s).replace(' ', "")
+                    });
+                }
+            } else if query.contains(' ') {
+                for (deletions, index) in pr_indices.space.iter().enumerate() {
+                    lookup_index(&query, deletions, index, dict, &mut ranks, to_yale_no_tones);
                 }
             } else {
                 for (deletions, index) in pr_indices.none.iter().enumerate() {
                     lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
-                        to_yale_no_diacritics(s)
-                            .into_iter()
-                            .map(|s| s.replace(" ", ""))
-                            .collect()
-                    });
-                }
-                for (deletions, index) in pr_indices.tone.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
-                        to_yale_no_diacritics(s)
-                            .into_iter()
-                            .map(|s| s.replace(" ", ""))
-                            .collect()
+                        to_yale_no_tones(s).replace(' ', "")
                     });
                 }
             }

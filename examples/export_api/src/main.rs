@@ -16,9 +16,10 @@ const APP_TMP_DIR: &str = "./app_tmp";
 fn main() {
     // std::fs::create_dir(APP_TMP_DIR).ok();
     // let api = generate_api_json();
+    test_jyutping_search();
     // test_yale_search();
     // generate_jyutping_to_yale(&api);
-    compare_yale();
+    // compare_yale();
 }
 
 fn compare_yale() {
@@ -172,7 +173,7 @@ fn generate_api_json() -> Api {
     let api = Api::new(
         APP_TMP_DIR,
         include_str!("../../wordshk.csv"),
-        Romanization::Yale,
+        Romanization::Jyutping,
     );
     api
 }
@@ -197,65 +198,46 @@ fn test_jyutping_search() {
     let pr_indices = rmp_serde::from_slice(&pr_indices_bytes[..])
         .expect("Failed to deserialize pr_indices from msgpack format");
 
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "hou coi", Romanization::Jyutping,)
-    );
+    let romanization = Romanization::Jyutping;
 
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "ho coi", Romanization::Jyutping,)
-    );
+    let test_pr_search = |expected: &str, query: &str, expected_score: usize| {
+        println!("query: {}", query);
+        let result = pr_search(&pr_indices, &api.dict, query, romanization);
+        println!("result: {:?}", result);
+        assert!(result
+            .iter()
+            .any(|rank| rank.pr == expected && rank.score == expected_score));
+    };
 
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "hou choi", Romanization::Jyutping,)
-    );
+    test_pr_search("hou2 coi2", "hou2 coi2", 100);
+    test_pr_search("hou2 coi2", "hou2coi2", 100);
+    test_pr_search("hou2 coi2", "hou2 coi3", 99);
+    test_pr_search("hou2 coi2", "hou2coi3", 99);
+    test_pr_search("hou2 coi2", "hou coi", 100);
+    test_pr_search("hou2 coi2", "houcoi", 100);
+    test_pr_search("hou2 coi2", "ho coi", 99);
+    test_pr_search("hou2 coi2", "hochoi", 98);
+    test_pr_search("hou2 coi2", "hocoi", 99);
+    test_pr_search("hou2 coi2", "hou choi", 99);
+    test_pr_search("hou2 coi2", "houchoi", 99);
 
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "hou2 coi", Romanization::Jyutping,)
-    );
+    test_pr_search("bok3 laam5 wui2", "bok laam wui", 100);
+    test_pr_search("bok3 laam5 wui2", "boklaamwui", 100);
+    test_pr_search("bok3 laam5 wui2", "bok laahm wui", 99);
+    test_pr_search("bok3 laam5 wui2", "boklaahmwui", 99);
+    test_pr_search("bok3 laam5 wui2", "bok3 laam5 wui2", 100);
+    test_pr_search("bok3 laam5 wui2", "bok3laam5wui2", 100);
+    test_pr_search("bok3 laam5 wui2", "bok3 laam5 wui3", 99);
+    test_pr_search("bok3 laam5 wui2", "bok3laam5wui3", 99);
+    test_pr_search("bok3 laam5 wui2", "bok3 laam5 wui5", 99);
+    test_pr_search("bok3 laam5 wui2", "bok3laam5wui5", 99);
 
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "hou5 coi2", Romanization::Jyutping,)
-    );
-
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "hou2 coi2", Romanization::Jyutping,)
-    );
-
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "houcoi", Romanization::Jyutping,)
-    );
-
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "hocoi", Romanization::Jyutping,)
-    );
-
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "houchoi", Romanization::Jyutping,)
-    );
-
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "hou2coi", Romanization::Jyutping,)
-    );
-
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "hou5coi2", Romanization::Jyutping,)
-    );
-
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "hou2coi2", Romanization::Jyutping,)
-    );
+    test_pr_search("ming4 mei4", "ming mei", 100);
+    test_pr_search("ming4 mei4", "mingmei", 100);
+    test_pr_search("ming4 mei4", "ming4 mei3", 99);
+    test_pr_search("ming4 mei4", "ming4mei3", 99);
+    test_pr_search("ming4 mei4", "ming4 mei4", 100);
+    test_pr_search("ming4 mei4", "ming4mei4", 100);
 }
 
 fn test_yale_search() {
@@ -280,43 +262,40 @@ fn test_yale_search() {
 
     println!("Loaded pr_indices and api");
 
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "hou choi", Romanization::Yale,)
-    );
+    let romanization = Romanization::Yale;
 
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "ho choi", Romanization::Yale,)
-    );
+    let test_pr_search = |expected: &str, query: &str, expected_score: usize| {
+        println!("query: {}", query);
+        let result = pr_search(&pr_indices, &api.dict, query, romanization);
+        println!("result: {:?}", result);
+        assert!(result
+            .iter()
+            .any(|rank| rank.pr == expected && rank.score == expected_score));
+    };
 
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "hou coi", Romanization::Yale,)
-    );
+    test_pr_search("hou2 coi2", "hóu chói", 100);
+    test_pr_search("hou2 coi2", "hóu choi", 99);
+    test_pr_search("hou2 coi2", "hou choi", 100);
+    test_pr_search("hou2 coi2", "ho choi", 99);
+    test_pr_search("hou2 coi2", "hou coi", 99);
+    test_pr_search("hou2 coi2", "houcoi", 99);
+    test_pr_search("hou2 coi2", "hocoi", 98);
 
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "houchoi", Romanization::Yale,)
-    );
+    test_pr_search("bok3 laam5 wui2", "bok laam wui", 100);
+    test_pr_search("bok3 laam5 wui2", "boklaamwui", 100);
+    test_pr_search("bok3 laam5 wui2", "bok laahm wui", 99);
+    test_pr_search("bok3 laam5 wui2", "boklaahmwui", 99);
+    test_pr_search("bok3 laam5 wui2", "bok láahm wúi", 100);
+    test_pr_search("bok3 laam5 wui2", "bokláahmwúi", 100);
+    test_pr_search("bok3 laam5 wui2", "bok láahm wui", 99);
+    test_pr_search("bok3 laam5 wui2", "bokláahmwui", 99);
+    test_pr_search("bok3 laam5 wui2", "bok láahm wúih", 99);
+    test_pr_search("bok3 laam5 wui2", "bokláahmwúih", 99);
 
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "hochoi", Romanization::Yale,)
-    );
-
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "houcoi", Romanization::Yale,)
-    );
-
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "bok laam wui", Romanization::Yale,)
-    );
-
-    println!(
-        "result: {:?}\n\n",
-        pr_search(&pr_indices, &api.dict, "ming mei", Romanization::Yale,)
-    );
+    test_pr_search("ming4 mei4", "ming mei", 100);
+    test_pr_search("ming4 mei4", "mihng mei", 99);
+    test_pr_search("ming4 mei4", "mìhng mèih", 100);
+    test_pr_search("ming4 mei4", "mìhngmèih", 100);
+    test_pr_search("ming4 mei4", "mìhng mèi", 99);
+    test_pr_search("ming4 mei4", "mìhngmèi", 99);
 }

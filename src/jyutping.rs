@@ -118,6 +118,8 @@ impl JyutPing {
     /// assert_eq!(parse_jyutping("mui5").unwrap().to_yale_no_diacritics(), "muih");
     /// assert_eq!(parse_jyutping("miu1").unwrap().to_yale_no_diacritics(), "miu");
     /// assert_eq!(parse_jyutping("deu6").unwrap().to_yale_no_diacritics(), "deuh");
+    /// 
+    /// assert_eq!(parse_jyutping("deu").unwrap().to_yale_no_diacritics(), "deu");
     /// ```
     pub fn to_yale_no_diacritics(&self) -> String {
         let result = self
@@ -233,6 +235,50 @@ impl LaxJyutPing {
             .collect::<Vec<String>>()
             .join(" ")
     }
+
+    pub fn to_yale(&self) -> String {
+        self.0
+            .iter()
+            .map(|seg| match seg {
+                LaxJyutPingSegment::Standard(jyutping) => jyutping.to_yale(),
+                LaxJyutPingSegment::Nonstandard(s) => s.to_string(),
+            })
+            .collect::<Vec<String>>()
+            .join(" ")
+    }
+}
+
+lazy_static::lazy_static! {
+    pub static ref YALE_TONE_MARK_REGEX: Regex = Regex::new(r"([a-z])h").unwrap();
+}
+
+pub fn remove_yale_diacritics(s: &str) -> String {
+    let chars = s.chars();
+    chars
+        .fold("".to_string(), |acc, c| {
+            acc + &find_yale_diacritics(c).to_string()
+        })
+        // combining accute accent mark ◌́
+        .replace('\u{0301}', "")
+        // combining grave accent mark ◌̀
+        .replace('\u{0300}', "")
+        // combining macron ◌̄
+        .replace('\u{0304}', "")
+}
+
+fn find_yale_diacritics(c: char) -> char {
+    match c {
+        'ā' | 'á' | 'à' => 'a',
+        'ē' | 'é' | 'è' => 'e',
+        'ī' | 'í' | 'ì' => 'i',
+        'ō' | 'ó' | 'ò' => 'o',
+        'ū' | 'ú' | 'ù' => 'u',
+        _ => c,
+    }
+}
+
+pub fn remove_yale_tones(s: &str) -> String {
+    remove_yale_diacritics(&YALE_TONE_MARK_REGEX.replace_all(s, "$1"))
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
