@@ -279,7 +279,6 @@ fn test_yale_search() {
     test_pr_search("hou2 coi2", "ho choi", 99);
     test_pr_search("hou2 coi2", "hou coi", 99);
     test_pr_search("hou2 coi2", "houcoi", 99);
-    test_pr_search("hou2 coi2", "hocoi", 98);
 
     test_pr_search("bok3 laam5 wui2", "bok laam wui", 100);
     test_pr_search("bok3 laam5 wui2", "boklaamwui", 100);
@@ -302,4 +301,9 @@ fn test_yale_search() {
     test_pr_search("mei6", "meih", 100);
     test_pr_search("jat6 jat6", "yaht yaht", 100);
     test_pr_search("jat6 jat6", "yaht yat", 99);
+
+    test_pr_search("jyun4 cyun4", "yun chyun", 100);
+    test_pr_search("jyun4 cyun4", "yùhn chyùhn", 100);
+    test_pr_search("jyun4 cyun4", "yùhn chyuhn", 99);
+    test_pr_search("jyun4 cyun4", "yuhn chyùhn", 99);
 }

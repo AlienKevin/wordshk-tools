@@ -118,7 +118,7 @@ impl JyutPing {
     /// assert_eq!(parse_jyutping("mui5").unwrap().to_yale_no_diacritics(), "muih");
     /// assert_eq!(parse_jyutping("miu1").unwrap().to_yale_no_diacritics(), "miu");
     /// assert_eq!(parse_jyutping("deu6").unwrap().to_yale_no_diacritics(), "deuh");
-    /// 
+    ///
     /// assert_eq!(parse_jyutping("deu").unwrap().to_yale_no_diacritics(), "deu");
     /// ```
     pub fn to_yale_no_diacritics(&self) -> String {
@@ -249,7 +249,7 @@ impl LaxJyutPing {
 }
 
 lazy_static::lazy_static! {
-    pub static ref YALE_TONE_MARK_REGEX: Regex = Regex::new(r"([a-z])h").unwrap();
+    pub static ref YALE_TONE_MARK_REGEX_NO_DIACRITICS: Regex = Regex::new(r"([aeiou])h").unwrap();
 }
 
 pub fn remove_yale_diacritics(s: &str) -> String {
@@ -278,7 +278,9 @@ fn find_yale_diacritics(c: char) -> char {
 }
 
 pub fn remove_yale_tones(s: &str) -> String {
-    remove_yale_diacritics(&YALE_TONE_MARK_REGEX.replace_all(s, "$1"))
+    YALE_TONE_MARK_REGEX_NO_DIACRITICS
+        .replace_all(&remove_yale_diacritics(s), "$1")
+        .to_string()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

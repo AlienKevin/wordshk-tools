@@ -1,4 +1,4 @@
-use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, remove_yale_tones};
+use crate::jyutping::{parse_jyutpings, remove_yale_diacritics};
 use crate::pr_index::{PrIndex, PrIndices, PrLocation, MAX_DELETIONS};
 
 use super::charlist::CHARLIST;
