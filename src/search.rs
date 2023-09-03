@@ -86,7 +86,10 @@ pub struct PrSearchRank {
 
 impl Ord for PrSearchRank {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.score.cmp(&other.score).then(other.pr.cmp(&self.pr))
+        self.score
+            .cmp(&other.score)
+            .then(other.pr.cmp(&self.pr))
+            .then(other.id.cmp(&self.id))
     }
 }
 
@@ -314,7 +317,7 @@ pub fn pr_search(
                         to_yale(s).replace(' ', "")
                     });
                 }
-                
+
                 for (deletions, index) in pr_indices.none.iter().enumerate() {
                     lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
                         to_yale_no_tones(s).replace(' ', "")
