@@ -61,7 +61,7 @@ fn get_disyllabic_prs_shorter_than(characters: usize) {
                         .iter()
                         .map(|pr| pr.tone.unwrap().to_string().parse::<u8>().unwrap())
                         .collect();
-                    if pr_str.len() <= characters {
+                    if pr_str.len() <= characters + 1 {
                         prs.entry(pr_str)
                             .and_modify(|variants| {
                                 variants.insert((variant_str.clone(), tones.clone()));
