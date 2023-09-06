@@ -17,9 +17,67 @@ fn main() {
     // std::fs::create_dir(APP_TMP_DIR).ok();
     // let api = generate_api_json();
     // test_jyutping_search();
-    test_yale_search();
+    // test_yale_search();
     // generate_jyutping_to_yale(&api);
     // compare_yale();
+
+    get_disyllabic_prs_shorter_than(8);
+}
+
+fn get_disyllabic_prs_shorter_than(characters: usize) {
+    use itertools::FoldWhile::{Continue, Done};
+    use itertools::Itertools;
+    use std::collections::{HashMap, HashSet};
+
+    let api = Api::load(APP_TMP_DIR);
+
+    let mut prs: HashMap<String, HashSet<(String, Vec<u8>)>> = HashMap::new();
+    for entry in api.dict.values() {
+        let variant = &entry.variants.0.first().unwrap();
+        let pr = &variant.prs.0.first().unwrap();
+        let variant_str = &variant.word;
+        let jyutpings =
+            pr.0.iter()
+                .fold_while(None, |mut jyutpings, pr| match pr {
+                    LaxJyutPingSegment::Standard(jyutping) => match jyutpings {
+                        None => Continue(Some(vec![jyutping])),
+                        Some(mut jyutpings) => {
+                            jyutpings.push(jyutping);
+                            Continue(Some(jyutpings))
+                        }
+                    },
+                    LaxJyutPingSegment::Nonstandard(_) => Done(None),
+                })
+                .into_inner();
+        match jyutpings {
+            None => continue,
+            Some(jyutpings) => {
+                if jyutpings.len() == 2 && variant_str.chars().all(wordshk_tools::unicode::is_cjk) {
+                    let pr_str = jyutpings
+                        .iter()
+                        .map(|pr| pr.to_string_without_tone())
+                        .join(" ");
+                    let tones: Vec<u8> = jyutpings
+                        .iter()
+                        .map(|pr| pr.tone.unwrap().to_string().parse::<u8>().unwrap())
+                        .collect();
+                    if pr_str.len() <= characters {
+                        prs.entry(pr_str)
+                            .and_modify(|variants| {
+                                variants.insert((variant_str.clone(), tones.clone()));
+                            })
+                            .or_insert(HashSet::from_iter([(variant_str.clone(), tones)]));
+                    }
+                }
+            }
+        }
+    }
+    println!("Found {} unique disyllabic prs", prs.len());
+    std::fs::write(
+        std::path::Path::new(APP_TMP_DIR).join("disyllabic.json"),
+        serde_json::to_string(&prs).expect("Failed to serialize prs to JSON"),
+    )
+    .expect("Failed to write JSON to file");
 }
 
 fn compare_yale() {

@@ -4,11 +4,13 @@ use crate::pr_index::generate_pr_indices;
 use super::english_index::generate_english_index;
 use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, EnrichDictOptions, RichDict};
+use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use rmp_serde::Serializer;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 
@@ -30,6 +32,19 @@ impl Api {
         let api = Api::get_new_dict(&api_path, csv);
         Api::generate_index(app_dir, &api.dict, romanization);
         api
+    }
+
+    pub fn load(app_dir: &str) -> Self {
+        let api_path = Path::new(app_dir).join("api.json");
+        // Read the compressed data from the file
+        let compressed_data = fs::read(api_path).expect("Unable to read serialized data");
+        // Create a GzDecoder from the compressed data
+        let mut d = GzDecoder::new(&compressed_data[..]);
+        // Decompress and read the decoded data into a String
+        let mut decoded_data = String::new();
+        d.read_to_string(&mut decoded_data).unwrap();
+        // Deserialize the data back into the Api type
+        serde_json::from_str(&decoded_data).expect("Unable to deserialize Api data")
     }
 
     fn get_new_dict<P: AsRef<Path>>(api_path: &P, csv: &str) -> Api {
