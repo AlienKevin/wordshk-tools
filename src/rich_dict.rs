@@ -4,6 +4,7 @@ use super::dict::{
     SegmentType, Variant, Variants,
 };
 use super::unicode;
+use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
 use std::cmp;
@@ -99,6 +100,23 @@ pub enum RichLine {
     Text(WordLine),
 }
 
+impl fmt::Display for RichLine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Ruby(line) => write!(
+                f,
+                "{}",
+                line.iter().map(|segment| segment.to_string()).join("")
+            ),
+            Self::Text(line) => write!(
+                f,
+                "{}",
+                line.iter().map(|(_, word)| word.to_string()).join("")
+            ),
+        }
+    }
+}
+
 /// A styled text segment
 ///
 /// Normal: `(TextStyle::Normal, "好")`
@@ -160,6 +178,22 @@ pub enum RubySegment {
 
     #[serde(rename = "L")]
     LinkedWord(Vec<(Word, Vec<String>)>),
+}
+
+impl fmt::Display for RubySegment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Punc(punc) => write!(f, "{}", punc),
+            Self::Word(word, _) => write!(f, "{}", word),
+            Self::LinkedWord(words) => {
+                write!(
+                    f,
+                    "{}",
+                    words.iter().map(|(word, _)| word.to_string()).join("")
+                )
+            }
+        }
+    }
 }
 
 /// A line consists of one or more [RubySegment]s

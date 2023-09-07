@@ -7,7 +7,7 @@ use wordshk_tools::{
         is_standard_jyutping, jyutping_to_yale, JyutPing, LaxJyutPingSegment, Romanization,
     },
     rich_dict::{RichLine, RubySegment},
-    search::pr_search,
+    search::{eg_search, pr_search, EgSearchRank, Script},
 };
 use xxhash_rust::xxh3::xxh3_64;
 
@@ -21,7 +21,42 @@ fn main() {
     // generate_jyutping_to_yale(&api);
     // compare_yale();
 
-    get_disyllabic_prs_shorter_than(8);
+    // get_disyllabic_prs_shorter_than(8);
+
+    test_eg_search();
+}
+
+fn test_eg_search() {
+    use itertools::Itertools;
+
+    let api = Api::load(APP_TMP_DIR);
+
+    // simulate a mobile processor
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(4)
+        .build_global()
+        .unwrap();
+
+    let start_time = std::time::Instant::now();
+    println!(
+        "{}",
+        eg_search(&api.dict, "唔明白", 12, Script::Traditional)
+            .iter()
+            .map(
+                |EgSearchRank {
+                     id,
+                     def_index,
+                     eg_index,
+                     eg_length,
+                 }| api.dict[id].defs[*def_index].egs[*eg_index]
+                    .yue
+                    .as_ref()
+                    .unwrap()
+                    .clone()
+            )
+            .join("\n")
+    );
+    println!("Search took {:?}", start_time.elapsed());
 }
 
 fn get_disyllabic_prs_shorter_than(characters: usize) {

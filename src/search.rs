@@ -451,6 +451,80 @@ pub fn variant_search(
     ranks
 }
 
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct EgSearchRank {
+    pub id: usize,
+    pub def_index: Index,
+    pub eg_index: Index,
+    pub eg_length: usize,
+}
+
+impl Ord for EgSearchRank {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other
+            .eg_length
+            .cmp(&self.eg_length)
+            .then(other.id.cmp(&self.id))
+            .then(other.def_index.cmp(&self.def_index))
+            .then(other.eg_index.cmp(&self.eg_index))
+    }
+}
+
+impl PartialOrd for EgSearchRank {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+pub fn eg_search(
+    dict: &RichDict,
+    query: &str,
+    max_eg_length: usize,
+    script: Script,
+) -> BinaryHeap<EgSearchRank> {
+    let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
+    let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
+        // query contains iconic simplified characters
+        Script::Simplified
+    } else if query_normalized.chars().any(|c| ICONIC_TRADS.contains(&c)) {
+        Script::Traditional
+    } else {
+        script
+    };
+
+    use std::sync::Arc;
+    use std::sync::Mutex;
+
+    let ranks: Arc<Mutex<BinaryHeap<_>>> = Arc::new(Mutex::new(BinaryHeap::new()));
+
+    use rayon::iter::IntoParallelRefIterator;
+    use rayon::iter::ParallelIterator;
+
+    dict.par_iter().for_each(|(&entry_id, entry)| {
+        for (def_index, def) in entry.defs.iter().enumerate() {
+            for (eg_index, eg) in def.egs.iter().enumerate() {
+                let line: Option<String> = match query_script {
+                    Script::Traditional => eg.yue.as_ref().map(|line| line.to_string()),
+                    Script::Simplified => eg.yue_simp.clone(),
+                };
+                if let Some(line) = line {
+                    let line_len = line.chars().count();
+                    if line_len <= max_eg_length && line.contains(query_normalized) {
+                        ranks.lock().unwrap().push(EgSearchRank {
+                            id: entry_id,
+                            def_index,
+                            eg_index,
+                            eg_length: line_len,
+                        });
+                    }
+                }
+            }
+        }
+    });
+
+    Arc::try_unwrap(ranks).unwrap().into_inner().unwrap()
+}
+
 pub enum CombinedSearchRank {
     Variant(BinaryHeap<VariantSearchRank>),
     Pr(BinaryHeap<PrSearchRank>),
