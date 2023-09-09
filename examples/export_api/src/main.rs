@@ -38,7 +38,8 @@ fn test_eg_search() {
         .unwrap();
 
     let start_time = std::time::Instant::now();
-    let (query_normalized, results) = eg_search(&api.dict, "唔明白", 12, Script::Traditional);
+    let (query_found, results) = eg_search(&api.dict, "苹果树", 18, Script::Traditional);
+    println!("Query found: {:?}", query_found);
     println!(
         "{}",
         results

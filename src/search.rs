@@ -481,7 +481,7 @@ pub fn eg_search(
     query: &str,
     max_eg_length: usize,
     script: Script,
-) -> (String, BinaryHeap<EgSearchRank>) {
+) -> (Option<String>, BinaryHeap<EgSearchRank>) {
     let query_normalized = unicode::to_hk_safe_variant(&unicode::normalize(query));
     let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
         // query contains iconic simplified characters
@@ -500,6 +500,8 @@ pub fn eg_search(
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
 
+    let query_found: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+
     dict.par_iter().for_each(|(&entry_id, entry)| {
         for (def_index, def) in entry.defs.iter().enumerate() {
             for (eg_index, eg) in def.egs.iter().enumerate() {
@@ -510,6 +512,23 @@ pub fn eg_search(
                 if let Some(line) = line {
                     let line_len = line.chars().count();
                     if line_len <= max_eg_length && line.contains(&query_normalized) {
+                        if query_found.lock().unwrap().is_none() {
+                            *query_found.lock().unwrap() = Some(match (script, query_script) {
+                                (Script::Simplified, Script::Traditional) => {
+                                    let start_index = line.find(&query_normalized).unwrap();
+                                    eg.yue_simp.as_ref().unwrap()
+                                        [start_index..start_index + query_normalized.len()]
+                                        .to_string()
+                                }
+                                (Script::Traditional, Script::Simplified) => {
+                                    let start_index = line.find(&query_normalized).unwrap();
+                                    eg.yue.as_ref().map(|line| line.to_string()).unwrap()
+                                        [start_index..start_index + query_normalized.len()]
+                                        .to_string()
+                                }
+                                (_, _) => query_normalized.to_string(),
+                            });
+                        }
                         ranks.lock().unwrap().push(EgSearchRank {
                             id: entry_id,
                             def_index,
@@ -523,7 +542,7 @@ pub fn eg_search(
     });
 
     (
-        query_normalized,
+        Arc::try_unwrap(query_found).unwrap().into_inner().unwrap(),
         Arc::try_unwrap(ranks).unwrap().into_inner().unwrap(),
     )
 }
