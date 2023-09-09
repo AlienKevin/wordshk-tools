@@ -481,8 +481,8 @@ pub fn eg_search(
     query: &str,
     max_eg_length: usize,
     script: Script,
-) -> BinaryHeap<EgSearchRank> {
-    let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
+) -> (String, BinaryHeap<EgSearchRank>) {
+    let query_normalized = unicode::to_hk_safe_variant(&unicode::normalize(query));
     let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
         // query contains iconic simplified characters
         Script::Simplified
@@ -509,7 +509,7 @@ pub fn eg_search(
                 };
                 if let Some(line) = line {
                     let line_len = line.chars().count();
-                    if line_len <= max_eg_length && line.contains(query_normalized) {
+                    if line_len <= max_eg_length && line.contains(&query_normalized) {
                         ranks.lock().unwrap().push(EgSearchRank {
                             id: entry_id,
                             def_index,
@@ -522,7 +522,10 @@ pub fn eg_search(
         }
     });
 
-    Arc::try_unwrap(ranks).unwrap().into_inner().unwrap()
+    (
+        query_normalized,
+        Arc::try_unwrap(ranks).unwrap().into_inner().unwrap(),
+    )
 }
 
 pub enum CombinedSearchRank {

@@ -38,9 +38,10 @@ fn test_eg_search() {
         .unwrap();
 
     let start_time = std::time::Instant::now();
+    let (query_normalized, results) = eg_search(&api.dict, "唔明白", 12, Script::Traditional);
     println!(
         "{}",
-        eg_search(&api.dict, "唔明白", 12, Script::Traditional)
+        results
             .iter()
             .map(
                 |EgSearchRank {
@@ -48,11 +49,13 @@ fn test_eg_search() {
                      def_index,
                      eg_index,
                      eg_length,
-                 }| api.dict[id].defs[*def_index].egs[*eg_index]
-                    .yue
-                    .as_ref()
-                    .unwrap()
-                    .clone()
+                 }| {
+                    api.dict[id].defs[*def_index].egs[*eg_index]
+                        .yue
+                        .as_ref()
+                        .unwrap()
+                        .clone()
+                },
             )
             .join("\n")
     );
