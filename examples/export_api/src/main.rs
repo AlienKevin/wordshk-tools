@@ -7,7 +7,9 @@ use wordshk_tools::{
         is_standard_jyutping, jyutping_to_yale, JyutPing, LaxJyutPingSegment, Romanization,
     },
     rich_dict::{RichLine, RubySegment},
-    search::{eg_search, pr_search, EgSearchRank, Script},
+    search::{
+        eg_search, pr_search, rich_dict_to_variants_map, variant_search, EgSearchRank, Script,
+    },
 };
 use xxhash_rust::xxh3::xxh3_64;
 
@@ -24,6 +26,15 @@ fn main() {
     // get_disyllabic_prs_shorter_than(8);
 
     test_eg_search();
+
+    // test_variant_search();
+}
+
+fn test_variant_search() {
+    let api = Api::load(APP_TMP_DIR);
+    let variants_map = rich_dict_to_variants_map(&api.dict);
+    let results = variant_search(&variants_map, "苹果", Script::Traditional);
+    println!("{:?}", results.len());
 }
 
 fn test_eg_search() {
@@ -38,7 +49,7 @@ fn test_eg_search() {
         .unwrap();
 
     let start_time = std::time::Instant::now();
-    let (query_found, results) = eg_search(&api.dict, "苹果树", 18, Script::Traditional);
+    let (query_found, results) = eg_search(&api.dict, "中文堂", 15, Script::Traditional);
     println!("Query found: {:?}", query_found);
     println!(
         "{}",

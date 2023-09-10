@@ -479,7 +479,7 @@ impl PartialOrd for EgSearchRank {
 pub fn eg_search(
     dict: &RichDict,
     query: &str,
-    max_eg_length: usize,
+    max_first_index_in_eg: usize,
     script: Script,
 ) -> (Option<String>, BinaryHeap<EgSearchRank>) {
     let query_normalized = unicode::to_hk_safe_variant(&unicode::normalize(query));
@@ -511,23 +511,26 @@ pub fn eg_search(
                 };
                 if let Some(line) = line {
                     let line_len = line.chars().count();
-                    if line_len <= max_eg_length && line.contains(&query_normalized) {
-                        if query_found.lock().unwrap().is_none() {
-                            *query_found.lock().unwrap() = Some(match (script, query_script) {
-                                (Script::Simplified, Script::Traditional) => {
-                                    let start_index = line.find(&query_normalized).unwrap();
-                                    eg.yue_simp.as_ref().unwrap()
-                                        [start_index..start_index + query_normalized.len()]
-                                        .to_string()
-                                }
-                                (Script::Traditional, Script::Simplified) => {
-                                    let start_index = line.find(&query_normalized).unwrap();
-                                    eg.yue.as_ref().map(|line| line.to_string()).unwrap()
-                                        [start_index..start_index + query_normalized.len()]
-                                        .to_string()
-                                }
-                                (_, _) => query_normalized.to_string(),
-                            });
+                    if let Some(first_index) = line.find(&query_normalized) {
+                        let char_index = line[..first_index].chars().count();
+                        if char_index <= max_first_index_in_eg {
+                            if query_found.lock().unwrap().is_none() {
+                                *query_found.lock().unwrap() = Some(match (script, query_script) {
+                                    (Script::Simplified, Script::Traditional) => {
+                                        let start_index = line.find(&query_normalized).unwrap();
+                                        eg.yue_simp.as_ref().unwrap()
+                                            [start_index..start_index + query_normalized.len()]
+                                            .to_string()
+                                    }
+                                    (Script::Traditional, Script::Simplified) => {
+                                        let start_index = line.find(&query_normalized).unwrap();
+                                        eg.yue.as_ref().map(|line| line.to_string()).unwrap()
+                                            [start_index..start_index + query_normalized.len()]
+                                            .to_string()
+                                    }
+                                    (_, _) => query_normalized.to_string(),
+                                });
+                            }
                         }
                         ranks.lock().unwrap().push(EgSearchRank {
                             id: entry_id,
