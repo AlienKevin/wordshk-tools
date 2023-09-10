@@ -531,13 +531,13 @@ pub fn eg_search(
                                     (_, _) => query_normalized.to_string(),
                                 });
                             }
+                            ranks.lock().unwrap().push(EgSearchRank {
+                                id: entry_id,
+                                def_index,
+                                eg_index,
+                                eg_length: line_len,
+                            });
                         }
-                        ranks.lock().unwrap().push(EgSearchRank {
-                            id: entry_id,
-                            def_index,
-                            eg_index,
-                            eg_length: line_len,
-                        });
                     }
                 }
             }

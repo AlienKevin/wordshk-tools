@@ -49,7 +49,7 @@ fn test_eg_search() {
         .unwrap();
 
     let start_time = std::time::Instant::now();
-    let (query_found, results) = eg_search(&api.dict, "中文堂", 15, Script::Traditional);
+    let (query_found, results) = eg_search(&api.dict, "嚟呢度", 10, Script::Traditional);
     println!("Query found: {:?}", query_found);
     println!(
         "{}",
