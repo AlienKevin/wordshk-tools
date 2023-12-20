@@ -19,32 +19,32 @@ pub struct Api {
     pub dict: RichDict,
 }
 
-fn serialize_api<P: AsRef<Path>>(output_path: &P, api: &Api) {
+fn serialize_dict<P: AsRef<Path>>(output_path: &P, dict: &RichDict) {
     let mut e = GzEncoder::new(Vec::new(), Compression::default());
-    e.write_all(serde_json::to_string(&api).unwrap().as_bytes())
+    e.write_all(serde_json::to_string(dict).unwrap().as_bytes())
         .unwrap();
     fs::write(output_path, e.finish().unwrap()).expect("Unable to output serialized RichDict");
 }
 
 impl Api {
     pub fn new(app_dir: &str, csv: &str, romanization: Romanization) -> Self {
-        let api_path = Path::new(app_dir).join("api.json");
+        let api_path = Path::new(app_dir).join("dict.json");
         let api = Api::get_new_dict(&api_path, csv);
         Api::generate_index(app_dir, &api.dict, romanization);
         api
     }
 
     pub fn load(app_dir: &str) -> Self {
-        let api_path = Path::new(app_dir).join("api.json");
+        let dict_path = Path::new(app_dir).join("dict.json");
         // Read the compressed data from the file
-        let compressed_data = fs::read(api_path).expect("Unable to read serialized data");
+        let compressed_data = fs::read(dict_path).expect("Unable to read serialized data");
         // Create a GzDecoder from the compressed data
         let mut d = GzDecoder::new(&compressed_data[..]);
         // Decompress and read the decoded data into a String
         let mut decoded_data = String::new();
         d.read_to_string(&mut decoded_data).unwrap();
         // Deserialize the data back into the Api type
-        serde_json::from_str(&decoded_data).expect("Unable to deserialize Api data")
+        Api { dict: serde_json::from_str(&decoded_data).expect("Unable to deserialize Api data") }
     }
 
     fn get_new_dict<P: AsRef<Path>>(api_path: &P, csv: &str) -> Api {
@@ -58,7 +58,7 @@ impl Api {
                 },
             ),
         };
-        serialize_api(api_path, &new_api);
+        serialize_dict(api_path, &new_api.dict);
         new_api
     }
 
