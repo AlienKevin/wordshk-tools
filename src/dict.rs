@@ -200,6 +200,7 @@ fn is_unfinished_line(line: &Line) -> bool {
     line.iter()
         .any(|seg| seg.1.contains("XX") || seg.1.contains("xxx") || seg.1.contains("[ChatGPT]"))
         || *line == vec![(SegmentType::Text, "X".to_string())]
+        || *line == vec![(SegmentType::Text, "x".to_string())]
 }
 
 pub fn filter_unfinished_entries(dict: Dict) -> Dict {
