@@ -1,15 +1,20 @@
+use itertools::Itertools;
+use regex::Regex;
 use rmp_serde::Deserializer;
+use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::io::Cursor;
 use wordshk_tools::{
     app_api::Api,
+    dict::clause_to_string,
     jyutping::{
         is_standard_jyutping, jyutping_to_yale, JyutPing, LaxJyutPingSegment, Romanization,
     },
-    rich_dict::{RichLine, RubySegment},
+    rich_dict::{RichDict, RichLine, RubySegment},
     search::{
         eg_search, pr_search, rich_dict_to_variants_map, variant_search, EgSearchRank, Script,
     },
+    unicode::to_hk_safe_variant,
 };
 use xxhash_rust::xxh3::xxh3_64;
 
@@ -25,9 +30,198 @@ fn main() {
 
     // get_disyllabic_prs_shorter_than(8);
 
-    test_eg_search();
+    // test_eg_search();
 
     // test_variant_search();
+
+    map_hbl_to_wordshk();
+}
+
+#[derive(Deserialize)]
+struct HBLRecord {
+    #[serde(rename = "#")]
+    index: u64,
+    key: String,
+    #[serde(rename = "char")]
+    characters: String,
+    #[serde(rename = "hbl")]
+    hbl_scale: String,
+    #[serde(rename = "cat")]
+    category: Option<String>,
+    edb: String,
+    #[serde(rename = "jp")]
+    jyutping: String,
+    eng: String,
+    cmn: Option<String>,
+    urd: Option<String>,
+    urd_: Option<String>,
+    nep: Option<String>,
+    hin: Option<String>,
+    hin_: Option<String>,
+    ind: Option<String>,
+}
+
+fn parse_category(cat: &str) -> String {
+    let name = cat.split("__").nth(1).unwrap();
+    match name {
+        "v_adj" => "adj".to_string(),
+        "v_loc" => "loc".to_string(),
+        _ => name.split("_").next().unwrap().to_string(),
+    }
+}
+
+fn map_hbl_to_wordshk() {
+    let api = Api::load(APP_TMP_DIR);
+
+    // Read CSV
+    let mut reader = csv::ReaderBuilder::new()
+        .from_path("hbl_words.csv")
+        .unwrap();
+
+    let mut category_sets = std::collections::HashSet::new();
+
+    let hbl_category_to_pos: std::collections::HashMap<&str, &str> =
+        std::collections::HashMap::from_iter([
+            ("gram", "介詞"),
+            ("v", "動詞"),
+            ("adj", "形容詞"),
+            ("loc", "方位詞"),
+            ("n", "名詞"),
+            ("intj", "感嘆詞"),
+            ("sfp", "助詞"),
+            ("pron", "代詞"),
+            ("adv", "副詞"),
+            ("dem", "代詞"),
+            ("num", "數詞"),
+            ("expr", "語句"),
+            ("conj", "連詞"),
+            ("mw", "量詞"),
+            ("aff", "詞綴"),
+            // freq is unclear so it's omitted
+        ]);
+
+    for record in reader.deserialize() {
+        let record: HBLRecord = record.unwrap();
+        let mut pos = None;
+        if let Some(cat) = record.category {
+            let cat = parse_category(&cat);
+            category_sets.insert(cat.clone());
+            pos = hbl_category_to_pos.get(cat.as_str());
+        }
+
+        let key_safe = to_hk_safe_variant(&record.key);
+        let mut variant_matches = vec![];
+        let mut strict_matches = vec![];
+        for entry in api.dict.values() {
+            for variant in &entry.variants.0 {
+                if variant.word == key_safe {
+                    variant_matches.push(entry.id);
+                    // if let Some(pos) = pos {
+                    // if entry.poses.contains(&pos.to_string())
+                    let matched_def_indices = entry
+                        .defs
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, def)| {
+                            def.eng
+                                .as_ref()
+                                .map(|eng| {
+                                    let matched = Regex::new(
+                                        format!(r"\b{}\b", regex::escape(&record.eng)).as_str(),
+                                    )
+                                    .unwrap()
+                                    .is_match(&clause_to_string(eng));
+                                    if matched {
+                                        Some(i)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .unwrap_or(None)
+                        })
+                        .collect::<Vec<_>>();
+                    if !matched_def_indices.is_empty() {
+                        strict_matches.push((entry.id, matched_def_indices));
+                    }
+                    break;
+                }
+            }
+        }
+
+        fn strict_match_to_string(m: &(usize, Vec<usize>)) -> String {
+            let (id, def_indices) = m;
+            format!(r#"{{"id": {}, "def_indices": {:?}}}"#, id, def_indices)
+        }
+
+        fn strict_matches_to_string(ms: &[(usize, Vec<usize>)]) -> String {
+            format!(
+                "[{}]",
+                ms.iter().map(|m| strict_match_to_string(m)).join(",")
+            )
+        }
+
+        if strict_matches.len() == 1 {
+            if strict_matches[0].1.len() > 1 {
+                println!(
+                    r#"{{"hbl_id": {}, "word": "{}", "defs": {}, "mapping_type": "single_entry_multiple_defs"}}"#,
+                    record.index,
+                    record.key,
+                    strict_matches_to_string(&strict_matches)
+                );
+            } else {
+                println!(
+                    r#"{{"hbl_id": {}, "word": "{}", "defs": {}, "mapping_type": "single_entry_single_def"}}"#,
+                    record.index,
+                    record.key,
+                    strict_matches_to_string(&strict_matches)
+                );
+            }
+        } else if variant_matches.len() > 1 {
+            if strict_matches.is_empty() {
+                println!(
+                    r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "multiple_entries_unknown_def"}}"#,
+                    record.index, record.key, variant_matches
+                );
+            } else {
+                println!(
+                    r#"{{"hbl_id": {}, "word": "{}", "defs": {}, "mapping_type": "multiple_entries_multiple_defs"}}"#,
+                    record.index,
+                    record.key,
+                    strict_matches_to_string(&strict_matches)
+                );
+            }
+        } else if variant_matches.is_empty() {
+            println!(
+                r#"{{"hbl_id": {}, "word": "{}", "defs": [], "mapping_type": "no_entry"}}"#,
+                record.index, record.key,
+            );
+        } else {
+            // variant_matches.len() == 1 && strict_matches.len() != 1
+            if strict_matches.is_empty() {
+                let m = variant_matches[0];
+                if api.dict.get(&m).unwrap().defs.len() == 1 {
+                    println!(
+                        r#"{{"hbl_id": {}, "word": "{}", "defs": {}, "type": "single_entry_single_def"}}"#,
+                        record.index,
+                        record.key,
+                        strict_matches_to_string(&[(m, vec![0])])
+                    );
+                } else {
+                    println!(
+                        r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "single_entry_unknown_def"}}"#,
+                        record.index, record.key, variant_matches
+                    );
+                }
+            } else {
+                println!(
+                    r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "single_entry_multiple_defs"}}"#,
+                    record.index, record.key, strict_matches
+                );
+            }
+        }
+    }
+    // Print categories
+    // println!("{:?}", category_sets);
 }
 
 fn test_variant_search() {
@@ -292,10 +486,10 @@ fn test_jyutping_search() {
     use serde::Deserialize;
     use std::io::prelude::*;
 
-    let mut api_decompressor = GzDecoder::new(&include_bytes!("../app_tmp/api.json")[..]);
-    let mut api_str = String::new();
-    api_decompressor.read_to_string(&mut api_str).unwrap();
-    let mut api: Api = serde_json::from_str(&api_str).unwrap();
+    let mut dict_decompressor = GzDecoder::new(&include_bytes!("../app_tmp/dict.json")[..]);
+    let mut dict_str = String::new();
+    dict_decompressor.read_to_string(&mut dict_str).unwrap();
+    let dict: RichDict = serde_json::from_str(&dict_str).unwrap();
 
     let mut pr_indices_decompressor =
         GzDecoder::new(&include_bytes!("../app_tmp/pr_indices.msgpack")[..]);
@@ -310,7 +504,7 @@ fn test_jyutping_search() {
 
     let test_pr_search = |expected: &str, query: &str, expected_score: usize| {
         println!("query: {}", query);
-        let result = pr_search(&pr_indices, &api.dict, query, romanization);
+        let result = pr_search(&pr_indices, &dict, query, romanization);
         println!("result: {:?}", result);
         assert!(result
             .iter()
@@ -354,10 +548,10 @@ fn test_yale_search() {
     use serde::Deserialize;
     use std::io::prelude::*;
 
-    let mut api_decompressor = GzDecoder::new(&include_bytes!("../app_tmp/api.json")[..]);
-    let mut api_str = String::new();
-    api_decompressor.read_to_string(&mut api_str).unwrap();
-    let mut api: Api = serde_json::from_str(&api_str).unwrap();
+    let mut dict_decompressor = GzDecoder::new(&include_bytes!("../app_tmp/dict.json")[..]);
+    let mut dict_str = String::new();
+    dict_decompressor.read_to_string(&mut dict_str).unwrap();
+    let dict: RichDict = serde_json::from_str(&dict_str).unwrap();
 
     let mut pr_indices_decompressor =
         GzDecoder::new(&include_bytes!("../app_tmp/pr_indices.msgpack")[..]);
@@ -368,13 +562,13 @@ fn test_yale_search() {
     let pr_indices = rmp_serde::from_slice(&pr_indices_bytes[..])
         .expect("Failed to deserialize pr_indices from msgpack format");
 
-    println!("Loaded pr_indices and api");
+    println!("Loaded pr_indices and dict");
 
     let romanization = Romanization::Yale;
 
     let test_pr_search = |expected: &str, query: &str, expected_score: usize| {
         println!("query: {}", query);
-        let result = pr_search(&pr_indices, &api.dict, query, romanization);
+        let result = pr_search(&pr_indices, &dict, query, romanization);
         println!("result: {:?}", result);
         assert!(result
             .iter()

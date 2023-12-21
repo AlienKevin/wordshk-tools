@@ -269,6 +269,7 @@ dependencies = [
  "flate2",
  "itertools",
  "rayon",
+ "regex",
  "rmp-serde",
  "serde",
  "serde_json",
