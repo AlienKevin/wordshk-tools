@@ -1,3 +1,4 @@
+use fastembed::{EmbeddingBase, EmbeddingModel, FlagEmbedding, InitOptions};
 use itertools::Itertools;
 use regex::Regex;
 use rmp_serde::Deserializer;
@@ -34,7 +35,9 @@ fn main() {
 
     // test_variant_search();
 
-    map_hbl_to_wordshk();
+    let model = get_embedding_model();
+    // test_calculate_embedding(&model);
+    map_hbl_to_wordshk(&model);
 }
 
 #[derive(Deserialize)]
@@ -70,7 +73,60 @@ fn parse_category(cat: &str) -> String {
     }
 }
 
-fn map_hbl_to_wordshk() {
+fn get_embedding_model() -> FlagEmbedding {
+    let model: FlagEmbedding = FlagEmbedding::try_new(Default::default()).unwrap();
+
+    // List all supported models
+    // dbg!(FlagEmbedding::list_supported_models());
+
+    let model: FlagEmbedding = FlagEmbedding::try_new(InitOptions {
+        model_name: EmbeddingModel::BGESmallENV15,
+        show_download_message: true,
+        ..Default::default()
+    })
+    .unwrap();
+
+    model
+}
+
+fn test_calculate_embedding(model: &FlagEmbedding) {
+    let e1 = &model.embed(vec!["query: (measure)"], None).unwrap()[0];
+
+    let e2 = &model.embed(vec!["query: the most general measure word; used for people, round objects, abstract things, such as questions / ideas, etc."], None).unwrap()[0];
+
+    let e3 = &model.embed(vec!["query: used before nouns (including nouns that usually take a different measure word, abstract nouns and uncountable nouns) to highlight a specific type of the thing in question"], None).unwrap()[0];
+
+    let e4 = &model
+        .embed(
+            vec!["query: dollar; used for non-rounded quantities of money"],
+            None,
+        )
+        .unwrap()[0];
+
+    let e5 = &model.embed(vec!["query: ten thousand dollars; when it represents ten thousand, it is seldom preceded by the numerals 1-9 but instead by numerals ≥10; other restrictions include that it cannot be followed by 半 bun3 (a half), 幾 gei2 (several), nor pair with the suffixes 水 seoi2 (money) or 嘢 je5 (things)"], None).unwrap()[0];
+
+    let e6 = &model.embed(vec!["query: pronunciation of the particle 㗎 (gaa3) before particles with an -o final due to assimilation"], None).unwrap()[0];
+
+    let e7 = &model.embed(vec!["query: used to indicate that the action is relatively easy, relaxing and even enjoyable; added in predicate-object constructions, usually pronounced unstressed"], None).unwrap()[0];
+
+    println!("{}", acap::cos::cosine_similarity(e1, e2));
+    println!("{}", acap::cos::cosine_similarity(e1, e3));
+    println!("{}", acap::cos::cosine_similarity(e1, e4));
+    println!("{}", acap::cos::cosine_similarity(e1, e5));
+    println!("{}", acap::cos::cosine_similarity(e1, e6));
+    println!("{}", acap::cos::cosine_similarity(e1, e7));
+}
+
+fn calculate_embedding(sent: &str, model: &FlagEmbedding) -> Vec<f32> {
+    model
+        .embed(vec![format!("query: {}", sent)], None)
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap()
+}
+
+fn map_hbl_to_wordshk(model: &FlagEmbedding) {
     let api = Api::load(APP_TMP_DIR);
 
     // Read CSV
@@ -112,7 +168,7 @@ fn map_hbl_to_wordshk() {
         let key_safe = to_hk_safe_variant(&record.key);
         let mut variant_matches = vec![];
         let mut strict_matches = vec![];
-        for entry in api.dict.values() {
+        for entry in api.dict.values().sorted_by_key(|entry| entry.id) {
             for variant in &entry.variants.0 {
                 if variant.word == key_safe {
                     variant_matches.push(entry.id);
@@ -177,17 +233,46 @@ fn map_hbl_to_wordshk() {
                 );
             }
         } else if variant_matches.len() > 1 {
+            let query_emb = calculate_embedding(&record.eng, &model);
+            // Must be above this threshold to be considered a match
+            let mut best_score = 0f32;
+            let mut best_match = None;
+            for id in &variant_matches {
+                let entry = &api.dict[&id];
+                for (i, def) in entry.defs.iter().enumerate() {
+                    if let Some(eng) = def.eng.as_ref() {
+                        let sent = clause_to_string(eng);
+                        let parts = sent.split(";").map(|part| part.trim());
+                        for part in parts {
+                            let part_emb = calculate_embedding(part, &model);
+                            let score = acap::cos::cosine_similarity(&query_emb, &part_emb);
+                            if score > best_score {
+                                best_score = score;
+                                best_match = Some((id, i));
+                            }
+                        }
+                    }
+                }
+            }
+            let inferred_def = if let Some((id, def_index)) = best_match {
+                strict_matches_to_string(&[(*id, vec![def_index])])
+            } else {
+                "null".to_string()
+            };
+            let inferred_similarity = best_score;
             if strict_matches.is_empty() {
                 println!(
-                    r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "multiple_entries_unknown_def"}}"#,
-                    record.index, record.key, variant_matches
+                    r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "multiple_entries_unknown_def", "inferred_def": {}, "inferred_similarity": {}}}"#,
+                    record.index, record.key, variant_matches, inferred_def, inferred_similarity
                 );
             } else {
                 println!(
-                    r#"{{"hbl_id": {}, "word": "{}", "defs": {}, "mapping_type": "multiple_entries_multiple_defs"}}"#,
+                    r#"{{"hbl_id": {}, "word": "{}", "defs": {}, "mapping_type": "multiple_entries_multiple_defs", "inferred_def": {}, "inferred_similarity": {}}}"#,
                     record.index,
                     record.key,
-                    strict_matches_to_string(&strict_matches)
+                    strict_matches_to_string(&strict_matches),
+                    inferred_def,
+                    inferred_similarity
                 );
             }
         } else if variant_matches.is_empty() {
