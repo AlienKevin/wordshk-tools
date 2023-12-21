@@ -126,6 +126,54 @@ fn calculate_embedding(sent: &str, model: &FlagEmbedding) -> Vec<f32> {
         .unwrap()
 }
 
+fn infer_def(
+    dict: &RichDict,
+    eng: &str,
+    variant_matches: &[usize],
+    model: &FlagEmbedding,
+) -> (String, f32) {
+    let query_emb = calculate_embedding(&eng, &model);
+    // Must be above this threshold to be considered a match
+    let mut best_score = 0f32;
+    let mut best_match = None;
+    for id in variant_matches {
+        let entry = &dict[&id];
+        for (i, def) in entry.defs.iter().enumerate() {
+            if let Some(eng) = def.eng.as_ref() {
+                let sent = clause_to_string(eng);
+                let parts = sent.split(";").map(|part| part.trim());
+                for part in parts {
+                    let part_emb = calculate_embedding(part, &model);
+                    let score = acap::cos::cosine_similarity(&query_emb, &part_emb);
+                    if score > best_score {
+                        best_score = score;
+                        best_match = Some((id, i));
+                    }
+                }
+            }
+        }
+    }
+    let inferred_def = if let Some((id, def_index)) = best_match {
+        strict_match_to_string(&(*id, vec![def_index]))
+    } else {
+        "null".to_string()
+    };
+    let inferred_similarity = best_score;
+    (inferred_def, inferred_similarity)
+}
+
+fn strict_match_to_string(m: &(usize, Vec<usize>)) -> String {
+    let (id, def_indices) = m;
+    format!(r#"{{"id": {}, "def_indices": {:?}}}"#, id, def_indices)
+}
+
+fn strict_matches_to_string(ms: &[(usize, Vec<usize>)]) -> String {
+    format!(
+        "[{}]",
+        ms.iter().map(|m| strict_match_to_string(m)).join(",")
+    )
+}
+
 fn map_hbl_to_wordshk(model: &FlagEmbedding) {
     let api = Api::load(APP_TMP_DIR);
 
@@ -204,18 +252,6 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
             }
         }
 
-        fn strict_match_to_string(m: &(usize, Vec<usize>)) -> String {
-            let (id, def_indices) = m;
-            format!(r#"{{"id": {}, "def_indices": {:?}}}"#, id, def_indices)
-        }
-
-        fn strict_matches_to_string(ms: &[(usize, Vec<usize>)]) -> String {
-            format!(
-                "[{}]",
-                ms.iter().map(|m| strict_match_to_string(m)).join(",")
-            )
-        }
-
         if strict_matches.len() == 1 {
             if strict_matches[0].1.len() > 1 {
                 println!(
@@ -233,33 +269,8 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
                 );
             }
         } else if variant_matches.len() > 1 {
-            let query_emb = calculate_embedding(&record.eng, &model);
-            // Must be above this threshold to be considered a match
-            let mut best_score = 0f32;
-            let mut best_match = None;
-            for id in &variant_matches {
-                let entry = &api.dict[&id];
-                for (i, def) in entry.defs.iter().enumerate() {
-                    if let Some(eng) = def.eng.as_ref() {
-                        let sent = clause_to_string(eng);
-                        let parts = sent.split(";").map(|part| part.trim());
-                        for part in parts {
-                            let part_emb = calculate_embedding(part, &model);
-                            let score = acap::cos::cosine_similarity(&query_emb, &part_emb);
-                            if score > best_score {
-                                best_score = score;
-                                best_match = Some((id, i));
-                            }
-                        }
-                    }
-                }
-            }
-            let inferred_def = if let Some((id, def_index)) = best_match {
-                strict_matches_to_string(&[(*id, vec![def_index])])
-            } else {
-                "null".to_string()
-            };
-            let inferred_similarity = best_score;
+            let (inferred_def, inferred_similarity) =
+                infer_def(&api.dict, &record.eng, &variant_matches, &model);
             if strict_matches.is_empty() {
                 println!(
                     r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "multiple_entries_unknown_def", "inferred_def": {}, "inferred_similarity": {}}}"#,
@@ -292,15 +303,23 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
                         strict_matches_to_string(&[(m, vec![0])])
                     );
                 } else {
+                    let (inferred_def, inferred_similarity) =
+                        infer_def(&api.dict, &record.eng, &variant_matches, &model);
                     println!(
-                        r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "single_entry_unknown_def"}}"#,
-                        record.index, record.key, variant_matches
+                        r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "single_entry_unknown_def", "inferred_def": {}, "inferred_similarity": {}}}"#,
+                        record.index,
+                        record.key,
+                        variant_matches,
+                        inferred_def,
+                        inferred_similarity
                     );
                 }
             } else {
+                let (inferred_def, inferred_similarity) =
+                    infer_def(&api.dict, &record.eng, &variant_matches, &model);
                 println!(
-                    r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "single_entry_multiple_defs"}}"#,
-                    record.index, record.key, strict_matches
+                    r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "single_entry_multiple_defs", "inferred_def": {}, "inferred_similarity": {}}}"#,
+                    record.index, record.key, strict_matches, inferred_def, inferred_similarity
                 );
             }
         }
