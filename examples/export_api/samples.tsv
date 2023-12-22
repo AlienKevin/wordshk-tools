@@ -1,0 +1,66 @@
+single_entry_single_def
+34740	移民		動詞	ji4-man4	ji4 man4	immigrate	to emigrate; to immigrate
+34290	產		語素	caan2	caan2	to produce	to produce; to yield; to make something; to manufacture something out of the raw material
+73410	抬		動詞	toi4	toi4	to lift	to lift up; to raise; to carry
+100520	爆竊		動詞	baau3-sit3	baau3 sit3	burglary	to burgle; to commit burglary; to break into someone's house or shop and steal things
+45390	士兵		名詞	si6-bing1	si6 bing1	soldier	soldier
+88260	職務		名詞	zik1-mou6	zik1 mou6	post	duty; responsibility
+61910	分裂		動詞	fan1-lit6	fan1 lit6	to split	to disassociate; to split
+62270	制裁		動詞,名詞	zai3-coi4	zai3 coi4	to crack down on	to punish; to sanction (a person or a group) according to law
+81540	無疑		副詞	mou4-ji4	mou4 ji4	undoubtedly	to have no doubt; to be certain
+19490	有害		形容詞	jau5-hoi6	jau5 hoi6	harmful	harmful; detrimental; pernicious
+single_entry_multiple_defs
+93810	週年		名詞	zau1-nin4	zau1 nin4	anniversary	anniversary	1
+8380	而	conj	連詞	ji4	ji4	and	and; as well as	1
+16390	市場		名詞	si5-coeng4	si5 coeng4	market	market; economic situation whereby supply and demand affect the price of a good or service	1
+35330	背景		名詞	bui3-ging2	bui3 ging2	background	background; setting	1
+8570	輸	adj	動詞	syu1	syu1	to lose	to lose in a competition or contest; to be beaten	0.8779694
+41600	距離		名詞	keoi5-lei4	keoi5 lei4	distance	distance; span between two points	1
+50620	狹窄		形容詞	haap3-zaak3[haap6-zaak3]	haap3 zaak3	narrow	narrow	1
+18020	打開		動詞	daa2-hoi1	daa2 hoi1	to open	to open; to unfold	1
+31540	射		動詞	se6	se6	shoot	(in ball games) to shoot	0.8857819
+3340	過	aff	動詞	gwo3	gwo3	to pass	to cross; to pass	1
+single_entry_unknown_def
+7670	搞掂	freq	動詞	gaau2-dim6	gaau2 dim6	done	to finish; to complete	0.91359586
+24490	腳步		名詞	goek3-bou6	goek3 bou6	footstep	step; pace	0.8566871
+61150	全線		名詞	cyun4-sin3	cyun4 sin3	all fronts	all stores of a retail chain	0.76226175
+103690	渲染		動詞	hyun1-jim5[syun3-jim5]	hyun1 jim5, syun1 jim5, syun3 jim5	to apply colours to a drawing	(of Chinese painting) to add washes of ink or colour to a drawing	0.8372811
+106080	摙		動詞	lin2	lin2	to squeeze	to grab with fingers	0.79736906
+90400	規律		名詞	kwai1-leot6	kwai1 leot6	law	rule	0.83762693
+400	咗	aff	詞綴	zo2	zo2	-en	used after a verb as a perfective aspect marker for completed actions or past events	0.6673669
+83300	畫面		名詞	waa2-min6[waa2-min2]	waa2 min2	frame	an image on a screen	0.8046438
+100420	澎湃		形容詞	paang4-baai3	paang4 baai3	to surge	(of waves) surging	0.81378216
+106540	鬚		名詞	sou1	sou1	beard, moustache	beard; moustache; stubble; facial hair in general	0.946085
+multiple_entries_multiple_defs
+4650	晚	n	語素	maan5	maan5	night	night; evening	1
+39430	暖		形容詞	nyun5	nyun5	warm	(physically) warm	0.95930535
+25850	課		語素	fo3	fo3	lesson	lesson; course	1
+2260	夜	adj	語素	je6	je6	night	night; night-time	1
+46510	平均		名詞	ping4-gwan1	ping4 gwan1	average	average; mean	1
+28580	餐		量詞	caan1	caan1	meal	meal; food; a larger portion of food consumed in a specific time in a day	1
+6940	因為	conj	連詞	jan1-wai6	jan1 wai6	because	because; since	1
+36910	隊		語素	deoi6[deoi2]	deoi2	team	team; mostly at the end of words	1
+32070	影響		名詞	jing2-hoeng2	jing2 hoeng2	influence	effect; impact; influence	1
+35151	網		名詞	mong5	mong5	net	net, web	0.9455683
+multiple_entries_unknown_def
+38390	好心	freq	形容詞	hou2-sam1	hou2 sam1	for god's sake	kind; having good intentions	0.7432924
+7000	場	mw	名詞	coeng4	coeng4	(measure)	place; area; venue; field; ground	0.7791621
+14180	堂		名詞	tong4	tong4	class((as in Maths class, science class))	class; lesson	0.88893515
+74760	摟		語素	lau5	lau1	to gather up	to loot; to plunder	0.8213776
+47440	抖		動詞	dau2	dau3	to tremble	to touch	0.77072465
+34410	發達		形容詞	faat3-daat6	faat3 daat6	ok	sophisticated; advanced; developed	0.8147166
+60260	偏		動詞	pin1	pin1	to incline to one side	to incline to; to lean towards; usually followed by a side or direction	0.916441
+25160	行街	freq	動詞	haang4-gaai1	haang4 gaai1	to shop	takeaway; to go	0.85069597
+55140	選擇		名詞	syun2-zaak6	syun2 zaak6	choose, choice	choice	0.9813208
+28540	飲用		動詞	jam2-jung6	jam2 jung6	for drinking	to drink	0.96855575
+no_entry
+91400	談笑			taam4-siu3		to talk and laugh		
+46070	家喻户曉			gaa1-jyu6-wu6-hiu2		well-known		
+64050	可不是			ho2-bat1-si6		exactly		
+23830	紙條			zi2-tiu4		paper strips		
+5220	細路	n		sai3-lou6		kid		
+70640	式			sik1		type		
+62480	剎那			saat3-naa5		in a flash		
+13610	喀	freq		haak3		Hmm		
+46550	店鋪			dim3-pou3		shop		
+9080	一片			jat1-pin3		a slice		

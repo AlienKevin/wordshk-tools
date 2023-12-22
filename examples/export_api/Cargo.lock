@@ -378,6 +378,7 @@ dependencies = [
  "fastembed",
  "flate2",
  "itertools 0.11.0",
+ "rand",
  "rayon",
  "regex",
  "rmp-serde",

@@ -1,11 +1,16 @@
 use fastembed::{EmbeddingBase, EmbeddingModel, FlagEmbedding, InitOptions};
 use itertools::Itertools;
+use rand::rngs::StdRng;
+use rand::{seq::SliceRandom, SeedableRng};
 use regex::Regex;
 use rmp_serde::Deserializer;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::fs::File;
 use std::io::Cursor;
+use std::io::{self, BufRead};
 use wordshk_tools::{
     app_api::Api,
     dict::clause_to_string,
@@ -36,9 +41,224 @@ fn main() {
 
     // test_variant_search();
 
-    let model = get_embedding_model();
+    // let model = get_embedding_model();
     // test_calculate_embedding(&model);
-    map_hbl_to_wordshk(&model);
+    // map_hbl_to_wordshk(&model);
+    sample_mappings();
+}
+
+fn sample_mappings() -> Result<(), serde_json::Error> {
+    // Read mappings.jsonl line by line
+    let file = File::open("mappings.jsonl").expect("Unable to open mappings.jsonl");
+    let reader = io::BufReader::new(file);
+
+    let mut lines = reader
+        .lines()
+        .map(|line| line.expect("Unable to read line"))
+        .collect::<Vec<String>>();
+
+    // Shuffle lines with a seeded RNG
+    let mut rng = StdRng::seed_from_u64(1);
+    lines.shuffle(&mut rng);
+
+    let mut samples = [vec![], vec![], vec![], vec![], vec![], vec![]];
+
+    let limit_per_type = 10;
+
+    for line in lines {
+        let mapping: Mapping = serde_json::from_str(&line)?;
+        let mapping_type_index = match mapping {
+            Mapping::single_entry_single_def { .. } => 0,
+            Mapping::single_entry_multiple_defs { .. } => 1,
+            Mapping::single_entry_unknown_def { .. } => 2,
+            Mapping::multiple_entries_multiple_defs { .. } => 3,
+            Mapping::multiple_entries_unknown_def { .. } => 4,
+            Mapping::no_entry { .. } => 5,
+        };
+        if samples[mapping_type_index].len() < limit_per_type {
+            samples[mapping_type_index].push(mapping);
+        }
+    }
+
+    let api = Api::load(APP_TMP_DIR);
+
+    let mut hbl_records = HashMap::new();
+
+    let mut reader = csv::ReaderBuilder::new()
+        .from_path("hbl_words.csv")
+        .unwrap();
+
+    for record in reader.deserialize() {
+        let record: HBLRecord = record.unwrap();
+        hbl_records.insert(record.index, record);
+    }
+
+    // Print samples
+    for (mapping_type_index, sample) in samples.iter().enumerate() {
+        match mapping_type_index {
+            0 => println!("single_entry_single_def"),
+            1 => println!("single_entry_multiple_defs"),
+            2 => println!("single_entry_unknown_def"),
+            3 => println!("multiple_entries_multiple_defs"),
+            4 => println!("multiple_entries_unknown_def"),
+            5 => println!("no_entry"),
+            _ => unreachable!(),
+        }
+        for mapping in sample {
+            match mapping {
+                Mapping::single_entry_single_def {
+                    hbl_id,
+                    entry_id,
+                    def_index,
+                } => {
+                    let hbl_record = hbl_records.get(hbl_id).unwrap();
+                    let entry = &api.dict[&(*entry_id as usize)];
+                    let def = &entry.defs[*def_index as usize];
+                    println!(
+                        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                        hbl_record.index,
+                        hbl_record.key,
+                        hbl_record
+                            .category
+                            .as_ref()
+                            .map(|cat| parse_category(cat))
+                            .unwrap_or("".to_string()),
+                        entry.poses.join(","),
+                        hbl_record.jyutping,
+                        entry.variants.0[0].prs,
+                        hbl_record.eng,
+                        clause_to_string(&def.eng.as_ref().unwrap()),
+                    );
+                }
+                Mapping::single_entry_multiple_defs {
+                    hbl_id,
+                    entry_id,
+                    def_indices,
+                    inferred_def_index,
+                    inferred_similarity,
+                } => {
+                    let hbl_record = hbl_records.get(hbl_id).unwrap();
+                    let entry = &api.dict[&(*entry_id as usize)];
+                    let def = &entry.defs[*inferred_def_index as usize];
+                    println!(
+                        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                        hbl_record.index,
+                        hbl_record.key,
+                        hbl_record
+                            .category
+                            .as_ref()
+                            .map(|cat| parse_category(cat))
+                            .unwrap_or("".to_string()),
+                        entry.poses.join(","),
+                        hbl_record.jyutping,
+                        entry.variants.0[0].prs,
+                        hbl_record.eng,
+                        clause_to_string(&def.eng.as_ref().unwrap()),
+                        inferred_similarity,
+                    );
+                }
+                Mapping::single_entry_unknown_def {
+                    hbl_id,
+                    entry_id,
+                    inferred_def_index,
+                    inferred_similarity,
+                } => {
+                    let hbl_record = hbl_records.get(hbl_id).unwrap();
+                    let entry = &api.dict[&(*entry_id as usize)];
+                    let def = &entry.defs[*inferred_def_index as usize];
+                    println!(
+                        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                        hbl_record.index,
+                        hbl_record.key,
+                        hbl_record
+                            .category
+                            .as_ref()
+                            .map(|cat| parse_category(cat))
+                            .unwrap_or("".to_string()),
+                        entry.poses.join(","),
+                        hbl_record.jyutping,
+                        entry.variants.0[0].prs,
+                        hbl_record.eng,
+                        clause_to_string(&def.eng.as_ref().unwrap()),
+                        inferred_similarity,
+                    );
+                }
+                Mapping::multiple_entries_multiple_defs {
+                    hbl_id,
+                    defs,
+                    inferred_def,
+                    inferred_similarity,
+                } => {
+                    let hbl_record = hbl_records.get(hbl_id).unwrap();
+                    let entry = &api.dict[&(inferred_def.entry_id as usize)];
+                    let def = &entry.defs[inferred_def.def_index as usize];
+                    println!(
+                        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                        hbl_record.index,
+                        hbl_record.key,
+                        hbl_record
+                            .category
+                            .as_ref()
+                            .map(|cat| parse_category(cat))
+                            .unwrap_or("".to_string()),
+                        entry.poses.join(","),
+                        hbl_record.jyutping,
+                        entry.variants.0[0].prs,
+                        hbl_record.eng,
+                        clause_to_string(&def.eng.as_ref().unwrap()),
+                        inferred_similarity,
+                    );
+                }
+                Mapping::multiple_entries_unknown_def {
+                    hbl_id,
+                    entry_ids,
+                    inferred_def,
+                    inferred_similarity,
+                } => {
+                    let hbl_record = hbl_records.get(hbl_id).unwrap();
+                    let entry = &api.dict[&(inferred_def.entry_id as usize)];
+                    let def = &entry.defs[inferred_def.def_index as usize];
+                    println!(
+                        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                        hbl_record.index,
+                        hbl_record.key,
+                        hbl_record
+                            .category
+                            .as_ref()
+                            .map(|cat| parse_category(cat))
+                            .unwrap_or("".to_string()),
+                        entry.poses.join(","),
+                        hbl_record.jyutping,
+                        entry.variants.0[0].prs,
+                        hbl_record.eng,
+                        clause_to_string(&def.eng.as_ref().unwrap()),
+                        inferred_similarity,
+                    );
+                }
+                Mapping::no_entry { hbl_id } => {
+                    let hbl_record = hbl_records.get(hbl_id).unwrap();
+                    println!(
+                        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                        hbl_record.index,
+                        hbl_record.key,
+                        hbl_record
+                            .category
+                            .as_ref()
+                            .map(|cat| parse_category(cat))
+                            .unwrap_or("".to_string()),
+                        "",
+                        hbl_record.jyutping,
+                        "",
+                        hbl_record.eng,
+                        "",
+                        "",
+                    );
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[derive(Serialize, Deserialize, Debug)]
