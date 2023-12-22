@@ -12,16 +12,15 @@ single_entry_single_def
 single_entry_multiple_defs
 93810	週年		名詞	zau1-nin4	zau1 nin4	anniversary	anniversary	1
 8380	而	conj	連詞	ji4	ji4	and	and; as well as	1
+7000	場	mw	量詞	coeng4	coeng4	(measure)		0
 16390	市場		名詞	si5-coeng4	si5 coeng4	market	market; economic situation whereby supply and demand affect the price of a good or service	1
 35330	背景		名詞	bui3-ging2	bui3 ging2	background	background; setting	1
+8570	輸	adj	動詞	syu1	syu1	to lose	to lose in a competition or contest; to be beaten	0.8779694
 41600	距離		名詞	keoi5-lei4	keoi5 lei4	distance	distance; span between two points	1
 50620	狹窄		形容詞	haap3-zaak3[haap6-zaak3]	haap3 zaak3	narrow	narrow	1
 18020	打開		動詞	daa2-hoi1	daa2 hoi1	to open	to open; to unfold	1
 31540	射		動詞	se6	se6	shoot	(in ball games) to shoot	0.8857819
-310	叫	v	動詞	giu3	giu3	to call	to call; to address	1
-32421	拗	freq	動詞	aau3	aau3	argue	to debate; to dispute; to argue	0.98542935
 single_entry_unknown_def
-8550	贏	adj	動詞	jeng4[jing4]	jeng4	to win	to win	1
 7670	搞掂	freq	動詞	gaau2-dim6	gaau2 dim6	done	to finish; to complete	0.91359586
 24490	腳步		名詞	goek3-bou6	goek3 bou6	footstep	step; pace	0.8566871
 61150	全線		名詞	cyun4-sin3	cyun4 sin3	all fronts	all stores of a retail chain	0.76226175
@@ -31,28 +30,29 @@ single_entry_unknown_def
 400	咗	aff	詞綴	zo2	zo2	-en	used after a verb as a perfective aspect marker for completed actions or past events	0.6673669
 83300	畫面		名詞	waa2-min6[waa2-min2]	waa2 min2	frame	an image on a screen	0.8046438
 100420	澎湃		形容詞	paang4-baai3	paang4 baai3	to surge	(of waves) surging	0.81378216
+106540	鬚		名詞	sou1	sou1	beard, moustache	beard; moustache; stubble; facial hair in general	0.946085
 multiple_entries_multiple_defs
 39430	暖		形容詞	nyun5	nyun5	warm	(physically) warm	0.95930535
 25850	課		語素	fo3	fo3	lesson	lesson; course	1
 46510	平均		名詞	ping4-gwan1	ping4 gwan1	average	average; mean	1
 28580	餐		量詞	caan1	caan1	meal	meal; food; a larger portion of food consumed in a specific time in a day	1
+1370	隻	mw		zek3		(measure)		0
 36910	隊		語素	deoi6[deoi2]	deoi2	team	team; mostly at the end of words	1
 32070	影響		名詞	jing2-hoeng2	jing2 hoeng2	influence	effect; impact; influence	1
 32310	慳	freq	形容詞	haan1	haan1	frugal	frugal; thrifty; economical	1
 78110	橫		形容詞	waang4	waang4	horizontal	horizontal; parallel to the horizon	1
 45720	姓		名詞	sing3	sing3	surname	surname; last name; family name	1
-56030	雷		名詞	leoi4	leoi4	thunder	loyalty and brotherhood among triad members; literally: thunder	0.964429
 multiple_entries_unknown_def
 3080	聽	v	動詞	ting1	teng1	to hear	to listen; to hear	1
 38390	好心	freq	形容詞	hou2-sam1	hou2 sam1	for god's sake	kind; having good intentions	0.7432924
-7000	場	mw	名詞	coeng4	coeng4	(measure)	place; area; venue; field; ground	0.7791621
 14180	堂		名詞	tong4	tong4	class((as in Maths class, science class))	class; lesson	0.88893515
 74760	摟		語素	lau5	lau1	to gather up	to loot; to plunder	0.8213776
 47440	抖		動詞	dau2	dau3	to tremble	to touch	0.77072465
 34410	發達		形容詞	faat3-daat6	faat3 daat6	ok	sophisticated; advanced; developed	0.8147166
 60260	偏		動詞	pin1	pin1	to incline to one side	to incline to; to lean towards; usually followed by a side or direction	0.916441
 25160	行街	freq	動詞	haang4-gaai1	haang4 gaai1	to shop	takeaway; to go	0.85069597
-4650	晚	n	語素	maan5	maan5	night	night; evening	1
+55140	選擇		名詞	syun2-zaak6	syun2 zaak6	choose, choice	choice	0.9813208
+28540	飲用		動詞	jam2-jung6	jam2 jung6	for drinking	to drink	0.96855575
 no_entry
 91400	談笑			taam4-siu3		to talk and laugh		
 46070	家喻户曉			gaa1-jyu6-wu6-hiu2		well-known		
