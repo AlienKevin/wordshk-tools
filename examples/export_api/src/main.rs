@@ -49,7 +49,7 @@ fn main() {
 
 fn sample_mappings() -> Result<(), serde_json::Error> {
     // Read mappings.jsonl line by line
-    let file = File::open("mappings.jsonl").expect("Unable to open mappings.jsonl");
+    let file = File::open("mappings_pos_pr_eng.jsonl").expect("Unable to open mappings.jsonl");
     let reader = io::BufReader::new(file);
 
     let mut lines = reader
@@ -475,8 +475,22 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
             for variant in &entry.variants.0 {
                 if variant.word == key_safe {
                     variant_matches.push(entry.id as u64);
-                    // if let Some(pos) = pos {
-                    // if entry.poses.contains(&pos.to_string())
+                    // If pos is specified, only consider entries with the same pos
+                    if let Some(pos) = pos {
+                        if !entry.poses.contains(&pos.to_string()) {
+                            continue;
+                        }
+                    }
+                    // Check if pr matches
+                    // Handles alternative prs using contains like: 牙刷 ngaa4-caat2[ngaa4-caat3]
+                    let pr_matches = variant
+                        .prs
+                        .0
+                        .iter()
+                        .any(|pr| record.jyutping.contains(&pr.to_string().replace(' ', "-")));
+                    if !pr_matches {
+                        continue;
+                    }
                     let matched_def_indices = entry
                         .defs
                         .iter()

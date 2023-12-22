@@ -12,7 +12,7 @@ use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
 use itertools::Itertools;
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::collections::{BinaryHeap, HashSet};
 use strsim::{generic_levenshtein, levenshtein, normalized_levenshtein};
 use thesaurus;
@@ -33,7 +33,7 @@ pub enum Script {
 }
 
 /// A Map from entry ID to variants and simplified variants
-pub type VariantsMap = HashMap<usize, ComboVariants>;
+pub type VariantsMap = BTreeMap<usize, ComboVariants>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComboVariant {

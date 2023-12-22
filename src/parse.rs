@@ -17,7 +17,7 @@ use super::unicode;
 
 use lip::ParseResult;
 use lip::*;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::convert::identity;
 use std::error::Error;
 use std::io;
@@ -28,7 +28,7 @@ pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(false)
         .from_reader(input);
-    let mut dict: Dict = HashMap::new();
+    let mut dict: Dict = BTreeMap::new();
     for result in rdr.records() {
         let entry = result?;
         // if &entry[4] == "OK" {

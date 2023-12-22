@@ -8,10 +8,10 @@ use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
 use std::cmp;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 
-pub type RichDict = HashMap<usize, RichEntry>;
+pub type RichDict = BTreeMap<usize, RichEntry>;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct RichEntry {

@@ -2,10 +2,10 @@ use super::jyutping::LaxJyutPings;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 /// A dictionary is a list of entries
-pub type Dict = HashMap<usize, Entry>;
+pub type Dict = BTreeMap<usize, Entry>;
 
 /// An entry contains some information about a word.
 ///

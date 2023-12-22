@@ -2,7 +2,6 @@ use crate::{
     jyutping::{remove_yale_tones, Romanization},
     rich_dict::RichDict,
 };
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
