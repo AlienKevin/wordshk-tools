@@ -2,7 +2,8 @@ use fastembed::{EmbeddingBase, EmbeddingModel, FlagEmbedding, InitOptions};
 use itertools::Itertools;
 use regex::Regex;
 use rmp_serde::Deserializer;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_json;
 use std::collections::BTreeMap;
 use std::io::Cursor;
 use wordshk_tools::{
@@ -38,6 +39,55 @@ fn main() {
     let model = get_embedding_model();
     // test_calculate_embedding(&model);
     map_hbl_to_wordshk(&model);
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct MappingDef {
+    entry_id: u64,
+    def_index: u64,
+}
+
+#[derive(Debug)]
+struct MappingDefGroup {
+    entry_id: u64,
+    def_indices: Vec<u64>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+enum Mapping {
+    single_entry_single_def {
+        hbl_id: u64,
+        entry_id: u64,
+        def_index: u64,
+    },
+    single_entry_multiple_defs {
+        hbl_id: u64,
+        entry_id: u64,
+        def_indices: Vec<u64>,
+        inferred_def_index: u64,
+        inferred_similarity: f32,
+    },
+    single_entry_unknown_def {
+        hbl_id: u64,
+        entry_id: u64,
+        inferred_def_index: u64,
+        inferred_similarity: f32,
+    },
+    multiple_entries_multiple_defs {
+        hbl_id: u64,
+        defs: Vec<MappingDef>,
+        inferred_def: MappingDef,
+        inferred_similarity: f32,
+    },
+    multiple_entries_unknown_def {
+        hbl_id: u64,
+        entry_ids: Vec<u64>,
+        inferred_def: MappingDef,
+        inferred_similarity: f32,
+    },
+    no_entry {
+        hbl_id: u64,
+    },
 }
 
 #[derive(Deserialize)]
@@ -129,49 +179,34 @@ fn calculate_embedding(sent: &str, model: &FlagEmbedding) -> Vec<f32> {
 fn infer_def(
     dict: &RichDict,
     eng: &str,
-    variant_matches: &[usize],
+    variant_matches: &[u64],
     model: &FlagEmbedding,
-) -> (String, f32) {
+) -> (MappingDef, f32) {
     let query_emb = calculate_embedding(&eng, &model);
     // Must be above this threshold to be considered a match
-    let mut best_score = 0f32;
-    let mut best_match = None;
+    let mut inferred_similarity = 0f32;
+    let mut inferred_def = None;
     for id in variant_matches {
-        let entry = &dict[&id];
+        let entry = &dict[&(*id as usize)];
         for (i, def) in entry.defs.iter().enumerate() {
             if let Some(eng) = def.eng.as_ref() {
                 let sent = clause_to_string(eng);
                 let parts = sent.split(";").map(|part| part.trim());
                 for part in parts {
                     let part_emb = calculate_embedding(part, &model);
-                    let score = acap::cos::cosine_similarity(&query_emb, &part_emb);
-                    if score > best_score {
-                        best_score = score;
-                        best_match = Some((id, i));
+                    let similarity = acap::cos::cosine_similarity(&query_emb, &part_emb);
+                    if similarity > inferred_similarity {
+                        inferred_similarity = similarity;
+                        inferred_def = Some(MappingDef {
+                            entry_id: *id,
+                            def_index: i as u64,
+                        });
                     }
                 }
             }
         }
     }
-    let inferred_def = if let Some((id, def_index)) = best_match {
-        strict_match_to_string(&(*id, vec![def_index]))
-    } else {
-        "null".to_string()
-    };
-    let inferred_similarity = best_score;
-    (inferred_def, inferred_similarity)
-}
-
-fn strict_match_to_string(m: &(usize, Vec<usize>)) -> String {
-    let (id, def_indices) = m;
-    format!(r#"{{"id": {}, "def_indices": {:?}}}"#, id, def_indices)
-}
-
-fn strict_matches_to_string(ms: &[(usize, Vec<usize>)]) -> String {
-    format!(
-        "[{}]",
-        ms.iter().map(|m| strict_match_to_string(m)).join(",")
-    )
+    (inferred_def.unwrap(), inferred_similarity)
 }
 
 fn map_hbl_to_wordshk(model: &FlagEmbedding) {
@@ -219,7 +254,7 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
         for entry in api.dict.values().sorted_by_key(|entry| entry.id) {
             for variant in &entry.variants.0 {
                 if variant.word == key_safe {
-                    variant_matches.push(entry.id);
+                    variant_matches.push(entry.id as u64);
                     // if let Some(pos) = pos {
                     // if entry.poses.contains(&pos.to_string())
                     let matched_def_indices = entry
@@ -236,7 +271,7 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
                                     .unwrap()
                                     .is_match(&clause_to_string(eng));
                                     if matched {
-                                        Some(i)
+                                        Some(i as u64)
                                     } else {
                                         None
                                     }
@@ -245,84 +280,99 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
                         })
                         .collect::<Vec<_>>();
                     if !matched_def_indices.is_empty() {
-                        strict_matches.push((entry.id, matched_def_indices));
+                        strict_matches.push(MappingDefGroup {
+                            entry_id: entry.id as u64,
+                            def_indices: matched_def_indices,
+                        });
                     }
                     break;
                 }
             }
         }
 
-        if strict_matches.len() == 1 {
-            if strict_matches[0].1.len() > 1 {
-                println!(
-                    r#"{{"hbl_id": {}, "word": "{}", "defs": {}, "mapping_type": "single_entry_multiple_defs"}}"#,
-                    record.index,
-                    record.key,
-                    strict_matches_to_string(&strict_matches)
+        let mapping = if strict_matches.len() == 1 {
+            assert!(variant_matches.len() >= 1);
+            if strict_matches[0].def_indices.len() > 1 {
+                let (inferred_def, inferred_similarity) = infer_def(
+                    &api.dict,
+                    &record.eng,
+                    &[strict_matches[0].entry_id],
+                    &model,
                 );
+                Mapping::single_entry_multiple_defs {
+                    hbl_id: record.index,
+                    entry_id: strict_matches[0].entry_id,
+                    def_indices: strict_matches[0].def_indices.clone(),
+                    inferred_def_index: inferred_def.def_index,
+                    inferred_similarity,
+                }
             } else {
-                println!(
-                    r#"{{"hbl_id": {}, "word": "{}", "defs": {}, "mapping_type": "single_entry_single_def"}}"#,
-                    record.index,
-                    record.key,
-                    strict_matches_to_string(&strict_matches)
-                );
+                Mapping::single_entry_single_def {
+                    hbl_id: record.index,
+                    entry_id: strict_matches[0].entry_id,
+                    def_index: strict_matches[0].def_indices[0],
+                }
             }
         } else if variant_matches.len() > 1 {
             let (inferred_def, inferred_similarity) =
                 infer_def(&api.dict, &record.eng, &variant_matches, &model);
             if strict_matches.is_empty() {
-                println!(
-                    r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "multiple_entries_unknown_def", "inferred_def": {}, "inferred_similarity": {}}}"#,
-                    record.index, record.key, variant_matches, inferred_def, inferred_similarity
-                );
-            } else {
-                println!(
-                    r#"{{"hbl_id": {}, "word": "{}", "defs": {}, "mapping_type": "multiple_entries_multiple_defs", "inferred_def": {}, "inferred_similarity": {}}}"#,
-                    record.index,
-                    record.key,
-                    strict_matches_to_string(&strict_matches),
+                Mapping::multiple_entries_unknown_def {
+                    hbl_id: record.index,
+                    entry_ids: variant_matches,
                     inferred_def,
-                    inferred_similarity
-                );
+                    inferred_similarity,
+                }
+            } else {
+                assert!(strict_matches.len() > 1);
+                Mapping::multiple_entries_multiple_defs {
+                    hbl_id: record.index,
+                    defs: strict_matches
+                        .iter()
+                        .flat_map(
+                            |MappingDefGroup {
+                                 entry_id,
+                                 def_indices,
+                             }| {
+                                def_indices.iter().map(|def_index| MappingDef {
+                                    entry_id: *entry_id,
+                                    def_index: *def_index,
+                                })
+                            },
+                        )
+                        .collect(),
+                    inferred_def,
+                    inferred_similarity,
+                }
             }
         } else if variant_matches.is_empty() {
-            println!(
-                r#"{{"hbl_id": {}, "word": "{}", "defs": [], "mapping_type": "no_entry"}}"#,
-                record.index, record.key,
-            );
+            Mapping::no_entry {
+                hbl_id: record.index,
+            }
         } else {
-            // variant_matches.len() == 1 && strict_matches.len() != 1
-            if strict_matches.is_empty() {
-                let m = variant_matches[0];
-                if api.dict.get(&m).unwrap().defs.len() == 1 {
-                    println!(
-                        r#"{{"hbl_id": {}, "word": "{}", "defs": {}, "type": "single_entry_single_def"}}"#,
-                        record.index,
-                        record.key,
-                        strict_matches_to_string(&[(m, vec![0])])
-                    );
-                } else {
-                    let (inferred_def, inferred_similarity) =
-                        infer_def(&api.dict, &record.eng, &variant_matches, &model);
-                    println!(
-                        r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "single_entry_unknown_def", "inferred_def": {}, "inferred_similarity": {}}}"#,
-                        record.index,
-                        record.key,
-                        variant_matches,
-                        inferred_def,
-                        inferred_similarity
-                    );
+            assert!(variant_matches.len() == 1);
+            // strict_matches.len() cannot be greater than 1 because variant_matches.len() == 1
+            assert!(strict_matches.is_empty());
+
+            let entry_id = variant_matches[0] as u64;
+            if api.dict.get(&(entry_id as usize)).unwrap().defs.len() == 1 {
+                Mapping::single_entry_single_def {
+                    hbl_id: record.index,
+                    entry_id,
+                    def_index: 0,
                 }
             } else {
                 let (inferred_def, inferred_similarity) =
                     infer_def(&api.dict, &record.eng, &variant_matches, &model);
-                println!(
-                    r#"{{"hbl_id": {}, "word": "{}", "defs": {:?}, "mapping_type": "single_entry_multiple_defs", "inferred_def": {}, "inferred_similarity": {}}}"#,
-                    record.index, record.key, strict_matches, inferred_def, inferred_similarity
-                );
+                Mapping::single_entry_unknown_def {
+                    hbl_id: record.index,
+                    entry_id,
+                    inferred_def_index: inferred_def.def_index,
+                    inferred_similarity,
+                }
             }
-        }
+        };
+        println!("{}", serde_json::to_string(&mapping).unwrap());
     }
     // Print categories
     // println!("{:?}", category_sets);
