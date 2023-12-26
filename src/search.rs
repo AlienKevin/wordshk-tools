@@ -143,19 +143,32 @@ pub fn get_entry_id(variants_map: &VariantsMap, query: &str, script: Script) -> 
     })
 }
 
-pub fn get_entry_group(dict: &RichDict, id: EntryId) -> Vec<RichEntry> {
-    let query_entry = dict.get(&id).unwrap();
+pub fn get_entry_group(
+    variants_map: &VariantsMap,
+    dict: &ArchivedRichDict,
+    id: EntryId,
+) -> Vec<RichEntry> {
+    let query_word_set: HashSet<&str> = variants_map
+        .get(&id)
+        .unwrap()
+        .iter()
+        .map(|ComboVariant { word_trad, .. }| word_trad.as_str())
+        .collect();
     sort_entry_group(
         dict.iter()
-            .filter_map(|(_, entry)| {
-                if query_entry
-                    .variants
-                    .to_words_set()
-                    .intersection(&entry.variants.to_words_set())
+            .filter_map(|(id, entry)| {
+                let current_word_set: HashSet<&str> = variants_map
+                    .get(&id)
+                    .unwrap()
+                    .iter()
+                    .map(|ComboVariant { word_trad, .. }| word_trad.as_str())
+                    .collect();
+                if query_word_set
+                    .intersection(&current_word_set)
                     .next()
                     .is_some()
                 {
-                    Some(entry.clone())
+                    Some(entry.deserialize(&mut rkyv::Infallible).unwrap())
                 } else {
                     None
                 }
