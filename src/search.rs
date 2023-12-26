@@ -1,13 +1,11 @@
 use crate::dict::EntryId;
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
-use crate::pr_index::{
-    ArchivedPrIndex, ArchivedPrIndices, ArchivedPrLocation, PrLocation, MAX_DELETIONS,
-};
+use crate::pr_index::{PrIndex, PrIndices, PrLocation, MAX_DELETIONS};
 use crate::rich_dict::{ArchivedRichDict, RichLine};
 
 use super::charlist::CHARLIST;
 use super::dict::{Variant, Variants};
-use super::english_index::{ArchivedEnglishIndex, EnglishIndex, EnglishIndexData};
+use super::english_index::{ArchivedEnglishIndex, EnglishIndexData};
 use super::iconic_simps::ICONIC_SIMPS;
 use super::iconic_trads::ICONIC_TRADS;
 use super::jyutping::{LaxJyutPings, Romanization};
@@ -213,7 +211,7 @@ fn get_entry_frequency(entry_id: EntryId) -> u8 {
 }
 
 pub fn pr_search(
-    pr_indices: &ArchivedPrIndices,
+    pr_indices: &PrIndices,
     dict: &ArchivedRichDict,
     query: &str,
     romanization: Romanization,
@@ -228,7 +226,7 @@ pub fn pr_search(
     fn lookup_index(
         query: &str,
         deletions: usize,
-        index: &ArchivedPrIndex,
+        index: &PrIndex,
         dict: &ArchivedRichDict,
         ranks: &mut BinaryHeap<PrSearchRank>,
         pr_variant_generator: fn(&str) -> String,
@@ -239,7 +237,7 @@ pub fn pr_search(
                 crate::pr_index::generate_deletion_neighborhood(&query, max_deletions)
             {
                 if let Some(locations) = index.get(&xxh3_64(query_variant.as_bytes())) {
-                    for &ArchivedPrLocation {
+                    for &PrLocation {
                         entry_id,
                         variant_index,
                         pr_index,
@@ -603,7 +601,7 @@ pub enum CombinedSearchRank {
 // Auto recognize the type of the query
 pub fn combined_search(
     variants_map: &VariantsMap,
-    pr_indices: Option<&ArchivedPrIndices>,
+    pr_indices: Option<&PrIndices>,
     english_index: &ArchivedEnglishIndex,
     dict: &ArchivedRichDict,
     query: &str,
