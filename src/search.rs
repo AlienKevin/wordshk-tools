@@ -603,7 +603,7 @@ pub enum CombinedSearchRank {
 // Auto recognize the type of the query
 pub fn combined_search(
     variants_map: &VariantsMap,
-    pr_indices: &Option<ArchivedPrIndices>,
+    pr_indices: Option<&ArchivedPrIndices>,
     english_index: &ArchivedEnglishIndex,
     dict: &ArchivedRichDict,
     query: &str,
