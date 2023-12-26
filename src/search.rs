@@ -603,7 +603,7 @@ pub enum CombinedSearchRank {
 // Auto recognize the type of the query
 pub fn combined_search(
     variants_map: &VariantsMap,
-    pr_indices: &ArchivedPrIndices,
+    pr_indices: &Option<ArchivedPrIndices>,
     english_index: &ArchivedEnglishIndex,
     dict: &ArchivedRichDict,
     query: &str,
@@ -627,7 +627,11 @@ pub fn combined_search(
         script
     };
     let variants_ranks = variant_search(variants_map, query, query_script);
-    let pr_ranks = pr_search(pr_indices, dict, query, romanization);
+    let pr_ranks = if let Some(pr_indices) = pr_indices {
+        pr_search(pr_indices, dict, query, romanization)
+    } else {
+        BinaryHeap::new()
+    };
     let english_results = english_search(english_index, query);
 
     CombinedSearchRank::All(variants_ranks, pr_ranks, english_results)
