@@ -1,6 +1,7 @@
 use crate::dict::EntryId;
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics};
 use crate::pr_index::{PrIndex, PrIndices, PrLocation, MAX_DELETIONS};
+use crate::rich_dict::ArchivedRichDict;
 
 use super::charlist::CHARLIST;
 use super::dict::{Variant, Variants};
@@ -12,6 +13,7 @@ use super::rich_dict::{RichDict, RichEntry};
 use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
 use itertools::Itertools;
+use rkyv::Deserialize;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::{BinaryHeap, HashSet};
@@ -45,12 +47,18 @@ pub struct ComboVariant {
 
 pub type ComboVariants = Vec<ComboVariant>;
 
-pub fn rich_dict_to_variants_map(dict: &RichDict) -> VariantsMap {
+pub fn rich_dict_to_variants_map(dict: &ArchivedRichDict) -> VariantsMap {
     dict.iter()
         .map(|(id, entry)| {
             (
                 *id,
-                create_combo_variants(&entry.variants, &entry.variants_simp),
+                create_combo_variants(
+                    &entry.variants.deserialize(&mut rkyv::Infallible).unwrap(),
+                    &entry
+                        .variants_simp
+                        .deserialize(&mut rkyv::Infallible)
+                        .unwrap(),
+                ),
             )
         })
         .collect()
@@ -58,7 +66,7 @@ pub fn rich_dict_to_variants_map(dict: &RichDict) -> VariantsMap {
 
 pub fn create_combo_variants(
     trad_variants: &Variants,
-    simp_variant_strings: &[String],
+    simp_variant_strings: &Vec<String>,
 ) -> ComboVariants {
     trad_variants
         .0
