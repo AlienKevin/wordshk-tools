@@ -1,3 +1,4 @@
+use crate::dict::EntryId;
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics};
 use crate::pr_index::{PrIndex, PrIndices, PrLocation, MAX_DELETIONS};
 
@@ -33,7 +34,7 @@ pub enum Script {
 }
 
 /// A Map from entry ID to variants and simplified variants
-pub type VariantsMap = BTreeMap<usize, ComboVariants>;
+pub type VariantsMap = BTreeMap<EntryId, ComboVariants>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComboVariant {
@@ -77,7 +78,7 @@ fn normalize_score(s: f64) -> Score {
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct PrSearchRank {
-    pub id: usize,
+    pub id: EntryId,
     pub variant_index: Index,
     pub pr_index: Index,
     pub pr: String,
@@ -121,7 +122,7 @@ pub fn pick_variants(variants: &ComboVariants, script: Script) -> Variants {
     )
 }
 
-pub fn get_entry_id(variants_map: &VariantsMap, query: &str, script: Script) -> Option<usize> {
+pub fn get_entry_id(variants_map: &VariantsMap, query: &str, script: Script) -> Option<EntryId> {
     variants_map.iter().find_map(|(id, variants)| {
         if pick_variants(variants, script)
             .to_words_set()
@@ -134,8 +135,8 @@ pub fn get_entry_id(variants_map: &VariantsMap, query: &str, script: Script) -> 
     })
 }
 
-pub fn get_entry_group(dict: &RichDict, id: &usize) -> Vec<RichEntry> {
-    let query_entry = dict.get(id).unwrap();
+pub fn get_entry_group(dict: &RichDict, id: EntryId) -> Vec<RichEntry> {
+    let query_entry = dict.get(&id).unwrap();
     sort_entry_group(
         dict.iter()
             .filter_map(|(_, entry)| {
@@ -184,8 +185,8 @@ fn sort_entries_by_frequency(entries: &mut [&RichEntry]) {
     });
 }
 
-fn get_entry_frequency(entry_id: usize) -> u8 {
-    *WORD_FREQUENCIES.get(&(entry_id as u32)).unwrap_or(&50)
+fn get_entry_frequency(entry_id: EntryId) -> u8 {
+    *WORD_FREQUENCIES.get(&entry_id).unwrap_or(&50)
 }
 
 pub fn pr_search(
@@ -345,7 +346,7 @@ pub fn pr_search(
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct VariantSearchRank {
-    pub id: usize,
+    pub id: EntryId,
     pub variant_index: Index,
     pub occurrence_index: Index,
     pub levenshtein_score: Score,
@@ -453,7 +454,7 @@ pub fn variant_search(
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct EgSearchRank {
-    pub id: usize,
+    pub id: EntryId,
     pub def_index: Index,
     pub eg_index: Index,
     pub eg_length: usize,

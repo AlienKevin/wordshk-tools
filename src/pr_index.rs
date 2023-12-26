@@ -1,7 +1,9 @@
 use crate::{
-    jyutping::{remove_yale_tones, Romanization},
-    rich_dict::RichDict,
+    dict::EntryId,
+    jyutping::{remove_yale_tones, LaxJyutPing, Romanization},
+    rich_dict::ArchivedRichDict,
 };
+use rkyv::Deserialize as _;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -12,7 +14,7 @@ use xxhash_rust::xxh3::xxh3_64;
 pub const MAX_DELETIONS: usize = 1;
 const MAX_CANDIDATES: usize = 10;
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct PrIndices {
     pub tone_and_space: Vec<PrIndex>,
     pub tone: Vec<PrIndex>,
@@ -31,10 +33,12 @@ impl PrIndices {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Serialize, Deserialize, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize,
+)]
 pub struct PrLocation {
     #[serde(rename = "e")]
-    pub entry_id: usize,
+    pub entry_id: EntryId,
 
     #[serde(rename = "v")]
     pub variant_index: u8,
@@ -52,6 +56,20 @@ impl PartialEq for PrLocation {
 impl Eq for PrLocation {}
 
 impl Hash for PrLocation {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.entry_id.hash(state);
+    }
+}
+
+impl PartialEq for ArchivedPrLocation {
+    fn eq(&self, other: &Self) -> bool {
+        self.entry_id == other.entry_id
+    }
+}
+
+impl Eq for ArchivedPrLocation {}
+
+impl Hash for ArchivedPrLocation {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.entry_id.hash(state);
     }
@@ -198,11 +216,12 @@ fn generate_pr_variants(
     }
 }
 
-pub fn generate_pr_indices(dict: &RichDict, romanization: Romanization) -> PrIndices {
+pub fn generate_pr_indices(dict: &ArchivedRichDict, romanization: Romanization) -> PrIndices {
     let mut index = PrIndices::default();
     for (&entry_id, entry) in dict.iter() {
         for (variant_index, variant) in entry.variants.0.iter().enumerate() {
             for (pr_index, pr) in variant.prs.0.iter().enumerate() {
+                let pr: LaxJyutPing = pr.deserialize(&mut rkyv::Infallible).unwrap();
                 // only add standard jyutping to pr index
                 if pr.is_standard_jyutping() {
                     match romanization {

@@ -22,7 +22,6 @@ strum = { version = "0.25.0", features = ["derive"] }
 strsim = "0.10.0"
 itertools = "0.11.0"
 reqwest = { version = "0.11.8", features = ["blocking"] }
-flate2 = "1.0.22"
 regex = "1.5.5"
 rust-stemmers = "^1.0"
 deunicode = "1.3.1"
@@ -30,5 +29,5 @@ indexmap = "2.0.0"
 fast2s = "0.3.1"
 thesaurus = "0.5"
 rayon = "1.7.0"
-rmp-serde = "1.1.2"
 xxhash-rust = { version = "0.8.5", features = ["xxh3"] }
+rkyv = { version = "0.7.43", features = [ "alloc" ] }

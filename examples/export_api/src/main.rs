@@ -29,8 +29,8 @@ use xxhash_rust::xxh3::xxh3_64;
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    // std::fs::create_dir(APP_TMP_DIR).ok();
-    // let api = generate_api_json();
+    std::fs::create_dir(APP_TMP_DIR).ok();
+    let api = unsafe { generate_api_json() };
     // test_jyutping_search();
     // test_yale_search();
     // generate_jyutping_to_yale(&api);
@@ -45,9 +45,19 @@ fn main() {
     // let model = get_embedding_model();
     // test_calculate_embedding(&model);
     // map_hbl_to_wordshk(&model);
-    sample_mappings();
+    // sample_mappings();
 }
 
+unsafe fn generate_api_json() -> Api {
+    let api = Api::new(
+        APP_TMP_DIR,
+        include_str!("../../wordshk.csv"),
+        Romanization::Yale,
+    );
+    api
+}
+
+/*
 fn sample_mappings() -> Result<(), serde_json::Error> {
     // Read mappings.jsonl line by line
     let file = File::open("mappings_pos_pr_eng.jsonl").expect("Unable to open mappings.jsonl");
@@ -489,7 +499,7 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
         let key_safe = to_hk_safe_variant(&record.key);
         let mut variant_matches = vec![];
         let mut strict_matches = vec![];
-        for entry in api.dict.values().sorted_by_key(|entry| entry.id) {
+        for entry in api.dict().values().sorted_by_key(|entry| entry.id) {
             for variant in &entry.variants.0 {
                 if variant.word == key_safe {
                     variant_matches.push(entry.id as u64);
@@ -559,7 +569,7 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
                     (None, 0.0)
                 } else {
                     infer_def(
-                        &api.dict,
+                        &api.dict(),
                         &record.eng,
                         &[strict_matches[0].entry_id],
                         &model,
@@ -583,7 +593,7 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
             let (inferred_def, inferred_similarity) = if skip_eng_check {
                 (None, 0.0)
             } else {
-                infer_def(&api.dict, &record.eng, &variant_matches, &model)
+                infer_def(&api.dict(), &record.eng, &variant_matches, &model)
             };
             if strict_matches.is_empty() {
                 Mapping::multiple_entries_unknown_def {
@@ -624,7 +634,7 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
             assert!(strict_matches.is_empty());
 
             let entry_id = variant_matches[0] as u64;
-            if api.dict.get(&(entry_id as usize)).unwrap().defs.len() == 1 {
+            if api.dict().get(&(entry_id as usize)).unwrap().defs.len() == 1 {
                 Mapping::single_entry_single_def {
                     hbl_id: record.index,
                     entry_id,
@@ -634,7 +644,7 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
                 let (inferred_def, inferred_similarity) = if skip_eng_check {
                     (None, 0.0)
                 } else {
-                    infer_def(&api.dict, &record.eng, &variant_matches, &model)
+                    infer_def(&api.dict(), &record.eng, &variant_matches, &model)
                 };
                 Mapping::single_entry_unknown_def {
                     hbl_id: record.index,
@@ -652,7 +662,7 @@ fn map_hbl_to_wordshk(model: &FlagEmbedding) {
 
 fn test_variant_search() {
     let api = Api::load(APP_TMP_DIR);
-    let variants_map = rich_dict_to_variants_map(&api.dict);
+    let variants_map = rich_dict_to_variants_map(&api.dict());
     let results = variant_search(&variants_map, "苹果", Script::Traditional);
     println!("{:?}", results.len());
 }
@@ -669,7 +679,7 @@ fn test_eg_search() {
         .unwrap();
 
     let start_time = std::time::Instant::now();
-    let (query_found, results) = eg_search(&api.dict, "嚟呢度", 10, Script::Traditional);
+    let (query_found, results) = eg_search(&api.dict(), "嚟呢度", 10, Script::Traditional);
     println!("Query found: {:?}", query_found);
     println!(
         "{}",
@@ -682,7 +692,7 @@ fn test_eg_search() {
                      eg_index,
                      eg_length,
                  }| {
-                    api.dict[id].defs[*def_index].egs[*eg_index]
+                    api.dict()[id].defs[*def_index].egs[*eg_index]
                         .yue
                         .as_ref()
                         .unwrap()
@@ -702,7 +712,7 @@ fn get_disyllabic_prs_shorter_than(characters: usize) {
     let api = Api::load(APP_TMP_DIR);
 
     let mut prs: HashMap<String, HashSet<(String, Vec<u8>)>> = HashMap::new();
-    for entry in api.dict.values() {
+    for entry in api.dict().values() {
         let variant = &entry.variants.0.first().unwrap();
         let pr = &variant.prs.0.first().unwrap();
         let variant_str = &variant.word;
@@ -829,7 +839,7 @@ fn generate_jyutping_to_yale(api: &Api) {
     use std::collections::HashSet;
 
     let mut jyutpings: HashSet<String> = HashSet::new();
-    for entry in api.dict.values() {
+    for entry in api.dict().values() {
         for variant in &entry.variants.0 {
             for prs in &variant.prs.0 {
                 for jyutping in &prs.0 {
@@ -895,15 +905,6 @@ fn generate_jyutping_to_yale(api: &Api) {
         .expect("Failed to serialize jyutping 2 yale mapping to JSON");
     let output_path = std::path::Path::new(APP_TMP_DIR).join("jyutping_to_yale.json");
     std::fs::write(output_path, json).expect("Failed to write jyutping 2 yale JSON to file");
-}
-
-fn generate_api_json() -> Api {
-    let api = Api::new(
-        APP_TMP_DIR,
-        include_str!("../../wordshk.csv"),
-        Romanization::Yale,
-    );
-    api
 }
 
 fn test_jyutping_search() {
@@ -1035,3 +1036,4 @@ fn test_yale_search() {
     test_pr_search("jyun4 cyun4", "yùhn chyuhn", 99);
     test_pr_search("jyun4 cyun4", "yuhn chyùhn", 99);
 }
+*/

@@ -32,7 +32,7 @@ pub fn parse_dict<R: io::Read>(input: R) -> Result<Dict, Box<dyn Error>> {
     for result in rdr.records() {
         let entry = result?;
         // if &entry[4] == "OK" {
-        let id: usize = entry[0].parse().unwrap();
+        let id: EntryId = entry[0].parse().unwrap();
         let head = &entry[1];
         let content = &entry[2];
         let published = &entry[5] == "已公開";
@@ -664,7 +664,7 @@ pub fn parse_defs<'a>() -> impl lip::Parser<'a, Output = Vec<Def>, State = ()> {
 /// ```
 ///
 pub fn parse_content<'a>(
-    id: usize,
+    id: EntryId,
     variants: Variants,
     published: bool,
 ) -> impl lip::Parser<'a, Output = Option<Entry>, State = ()> {

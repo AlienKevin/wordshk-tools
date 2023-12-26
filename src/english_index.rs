@@ -1,18 +1,21 @@
+use crate::dict::EntryId;
+use crate::rich_dict::{ArchivedRichDict, ArchivedRichEntry};
+
 use super::dict::clause_to_string;
-use super::rich_dict::{RichDict, RichEntry};
 use super::unicode;
 use itertools::Itertools;
 use regex::Regex;
+use rkyv::Deserialize as _;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 
 pub type EnglishIndex = HashMap<String, Vec<EnglishIndexData>>;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct EnglishIndexData {
     #[serde(rename = "e")]
-    pub entry_id: usize,
+    pub entry_id: EntryId,
 
     #[serde(rename = "d")]
     pub def_index: usize,
@@ -47,7 +50,7 @@ impl Eq for EnglishIndexData {}
 
 type Counter = HashMap<String, u32>;
 
-pub fn generate_english_index(dict: &RichDict) -> EnglishIndex {
+pub fn generate_english_index(dict: &ArchivedRichDict) -> EnglishIndex {
     let mut counter: Counter = HashMap::new();
     for (_, entry) in dict.iter() {
         let mut repeated_terms = HashSet::new();
@@ -135,13 +138,13 @@ fn score_for_term(term: &str, splitted_phrase: &[String], counter: &Counter) -> 
 
 /// Returns a normalized phrase and a normalized splitted phrase with
 /// individual tokens
-fn tokenize_entry(entry: &RichEntry) -> Vec<Vec<(String, Vec<String>)>> {
+fn tokenize_entry(entry: &ArchivedRichEntry) -> Vec<Vec<(String, Vec<String>)>> {
     entry
         .defs
         .iter()
         .filter_map(|def| {
             def.eng.as_ref().map(|eng| {
-                clause_to_string(eng)
+                clause_to_string(&eng.deserialize(&mut rkyv::Infallible).unwrap())
                     // Split with semicolon
                     .split(';')
                     .filter_map(|phrase| {
@@ -188,7 +191,7 @@ fn insert_to_index(term: &str, index_data: EnglishIndexData, index: &mut English
     }
 }
 
-fn index_entry(counter: &Counter, entry: &RichEntry, index: &mut EnglishIndex) {
+fn index_entry(counter: &Counter, entry: &ArchivedRichEntry, index: &mut EnglishIndex) {
     // Map of term to scores -- we need to postprocess them
     let mut scores: HashMap<String, Vec<f32>> = HashMap::new();
 

@@ -532,7 +532,7 @@ vec!(text(r#"The sexagenary cycle is often used for counting years in the Chines
 #[test]
 fn test_parse_content() {
     {
-        let id = 103022;
+        let id: EntryId = 103022;
         let variants = Variants(vec![
             Variant {
                 word: "zip".to_string(),

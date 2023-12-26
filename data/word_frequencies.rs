@@ -1,8 +1,9 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
+use crate::dict::EntryId;
 
 lazy_static! {
-    pub static ref WORD_FREQUENCIES: HashMap<u32, u8> = {
+    pub static ref WORD_FREQUENCIES: HashMap<EntryId, u8> = {
         HashMap::from([
             (9, 60),
             (10, 40),

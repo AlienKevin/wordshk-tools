@@ -1,4 +1,4 @@
-use super::dict::{AltClause, Clause, Line, Segment, Variants};
+use super::dict::{AltClause, Clause, EntryId, Line, Segment, Variants};
 use super::rich_dict::{
     get_simplified_rich_line, get_simplified_variants, RichDef, RichEg, RichEntry, RichLine,
 };
@@ -7,7 +7,7 @@ use serde::Serialize;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct LeanRichEntry {
-    pub id: usize,
+    pub id: EntryId,
     pub variants: Vec<LeanVariant>,
     pub variants_simp: Vec<LeanVariant>,
     pub poses: Vec<String>,

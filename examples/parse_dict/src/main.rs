@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use wordshk_tools::dict::{clause_to_string, Dict, Entry};
 use wordshk_tools::parse::parse_dict;
 use wordshk_tools::rich_dict;
@@ -10,7 +10,14 @@ fn main() {
     // show_tagged_words(&dict, &["爭議"]);
     // get_eng_definitions(&dict);
     // get_formal_words(&dict);
-    get_jyutping_egs(&dict);
+    // get_jyutping_egs(&dict);
+    println!("{:?}", get_all_variants(&dict));
+}
+
+fn get_all_variants(dict: &Dict) -> BTreeSet<String> {
+    dict.values()
+        .flat_map(|entry| get_variants(entry))
+        .collect()
 }
 
 fn get_jyutping_egs(dict: &Dict) {
