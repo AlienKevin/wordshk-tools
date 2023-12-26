@@ -1,15 +1,17 @@
 use crate::dict::EntryId;
-use crate::jyutping::{parse_jyutpings, remove_yale_diacritics};
-use crate::pr_index::{PrIndex, PrIndices, PrLocation, MAX_DELETIONS};
-use crate::rich_dict::ArchivedRichDict;
+use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
+use crate::pr_index::{
+    ArchivedPrIndex, ArchivedPrIndices, ArchivedPrLocation, PrLocation, MAX_DELETIONS,
+};
+use crate::rich_dict::{ArchivedRichDict, RichLine};
 
 use super::charlist::CHARLIST;
 use super::dict::{Variant, Variants};
-use super::english_index::{EnglishIndex, EnglishIndexData};
+use super::english_index::{ArchivedEnglishIndex, EnglishIndex, EnglishIndexData};
 use super::iconic_simps::ICONIC_SIMPS;
 use super::iconic_trads::ICONIC_TRADS;
 use super::jyutping::{LaxJyutPings, Romanization};
-use super::rich_dict::{RichDict, RichEntry};
+use super::rich_dict::RichEntry;
 use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
 use itertools::Itertools;
@@ -211,8 +213,8 @@ fn get_entry_frequency(entry_id: EntryId) -> u8 {
 }
 
 pub fn pr_search(
-    pr_indices: &PrIndices,
-    dict: &RichDict,
+    pr_indices: &ArchivedPrIndices,
+    dict: &ArchivedRichDict,
     query: &str,
     romanization: Romanization,
 ) -> BinaryHeap<PrSearchRank> {
@@ -226,8 +228,8 @@ pub fn pr_search(
     fn lookup_index(
         query: &str,
         deletions: usize,
-        index: &PrIndex,
-        dict: &RichDict,
+        index: &ArchivedPrIndex,
+        dict: &ArchivedRichDict,
         ranks: &mut BinaryHeap<PrSearchRank>,
         pr_variant_generator: fn(&str) -> String,
     ) {
@@ -237,22 +239,25 @@ pub fn pr_search(
                 crate::pr_index::generate_deletion_neighborhood(&query, max_deletions)
             {
                 if let Some(locations) = index.get(&xxh3_64(query_variant.as_bytes())) {
-                    for PrLocation {
+                    for &ArchivedPrLocation {
                         entry_id,
                         variant_index,
                         pr_index,
-                    } in locations
+                    } in locations.iter()
                     {
-                        let pr = dict.get(&entry_id).unwrap().variants.0[*variant_index as Index]
+                        let jyutping: LaxJyutPing = dict.get(&entry_id).unwrap().variants.0
+                            [variant_index as Index]
                             .prs
-                            .0[*pr_index as Index]
-                            .to_string();
+                            .0[pr_index as Index]
+                            .deserialize(&mut rkyv::Infallible)
+                            .unwrap();
+                        let pr = jyutping.to_string();
                         let distance = levenshtein(&query, &pr_variant_generator(&pr));
                         if distance <= 3 {
                             ranks.push(PrSearchRank {
-                                id: *entry_id,
-                                variant_index: *variant_index as Index,
-                                pr_index: *pr_index as Index,
+                                id: entry_id,
+                                variant_index: variant_index as Index,
+                                pr_index: pr_index as Index,
                                 pr,
                                 score: MAX_SCORE - distance,
                             });
@@ -499,7 +504,8 @@ impl PartialOrd for EgSearchRank {
 }
 
 pub fn eg_search(
-    dict: &RichDict,
+    variants_map: &VariantsMap,
+    dict: &ArchivedRichDict,
     query: &str,
     max_first_index_in_eg: usize,
     script: Script,
@@ -524,12 +530,16 @@ pub fn eg_search(
 
     let query_found: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
 
-    dict.par_iter().for_each(|(&entry_id, entry)| {
+    variants_map.par_iter().for_each(|(entry_id, _)| {
+        let entry = dict.get(entry_id).unwrap();
         for (def_index, def) in entry.defs.iter().enumerate() {
             for (eg_index, eg) in def.egs.iter().enumerate() {
                 let line: Option<String> = match query_script {
-                    Script::Traditional => eg.yue.as_ref().map(|line| line.to_string()),
-                    Script::Simplified => eg.yue_simp.clone(),
+                    Script::Traditional => eg.yue.as_ref().map(|line| {
+                        let line: RichLine = line.deserialize(&mut rkyv::Infallible).unwrap();
+                        line.to_string()
+                    }),
+                    Script::Simplified => eg.yue_simp.deserialize(&mut rkyv::Infallible).unwrap(),
                 };
                 if let Some(line) = line {
                     let line_len = line.chars().count();
@@ -546,7 +556,15 @@ pub fn eg_search(
                                     }
                                     (Script::Traditional, Script::Simplified) => {
                                         let start_index = line.find(&query_normalized).unwrap();
-                                        eg.yue.as_ref().map(|line| line.to_string()).unwrap()
+                                        eg.yue
+                                            .as_ref()
+                                            .map(|line| {
+                                                let line: RichLine = line
+                                                    .deserialize(&mut rkyv::Infallible)
+                                                    .unwrap();
+                                                line.to_string()
+                                            })
+                                            .unwrap()
                                             [start_index..start_index + query_normalized.len()]
                                             .to_string()
                                     }
@@ -554,7 +572,7 @@ pub fn eg_search(
                                 });
                             }
                             ranks.lock().unwrap().push(EgSearchRank {
-                                id: entry_id,
+                                id: *entry_id,
                                 def_index,
                                 eg_index,
                                 eg_length: line_len,
@@ -585,9 +603,9 @@ pub enum CombinedSearchRank {
 // Auto recognize the type of the query
 pub fn combined_search(
     variants_map: &VariantsMap,
-    pr_indices: &PrIndices,
-    english_index: &EnglishIndex,
-    dict: &RichDict,
+    pr_indices: &ArchivedPrIndices,
+    english_index: &ArchivedEnglishIndex,
+    dict: &ArchivedRichDict,
     query: &str,
     script: Script,
     romanization: Romanization,
@@ -615,17 +633,12 @@ pub fn combined_search(
     CombinedSearchRank::All(variants_ranks, pr_ranks, english_results)
 }
 
-pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishIndexData> {
+pub fn english_search(english_index: &ArchivedEnglishIndex, query: &str) -> Vec<EnglishIndexData> {
     let query = unicode::normalize_english_word_for_search_index(query);
-    let default_results = vec![];
     let results = english_index
-        .get(&query)
-        .unwrap_or(fuzzy_english_search(
-            english_index,
-            &[query.clone()],
-            &default_results,
-        ))
-        .to_vec();
+        .get(query.as_str())
+        .map(|results| results.deserialize(&mut rkyv::Infallible).unwrap())
+        .unwrap_or(fuzzy_english_search(english_index, &[query.clone()]));
     if results.is_empty() {
         let synonyms = thesaurus::synonyms(query);
         if synonyms.is_empty() {
@@ -633,29 +646,23 @@ pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishI
         } else {
             synonyms
                 .iter()
-                .fold(
-                    None,
-                    |results: Option<&Vec<EnglishIndexData>>, word| match (
-                        english_index.get(&word.to_string()),
-                        results,
-                    ) {
-                        (Some(current_results), Some(results)) => {
-                            if current_results[0].score > results[0].score {
-                                Some(current_results)
-                            } else {
-                                Some(results)
-                            }
+                .fold(None, |results: Option<Vec<EnglishIndexData>>, word| match (
+                    english_index.get(word.as_str()),
+                    results,
+                ) {
+                    (Some(current_results), Some(results)) => {
+                        if current_results[0].score as usize > results[0].score {
+                            Some(current_results.deserialize(&mut rkyv::Infallible).unwrap())
+                        } else {
+                            Some(results)
                         }
-                        (Some(current_results), None) => Some(current_results),
-                        _ => results,
-                    },
-                )
-                .unwrap_or(fuzzy_english_search(
-                    english_index,
-                    &synonyms,
-                    &default_results,
-                ))
-                .to_vec()
+                    }
+                    (Some(current_results), None) => {
+                        Some(current_results.deserialize(&mut rkyv::Infallible).unwrap())
+                    }
+                    (None, results) => results,
+                })
+                .unwrap_or(fuzzy_english_search(english_index, &synonyms))
         }
     } else {
         results
@@ -663,26 +670,27 @@ pub fn english_search(english_index: &EnglishIndex, query: &str) -> Vec<EnglishI
 }
 
 fn fuzzy_english_search<'a>(
-    english_index: &'a EnglishIndex,
+    english_index: &'a ArchivedEnglishIndex,
     queries: &[String],
-    default_results: &'a Vec<EnglishIndexData>,
-) -> &'a Vec<EnglishIndexData> {
+) -> Vec<EnglishIndexData> {
     english_index
         .iter()
         .fold(
-            (60, default_results), // must have a score of at least 60 out of 100
+            (60, None), // must have a score of at least 60 out of 100
             |(max_score, max_entries), (phrase, entries)| {
                 let (mut next_max_score, mut next_max_entries) = (max_score, max_entries);
                 queries.iter().for_each(|query| {
                     let current_score = score_english_query(query, phrase);
                     if current_score > max_score {
-                        (next_max_score, next_max_entries) = (current_score, entries)
+                        (next_max_score, next_max_entries) = (current_score, Some(entries))
                     }
                 });
                 (next_max_score, next_max_entries)
             },
         )
         .1
+        .map(|results| results.deserialize(&mut rkyv::Infallible).unwrap())
+        .unwrap_or(vec![])
 }
 
 // Reference: https://www.oracle.com/webfolder/technetwork/data-quality/edqhelp/Content/processor_library/matching/comparisons/word_match_percentage.htm

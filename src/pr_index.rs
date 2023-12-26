@@ -3,7 +3,10 @@ use crate::{
     jyutping::{remove_yale_tones, LaxJyutPing, Romanization},
     rich_dict::ArchivedRichDict,
 };
-use rkyv::Deserialize as _;
+use rkyv::{
+    collections::{ArchivedHashMap, ArchivedHashSet},
+    Deserialize as _,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -77,6 +80,7 @@ impl Hash for ArchivedPrLocation {
 
 // map from hash of permuted pr to entry ids
 pub type PrIndex = HashMap<u64, HashSet<PrLocation>>;
+pub type ArchivedPrIndex = ArchivedHashMap<u64, ArchivedHashSet<ArchivedPrLocation>>;
 
 /// Generate a deletion index for a string
 /// ```

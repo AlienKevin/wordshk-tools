@@ -5,12 +5,17 @@ use super::dict::clause_to_string;
 use super::unicode;
 use itertools::Itertools;
 use regex::Regex;
+use rkyv::collections::ArchivedHashMap;
+use rkyv::string::ArchivedString;
+use rkyv::vec::ArchivedVec;
 use rkyv::Deserialize as _;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 
 pub type EnglishIndex = HashMap<String, Vec<EnglishIndexData>>;
+pub type ArchivedEnglishIndex =
+    ArchivedHashMap<ArchivedString, ArchivedVec<ArchivedEnglishIndexData>>;
 
 #[derive(Serialize, Deserialize, Clone, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct EnglishIndexData {
