@@ -364,9 +364,9 @@ pub fn pr_search(
 
 #[derive(Clone, Eq, PartialEq, Default)]
 pub struct MatchedVariant {
-    prefix: String,
-    query: String,
-    suffix: String,
+    pub prefix: String,
+    pub query: String,
+    pub suffix: String,
 }
 
 #[derive(Clone, Eq, PartialEq)]
