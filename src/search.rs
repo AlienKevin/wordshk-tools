@@ -18,8 +18,6 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::{BinaryHeap, HashSet};
 use strsim::{generic_levenshtein, levenshtein, normalized_levenshtein};
-use thesaurus;
-use unicode_segmentation::UnicodeSegmentation;
 use xxhash_rust::xxh3::xxh3_64;
 
 /// Max score is 100
@@ -78,10 +76,6 @@ pub fn create_combo_variants(
             prs: prs.clone(),
         })
         .collect()
-}
-
-fn normalize_score(s: f64) -> Score {
-    (s * MAX_SCORE as f64).round() as usize
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -368,12 +362,20 @@ pub fn pr_search(
         .collect()
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Default)]
+pub struct MatchedVariant {
+    prefix: String,
+    query: String,
+    suffix: String,
+}
+
+#[derive(Clone, Eq, PartialEq)]
 pub struct VariantSearchRank {
     pub id: EntryId,
     pub variant_index: Index,
     pub occurrence_index: Index,
     pub length_diff: usize,
+    pub matched_variant: MatchedVariant,
 }
 
 impl Ord for VariantSearchRank {
@@ -402,15 +404,20 @@ fn score_variant_query(
     variant: &ComboVariant,
     query_normalized: &str,
     query_script: Script,
-) -> (Index, Score) {
+) -> (Index, Score, MatchedVariant) {
     let variant_normalized = &unicode::normalize(&pick_variant(variant, query_script).word)[..];
     // The query has to be fully contained by the variant
     let occurrence_index = match variant_normalized.find(query_normalized) {
         Some(i) => i,
-        None => return (usize::MAX, usize::MAX),
+        None => return (usize::MAX, usize::MAX, MatchedVariant::default()),
     };
     let length_diff = variant_normalized.chars().count() - query_normalized.chars().count();
-    (occurrence_index, length_diff)
+    let matched_variant = MatchedVariant {
+        prefix: variant_normalized[..occurrence_index].to_string(),
+        query: query_normalized.to_string(),
+        suffix: variant_normalized[occurrence_index + query_normalized.len()..].to_string(),
+    };
+    (occurrence_index, length_diff, matched_variant)
 }
 
 pub fn variant_search(
@@ -433,7 +440,7 @@ pub fn variant_search(
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
-                let (occurrence_index, length_diff) =
+                let (occurrence_index, length_diff, matched_variant) =
                     score_variant_query(variant, &query_normalized, query_script);
                 if occurrence_index < usize::MAX && length_diff <= 2 {
                     ranks.push(VariantSearchRank {
@@ -441,6 +448,7 @@ pub fn variant_search(
                         variant_index,
                         occurrence_index,
                         length_diff,
+                        matched_variant,
                     });
                 }
             });
