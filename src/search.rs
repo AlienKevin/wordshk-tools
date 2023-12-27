@@ -373,7 +373,7 @@ pub struct VariantSearchRank {
     pub id: EntryId,
     pub variant_index: Index,
     pub occurrence_index: Index,
-    pub levenshtein_score: Score,
+    pub length_diff: usize,
 }
 
 impl Ord for VariantSearchRank {
@@ -381,7 +381,7 @@ impl Ord for VariantSearchRank {
         other
             .occurrence_index
             .cmp(&self.occurrence_index)
-            .then_with(|| self.levenshtein_score.cmp(&other.levenshtein_score))
+            .then_with(|| other.length_diff.cmp(&self.length_diff))
     }
 }
 
@@ -391,17 +391,6 @@ impl PartialOrd for VariantSearchRank {
     }
 }
 
-fn normalized_unicode_levenshtein(a: &str, b: &str) -> f64 {
-    if a.is_empty() && b.is_empty() {
-        return 1.0;
-    }
-    let a_graphemes = UnicodeSegmentation::graphemes(a, true).collect::<Vec<&str>>();
-    let a_len = a_graphemes.len();
-    let b_graphemes = UnicodeSegmentation::graphemes(b, true).collect::<Vec<&str>>();
-    let b_len = b_graphemes.len();
-    1.0 - (generic_levenshtein(&a_graphemes, &b_graphemes) as f64) / (a_len.max(b_len) as f64)
-}
-
 fn word_levenshtein(a: &Vec<&str>, b: &Vec<&str>) -> usize {
     if a.is_empty() && b.is_empty() {
         return 0;
@@ -409,36 +398,19 @@ fn word_levenshtein(a: &Vec<&str>, b: &Vec<&str>) -> usize {
     generic_levenshtein(a, b)
 }
 
-// source: https://stackoverflow.com/a/35907071/6798201
-fn find_subsequence<T>(haystack: &[T], needle: &[T]) -> Option<usize>
-where
-    for<'a> &'a [T]: PartialEq,
-{
-    haystack
-        .windows(needle.len())
-        .position(|window| window == needle)
-}
-
 fn score_variant_query(
-    entry_variant: &ComboVariant,
+    variant: &ComboVariant,
     query_normalized: &str,
     query_script: Script,
 ) -> (Index, Score) {
-    let entry_variant_normalized =
-        &unicode::normalize(&pick_variant(entry_variant, query_script).word)[..];
-    let variant_graphemes =
-        UnicodeSegmentation::graphemes(entry_variant_normalized, true).collect::<Vec<&str>>();
-    let query_graphemes =
-        UnicodeSegmentation::graphemes(query_normalized, true).collect::<Vec<&str>>();
-    let occurrence_index = match find_subsequence(&variant_graphemes, &query_graphemes) {
+    let variant_normalized = &unicode::normalize(&pick_variant(variant, query_script).word)[..];
+    // The query has to be fully contained by the variant
+    let occurrence_index = match variant_normalized.find(query_normalized) {
         Some(i) => i,
-        None => usize::MAX,
+        None => return (usize::MAX, usize::MAX),
     };
-    let levenshtein_score = normalize_score(normalized_unicode_levenshtein(
-        entry_variant_normalized,
-        query_normalized,
-    ));
-    (occurrence_index, levenshtein_score)
+    let length_diff = variant_normalized.chars().count() - query_normalized.chars().count();
+    (occurrence_index, length_diff)
 }
 
 pub fn variant_search(
@@ -461,14 +433,14 @@ pub fn variant_search(
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
-                let (occurrence_index, levenshtein_score) =
-                    score_variant_query(variant, query_normalized, query_script);
-                if occurrence_index < usize::MAX || levenshtein_score >= 80 {
+                let (occurrence_index, length_diff) =
+                    score_variant_query(variant, &query_normalized, query_script);
+                if occurrence_index < usize::MAX && length_diff <= 2 {
                     ranks.push(VariantSearchRank {
                         id: *id,
                         variant_index,
                         occurrence_index,
-                        levenshtein_score,
+                        length_diff,
                     });
                 }
             });
