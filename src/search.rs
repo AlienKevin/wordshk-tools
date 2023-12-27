@@ -609,38 +609,10 @@ pub fn combined_search(
 
 pub fn english_search(english_index: &ArchivedEnglishIndex, query: &str) -> Vec<EnglishIndexData> {
     let query = unicode::normalize_english_word_for_search_index(query);
-    let results = english_index
+    english_index
         .get(query.as_str())
         .map(|results| results.deserialize(&mut rkyv::Infallible).unwrap())
-        .unwrap_or(fuzzy_english_search(english_index, &[query.clone()]));
-    if results.is_empty() {
-        let synonyms = thesaurus::synonyms(query);
-        if synonyms.is_empty() {
-            results
-        } else {
-            synonyms
-                .iter()
-                .fold(None, |results: Option<Vec<EnglishIndexData>>, word| match (
-                    english_index.get(word.as_str()),
-                    results,
-                ) {
-                    (Some(current_results), Some(results)) => {
-                        if current_results[0].score as usize > results[0].score {
-                            Some(current_results.deserialize(&mut rkyv::Infallible).unwrap())
-                        } else {
-                            Some(results)
-                        }
-                    }
-                    (Some(current_results), None) => {
-                        Some(current_results.deserialize(&mut rkyv::Infallible).unwrap())
-                    }
-                    (None, results) => results,
-                })
-                .unwrap_or(fuzzy_english_search(english_index, &synonyms))
-        }
-    } else {
-        results
-    }
+        .unwrap_or(fuzzy_english_search(english_index, &[query.clone()]))
 }
 
 fn fuzzy_english_search<'a>(
