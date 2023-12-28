@@ -265,7 +265,12 @@ pub fn pr_search(
                         if distance <= 3 {
                             let matched_pr = match romanization {
                                 Romanization::Jyutping => diff_prs(query, &jyutping),
-                                Romanization::Yale => diff_prs(query, &to_yale(&jyutping)),
+                                Romanization::Yale => {
+                                    use unicode_normalization::UnicodeNormalization;
+                                    let yale = to_yale(&jyutping).nfd().collect::<String>();
+                                    let query = query.nfd().collect::<String>();
+                                    diff_prs(&query, &yale)
+                                }
                             };
                             ranks.push(PrSearchRank {
                                 id: entry_id,
