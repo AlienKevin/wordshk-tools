@@ -100,6 +100,11 @@ fn process_phrase(phrase: &str) -> Option<String> {
     // lower so that our strings will match regardless of case below.
     let mut phrase = phrase.replace(['\r', '\n'], " ").trim().to_lowercase();
 
+    // Skip empty phrases
+    if phrase.is_empty() {
+        return None;
+    }
+
     // Remove parentheses
     phrase = Regex::new(r#"\(.*\)"#)
         .unwrap()
