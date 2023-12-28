@@ -677,9 +677,9 @@ pub fn looks_like_jyutping(s: &str) -> bool {
 
 /// ```
 /// use wordshk_tools::jyutping::jyutping_to_yale;
-/// assert_eq!(jyutping_to_yale("hoi1 coi2".to_string()), "hōi chói".to_string());
-/// assert_eq!(jyutping_to_yale("m4 hou2 hai2 dou6".to_string()), "m̀ hóu hái douh".to_string());
-/// assert_eq!(jyutping_to_yale("tung4 joeng6".to_string()), "tùhng yeuhng".to_string());
+/// assert_eq!(jyutping_to_yale("hoi1 coi2"), "hōi chói".to_string());
+/// assert_eq!(jyutping_to_yale("m4 hou2 hai2 dou6"), "m̀ hóu hái douh".to_string());
+/// assert_eq!(jyutping_to_yale("tung4 joeng6"), "tùhng yeuhng".to_string());
 /// ```
 pub fn jyutping_to_yale(jyutping: &str) -> String {
     jyutping
