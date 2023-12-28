@@ -31,3 +31,4 @@ thesaurus = "0.5"
 rayon = "1.7.0"
 xxhash-rust = { version = "0.8.5", features = ["xxh3"] }
 rkyv = { version = "0.7.43", features = [ "alloc" ] }
+levenshtein-diff = "0.2.4"

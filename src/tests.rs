@@ -2168,3 +2168,339 @@ fn test_thesaurus() {
     dbg!(&synonyms);
     assert!(synonyms.contains(&"fantastic".to_string()));
 }
+
+#[test]
+fn test_diff_prs() {
+    use crate::search::{diff_prs, MatchedSegment};
+
+    // Purposefully added an h to the end for testing, not the correct yale spelling for 你好
+    assert_eq!(
+        diff_prs("neihou", "ne\u{0301}ih ho\u{0301}uh"),
+        vec![
+            MatchedSegment {
+                segment: "ne".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0301}".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "i".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "h ".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "ho".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0301}".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "u".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "h".to_string(),
+                matched: false,
+            },
+        ]
+    );
+
+    assert_eq!(
+        diff_prs("nei hou", "ne\u{0301}ih ho\u{0301}uh"),
+        vec![
+            MatchedSegment {
+                segment: "ne".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0301}".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "i".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "h".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: " ho".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0301}".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "u".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "h".to_string(),
+                matched: false,
+            },
+        ]
+    );
+
+    assert_eq!(
+        diff_prs("neihhou", "ne\u{0301}ih ho\u{0301}uh"),
+        vec![
+            MatchedSegment {
+                segment: "ne".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0301}".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "ih".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: " ".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "ho".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0301}".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "u".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "h".to_string(),
+                matched: false,
+            },
+        ]
+    );
+
+    assert_eq!(
+        diff_prs("neihhouh", "ne\u{0301}ih ho\u{0301}uh"),
+        vec![
+            MatchedSegment {
+                segment: "ne".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0301}".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "ih".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: " ".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "ho".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0301}".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "uh".to_string(),
+                matched: true,
+            },
+        ]
+    );
+
+    // Purposefully used the accute accent (\u{0301}) in chyu\u{0301}hn, not the correct yale spelling for 完全
+    assert_eq!(
+        diff_prs("yunchyun", "yu\u{0300}hn chyu\u{0301}hn"),
+        vec![
+            MatchedSegment {
+                segment: "yu".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0300}h".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "n".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: " ".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "chyu".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0301}h".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "n".to_string(),
+                matched: true,
+            },
+        ]
+    );
+
+    assert_eq!(
+        diff_prs("yunchyuhn", "yu\u{0300}hn chyu\u{0301}hn"),
+        vec![
+            MatchedSegment {
+                segment: "yu".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0300}h".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "n".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: " ".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "chyu".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0301}".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "hn".to_string(),
+                matched: true,
+            },
+        ]
+    );
+
+    assert_eq!(
+        diff_prs("yunchyu\u{0301}hn", "yu\u{0300}hn chyu\u{0301}hn"),
+        vec![
+            MatchedSegment {
+                segment: "yu".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "\u{0300}h".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "n".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: " ".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "chyu\u{0301}hn".to_string(),
+                matched: true,
+            },
+        ]
+    );
+
+    assert_eq!(
+        diff_prs(
+            "yu\u{0300}hng chyu\u{0301}hng",
+            "yu\u{0300}hn chyu\u{0301}hn"
+        ),
+        vec![MatchedSegment {
+            segment: "yu\u{0300}hn chyu\u{0301}hn".to_string(),
+            matched: true,
+        },]
+    );
+
+    assert_eq!(
+        diff_prs(
+            "yu\u{0300}hngchyu\u{0301}hng",
+            "yu\u{0300}hn chyu\u{0301}hn"
+        ),
+        vec![
+            MatchedSegment {
+                segment: "yu\u{0300}hn".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: " ".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "chyu\u{0301}hn".to_string(),
+                matched: true,
+            },
+        ]
+    );
+
+    // Jyutping
+    assert_eq!(
+        diff_prs("yuncyun", "yun4 cyun4"),
+        vec![
+            MatchedSegment {
+                segment: "yun".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "4 ".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "cyun".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "4".to_string(),
+                matched: false,
+            },
+        ]
+    );
+
+    assert_eq!(
+        diff_prs("yun4cyun", "yun4 cyun4"),
+        vec![
+            MatchedSegment {
+                segment: "yun4".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: " ".to_string(),
+                matched: false,
+            },
+            MatchedSegment {
+                segment: "cyun".to_string(),
+                matched: true,
+            },
+            MatchedSegment {
+                segment: "4".to_string(),
+                matched: false,
+            },
+        ]
+    );
+
+    assert_eq!(
+        diff_prs("yun4 cyun4", "yun4 cyun4"),
+        vec![
+            MatchedSegment {
+                segment: "yun4 cyun4".to_string(),
+                matched: true,
+            },
+        ]
+    );
+}

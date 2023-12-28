@@ -584,6 +584,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
+name = "levenshtein-diff"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbf2bb5dd04110609b666e285420240e142f3a76df086e39ab1f50c4cba435cf"
+
+[[package]]
 name = "libc"
 version = "0.2.146"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1589,6 +1595,7 @@ dependencies = [
  "indoc",
  "itertools",
  "lazy_static",
+ "levenshtein-diff",
  "lip",
  "rayon",
  "regex",

@@ -79,11 +79,18 @@ pub fn create_combo_variants(
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
+pub struct MatchedSegment {
+    pub segment: String,
+    pub matched: bool,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct PrSearchRank {
     pub id: EntryId,
     pub variant_index: Index,
     pub pr_index: Index,
-    pub pr: String,
+    pub jyutping: String,
+    pub matched_pr: Vec<MatchedSegment>,
     pub score: Score,
 }
 
@@ -91,7 +98,7 @@ impl Ord for PrSearchRank {
     fn cmp(&self, other: &Self) -> Ordering {
         self.score
             .cmp(&other.score)
-            .then(other.pr.cmp(&self.pr))
+            .then(other.jyutping.cmp(&self.jyutping))
             .then(other.id.cmp(&self.id))
     }
 }
@@ -217,11 +224,20 @@ pub fn pr_search(
         return ranks;
     }
 
+    fn to_yale(s: &str) -> String {
+        parse_jyutpings(s)
+            .unwrap()
+            .into_iter()
+            .map(|jyutping| jyutping.to_yale())
+            .join(" ")
+    }
+
     fn lookup_index(
         query: &str,
         deletions: usize,
         index: &PrIndex,
         dict: &ArchivedRichDict,
+        romanization: Romanization,
         ranks: &mut BinaryHeap<PrSearchRank>,
         pr_variant_generator: fn(&str) -> String,
     ) {
@@ -243,14 +259,20 @@ pub fn pr_search(
                             .0[pr_index as Index]
                             .deserialize(&mut rkyv::Infallible)
                             .unwrap();
-                        let pr = jyutping.to_string();
-                        let distance = levenshtein(&query, &pr_variant_generator(&pr));
+                        let jyutping = jyutping.to_string();
+                        let pr_variant = pr_variant_generator(&jyutping);
+                        let distance = levenshtein(&query, &pr_variant);
                         if distance <= 3 {
+                            let matched_pr = match romanization {
+                                Romanization::Jyutping => diff_prs(query, &jyutping),
+                                Romanization::Yale => diff_prs(query, &to_yale(&jyutping)),
+                            };
                             ranks.push(PrSearchRank {
                                 id: entry_id,
                                 variant_index: variant_index as Index,
                                 pr_index: pr_index as Index,
-                                pr,
+                                jyutping,
+                                matched_pr,
                                 score: MAX_SCORE - distance,
                             });
                         }
@@ -266,39 +288,55 @@ pub fn pr_search(
 
             if query.contains(TONES) && query.contains(' ') {
                 for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
-                        s.to_string()
-                    });
+                    lookup_index(
+                        &query,
+                        deletions,
+                        index,
+                        dict,
+                        romanization,
+                        &mut ranks,
+                        |s| s.to_string(),
+                    );
                 }
             } else if query.contains(TONES) {
                 for (deletions, index) in pr_indices.tone.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
-                        s.replace(' ', "")
-                    });
+                    lookup_index(
+                        &query,
+                        deletions,
+                        index,
+                        dict,
+                        romanization,
+                        &mut ranks,
+                        |s| s.replace(' ', ""),
+                    );
                 }
             } else if query.contains(' ') {
                 for (deletions, index) in pr_indices.space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
-                        s.replace(TONES, "")
-                    });
+                    lookup_index(
+                        &query,
+                        deletions,
+                        index,
+                        dict,
+                        romanization,
+                        &mut ranks,
+                        |s| s.replace(TONES, ""),
+                    );
                 }
             } else {
                 for (deletions, index) in pr_indices.none.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
-                        s.replace(TONES, "").replace(' ', "")
-                    });
+                    lookup_index(
+                        &query,
+                        deletions,
+                        index,
+                        dict,
+                        romanization,
+                        &mut ranks,
+                        |s| s.replace(TONES, "").replace(' ', ""),
+                    );
                 }
             }
         }
         Romanization::Yale => {
-            fn to_yale(s: &str) -> String {
-                parse_jyutpings(s)
-                    .unwrap()
-                    .into_iter()
-                    .map(|jyutping| jyutping.to_yale())
-                    .join(" ")
-            }
-
             fn to_yale_no_tones(s: &str) -> String {
                 parse_jyutpings(s)
                     .unwrap()
@@ -314,33 +352,75 @@ pub fn pr_search(
 
             if has_tone && query.contains(' ') {
                 for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, to_yale);
+                    lookup_index(
+                        &query,
+                        deletions,
+                        index,
+                        dict,
+                        romanization,
+                        &mut ranks,
+                        to_yale,
+                    );
                 }
             } else if has_tone {
                 for (deletions, index) in pr_indices.tone.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
-                        to_yale(s).replace(' ', "")
-                    });
+                    lookup_index(
+                        &query,
+                        deletions,
+                        index,
+                        dict,
+                        romanization,
+                        &mut ranks,
+                        |s| to_yale(s).replace(' ', ""),
+                    );
                 }
             } else if query.contains(' ') {
                 for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, to_yale);
+                    lookup_index(
+                        &query,
+                        deletions,
+                        index,
+                        dict,
+                        romanization,
+                        &mut ranks,
+                        to_yale,
+                    );
                 }
 
                 for (deletions, index) in pr_indices.space.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, to_yale_no_tones);
+                    lookup_index(
+                        &query,
+                        deletions,
+                        index,
+                        dict,
+                        romanization,
+                        &mut ranks,
+                        to_yale_no_tones,
+                    );
                 }
             } else {
                 for (deletions, index) in pr_indices.tone.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
-                        to_yale(s).replace(' ', "")
-                    });
+                    lookup_index(
+                        &query,
+                        deletions,
+                        index,
+                        dict,
+                        romanization,
+                        &mut ranks,
+                        |s| to_yale(s).replace(' ', ""),
+                    );
                 }
 
                 for (deletions, index) in pr_indices.none.iter().enumerate() {
-                    lookup_index(&query, deletions, index, dict, &mut ranks, |s| {
-                        to_yale_no_tones(s).replace(' ', "")
-                    });
+                    lookup_index(
+                        &query,
+                        deletions,
+                        index,
+                        dict,
+                        romanization,
+                        &mut ranks,
+                        |s| to_yale_no_tones(s).replace(' ', ""),
+                    );
                 }
             }
         }
@@ -674,4 +754,207 @@ pub fn get_char_jyutpings(query: char) -> Option<Vec<String>> {
     CHARLIST
         .get(&query)
         .map(|prs| prs.iter().map(|pr| pr.to_string()).collect())
+}
+
+pub fn diff_prs(query: &str, reference: &str) -> Vec<MatchedSegment> {
+    let source = reference.chars().rev().collect::<Vec<_>>();
+    let target = query.chars().rev().collect::<Vec<_>>();
+
+    let (_, mat) = levenshtein_diff::distance(&source, &target);
+    let edits = levenshtein_diff::generate_edits(&source, &target, &mat).unwrap();
+    let hidden_indices: Vec<usize> = edits
+        .iter()
+        .filter_map(|edit| match edit {
+            // Edits are 1-indexed, perfect for reversed strings
+            // Ignore insertions because they are not part of the reference string
+            levenshtein_diff::Edit::Insert(..) => None,
+            levenshtein_diff::Edit::Delete(index)
+            | levenshtein_diff::Edit::Substitute(index, ..) => Some(source.len() - index),
+        })
+        .collect();
+    let hidden_intervals = merge_intervals(&hidden_indices);
+    segment_string(reference, &hidden_intervals)
+        .into_iter()
+        .map(|MatchedSegment { segment, matched }| MatchedSegment {
+            segment,
+            matched: !matched,
+        })
+        .collect()
+}
+
+// Segment an input string into matched and unmatched segments
+fn segment_string(input: &str, intervals: &[(usize, usize)]) -> Vec<MatchedSegment> {
+    let chars: Vec<_> = input.chars().collect();
+    let mut result = Vec::new();
+    let mut current_index = 0;
+
+    for &(start, end) in intervals {
+        // Add the segment before the current interval (if any)
+        if current_index < start {
+            let segment = &chars[current_index..start];
+            result.push(MatchedSegment {
+                segment: segment.iter().collect(),
+                matched: false,
+            });
+        }
+
+        // Add the current interval
+        let segment = &chars[start..=end];
+        result.push(MatchedSegment {
+            segment: segment.iter().collect(),
+            matched: true,
+        });
+
+        current_index = end + 1;
+    }
+
+    // Add the remaining part of the string (if any)
+    if current_index < chars.len() {
+        let segment = &chars[current_index..];
+        result.push(MatchedSegment {
+            segment: segment.iter().collect(),
+            matched: false,
+        });
+    }
+
+    result
+}
+
+#[cfg(test)]
+mod test_segment_string {
+    use super::{segment_string, MatchedSegment};
+
+    #[test]
+    fn test_empty_string() {
+        assert_eq!(segment_string("", &vec![]), vec![]);
+    }
+
+    #[test]
+    fn test_no_intervals() {
+        let input = "こんにちは";
+        assert_eq!(
+            segment_string(input, &[]),
+            vec![MatchedSegment {
+                segment: input.to_string(),
+                matched: false
+            }]
+        );
+    }
+
+    #[test]
+    fn test_full_interval() {
+        let input = "こんにちは";
+        assert_eq!(
+            segment_string(input, &[(0, 4)]),
+            vec![MatchedSegment {
+                segment: input.to_string(),
+                matched: true
+            }]
+        );
+    }
+
+    #[test]
+    fn test_single_character_interval() {
+        let input = "こんにちは";
+        assert_eq!(
+            segment_string(input, &[(2, 2)]),
+            vec![
+                MatchedSegment {
+                    segment: "こん".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "に".to_string(),
+                    matched: true
+                },
+                MatchedSegment {
+                    segment: "ちは".to_string(),
+                    matched: false
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_multiple_intervals() {
+        let input = "こんにちは世界";
+        assert_eq!(
+            segment_string(input, &[(0, 1), (3, 6)]),
+            vec![
+                MatchedSegment {
+                    segment: "こん".to_string(),
+                    matched: true
+                },
+                MatchedSegment {
+                    segment: "に".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "ちは世界".to_string(),
+                    matched: true
+                },
+            ]
+        );
+    }
+}
+
+fn merge_intervals(indices: &[usize]) -> Vec<(usize, usize)> {
+    if indices.is_empty() {
+        return Vec::new();
+    }
+
+    let mut intervals = Vec::new();
+    let mut start = indices[0];
+    let mut end = indices[0];
+
+    for &index in indices.iter().skip(1) {
+        if index == end + 1 {
+            end = index;
+        } else {
+            intervals.push((start, end));
+            start = index;
+            end = index;
+        }
+    }
+
+    intervals.push((start, end));
+    intervals
+}
+
+#[cfg(test)]
+mod test_merge_intervals {
+    use super::merge_intervals;
+
+    #[test]
+    fn test_empty_vector() {
+        let vec: Vec<usize> = vec![];
+        assert_eq!(merge_intervals(&vec), vec![]);
+    }
+
+    #[test]
+    fn test_single_element() {
+        let vec = vec![1];
+        assert_eq!(merge_intervals(&vec), vec![(1, 1)]);
+    }
+
+    #[test]
+    fn test_non_consecutive_numbers() {
+        let vec = vec![1, 3, 5, 7, 9];
+        assert_eq!(
+            merge_intervals(&vec),
+            vec![(1, 1), (3, 3), (5, 5), (7, 7), (9, 9)]
+        );
+    }
+
+    #[test]
+    fn test_consecutive_numbers() {
+        let vec = vec![1, 2, 3, 4, 5];
+        assert_eq!(merge_intervals(&vec), vec![(1, 5)]);
+    }
+
+    #[test]
+    fn test_mixed_numbers() {
+        let vec = vec![1, 2, 4, 5, 7];
+        assert_eq!(merge_intervals(&vec), vec![(1, 2), (4, 5), (7, 7)]);
+    }
 }
