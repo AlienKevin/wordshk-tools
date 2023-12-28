@@ -1,11 +1,11 @@
-use crate::dict::EntryId;
+use crate::dict::{clause_to_string, Clause, EntryId};
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
 use crate::pr_index::{PrIndex, PrIndices, PrLocation, MAX_DELETIONS};
 use crate::rich_dict::{ArchivedRichDict, RichLine};
 
 use super::charlist::CHARLIST;
 use super::dict::{Variant, Variants};
-use super::english_index::{ArchivedEnglishIndex, EnglishIndexData};
+use super::english_index::{ArchivedEnglishIndex, EnglishIndexData, EnglishSearchRank};
 use super::iconic_simps::ICONIC_SIMPS;
 use super::iconic_trads::ICONIC_TRADS;
 use super::jyutping::{LaxJyutPings, Romanization};
@@ -17,6 +17,7 @@ use rkyv::Deserialize;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::{BinaryHeap, HashSet};
+use std::str::FromStr;
 use strsim::{generic_levenshtein, levenshtein, normalized_levenshtein};
 use xxhash_rust::xxh3::xxh3_64;
 
@@ -78,7 +79,17 @@ pub fn create_combo_variants(
         .collect()
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(
+    Clone,
+    Eq,
+    PartialEq,
+    Debug,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+)]
 pub struct MatchedSegment {
     pub segment: String,
     pub matched: bool,
@@ -659,7 +670,7 @@ pub enum CombinedSearchRank {
     All(
         BinaryHeap<VariantSearchRank>,
         BinaryHeap<PrSearchRank>,
-        Vec<EnglishIndexData>,
+        Vec<EnglishSearchRank>,
     ),
 }
 
@@ -695,17 +706,596 @@ pub fn combined_search(
     } else {
         BinaryHeap::new()
     };
-    let english_results = english_search(english_index, query);
+    let english_results = english_search(english_index, dict, query);
 
     CombinedSearchRank::All(variants_ranks, pr_ranks, english_results)
 }
 
-pub fn english_search(english_index: &ArchivedEnglishIndex, query: &str) -> Vec<EnglishIndexData> {
+#[derive(Clone, Eq, PartialEq, Debug)]
+struct EngSegment {
+    segment: String,
+    is_word: bool,
+}
+
+fn segment_eng_words(input: &str) -> Vec<EngSegment> {
+    let mut segments = Vec::new();
+    let mut last_match_end = 0;
+
+    // Regular expression to match words (including those with internal apostrophes and hyphens)
+    let word_re = regex::Regex::new(r"\b[a-zA-Z]+(?:-[a-zA-Z]+)*(?:(?:'[a-zA-Z]*)?|\b)").unwrap();
+
+    for mat in word_re.find_iter(input) {
+        let match_start = mat.start();
+        let match_end = mat.end();
+
+        // Handle any non-word segment before the current word
+        if match_start > last_match_end {
+            let non_word_segment = &input[last_match_end..match_start];
+            segments.push(EngSegment {
+                segment: non_word_segment.to_string(),
+                is_word: false,
+            });
+        }
+
+        // Add the current word segment
+        let word_segment = mat.as_str().to_string();
+        segments.push(EngSegment {
+            segment: word_segment,
+            is_word: true,
+        });
+
+        last_match_end = match_end;
+    }
+
+    // Handle any trailing non-word segment
+    if last_match_end < input.len() {
+        let trailing_segment = &input[last_match_end..];
+        segments.push(EngSegment {
+            segment: trailing_segment.to_string(),
+            is_word: false,
+        });
+    }
+
+    segments
+}
+
+#[cfg(test)]
+mod test_segment_eng_words {
+    use super::{segment_eng_words, EngSegment};
+
+    #[test]
+    fn test_empty_string() {
+        let input = "";
+        assert_eq!(segment_eng_words(input), vec![]);
+    }
+
+    #[test]
+    fn test_only_words() {
+        let input = "Hello world";
+        assert_eq!(
+            segment_eng_words(input),
+            vec![
+                EngSegment {
+                    segment: "Hello".to_string(),
+                    is_word: true
+                },
+                EngSegment {
+                    segment: " ".to_string(),
+                    is_word: false
+                },
+                EngSegment {
+                    segment: "world".to_string(),
+                    is_word: true
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_hyphens() {
+        let input = "- This is a good-for-nothing bullet";
+        assert_eq!(
+            segment_eng_words(input),
+            vec![
+                EngSegment {
+                    segment: "- ".to_string(),
+                    is_word: false
+                },
+                EngSegment {
+                    segment: "This".to_string(),
+                    is_word: true
+                },
+                EngSegment {
+                    segment: " ".to_string(),
+                    is_word: false
+                },
+                EngSegment {
+                    segment: "is".to_string(),
+                    is_word: true
+                },
+                EngSegment {
+                    segment: " ".to_string(),
+                    is_word: false
+                },
+                EngSegment {
+                    segment: "a".to_string(),
+                    is_word: true
+                },
+                EngSegment {
+                    segment: " ".to_string(),
+                    is_word: false
+                },
+                EngSegment {
+                    segment: "good-for-nothing".to_string(),
+                    is_word: true
+                },
+                EngSegment {
+                    segment: " ".to_string(),
+                    is_word: false
+                },
+                EngSegment {
+                    segment: "bullet".to_string(),
+                    is_word: true
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_apostrophes() {
+        let input = "- it's comin'";
+        assert_eq!(
+            segment_eng_words(input),
+            vec![
+                EngSegment {
+                    segment: "- ".to_string(),
+                    is_word: false
+                },
+                EngSegment {
+                    segment: "it's".to_string(),
+                    is_word: true
+                },
+                EngSegment {
+                    segment: " ".to_string(),
+                    is_word: false
+                },
+                EngSegment {
+                    segment: "comin'".to_string(),
+                    is_word: true
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_only_non_word_characters() {
+        let input = " ,.!?";
+        assert_eq!(
+            segment_eng_words(input),
+            vec![EngSegment {
+                segment: " ,.!?".to_string(),
+                is_word: false
+            },]
+        );
+    }
+
+    #[test]
+    fn test_words_and_non_word_characters() {
+        let input = "Hello, world 啦!";
+        assert_eq!(
+            segment_eng_words(input),
+            vec![
+                EngSegment {
+                    segment: "Hello".to_string(),
+                    is_word: true
+                },
+                EngSegment {
+                    segment: ", ".to_string(),
+                    is_word: false
+                },
+                EngSegment {
+                    segment: "world".to_string(),
+                    is_word: true
+                },
+                EngSegment {
+                    segment: " 啦!".to_string(),
+                    is_word: false
+                },
+            ]
+        );
+    }
+}
+
+// Allow multiple matches and normalize segments before matching
+fn match_eng_words(sentence: &str, query_normalized: &str) -> Vec<MatchedSegment> {
+    let segments = segment_eng_words(sentence);
+    let query_normalized = segment_eng_words(query_normalized);
+
+    if segments.is_empty() {
+        return vec![];
+    }
+
+    if query_normalized.is_empty() {
+        return vec![MatchedSegment {
+            segment: segments.into_iter().map(|seg| seg.segment).join(""),
+            matched: false,
+        }];
+    }
+
+    let segments_normalized = segments
+        .iter()
+        .map(|seg| {
+            if seg.is_word {
+                EngSegment {
+                    segment: unicode::normalize_english_word_for_search_index(&seg.segment),
+                    is_word: true,
+                }
+            } else {
+                seg.clone()
+            }
+        })
+        .collect::<Vec<_>>();
+    let mut current_segment_index = 0;
+    let mut matched_segments = Vec::new();
+    while current_segment_index + query_normalized.len() <= segments.len() {
+        let segs_normalized = &segments_normalized
+            [current_segment_index..current_segment_index + query_normalized.len()];
+        if segs_normalized == query_normalized {
+            matched_segments.push(MatchedSegment {
+                segment: segments
+                    [current_segment_index..current_segment_index + query_normalized.len()]
+                    .iter()
+                    .map(|seg| seg.segment.clone())
+                    .join(""),
+                matched: true,
+            });
+            current_segment_index += query_normalized.len();
+        } else {
+            matched_segments.push(MatchedSegment {
+                segment: segments[current_segment_index].segment.clone(),
+                matched: false,
+            });
+            current_segment_index += 1;
+        }
+    }
+    if current_segment_index < segments.len() {
+        matched_segments.push(MatchedSegment {
+            segment: segments[current_segment_index..segments.len()]
+                .iter()
+                .map(|seg| seg.segment.clone())
+                .join(""),
+            matched: false,
+        });
+    }
+    matched_segments
+}
+
+#[cfg(test)]
+mod test_match_eng_words {
+    use super::{match_eng_words, unicode, MatchedSegment};
+
+    #[test]
+    fn test_empty_sentence_and_query() {
+        let sentence = "";
+        let query = "";
+        assert_eq!(match_eng_words(sentence, query), vec![]);
+    }
+
+    #[test]
+    fn test_empty_sentence() {
+        let sentence = "";
+        let query = "test";
+        assert_eq!(match_eng_words(sentence, query), vec![]);
+    }
+
+    #[test]
+    fn test_empty_query() {
+        let sentence = "Hello world";
+        let query = "";
+        assert_eq!(
+            match_eng_words(sentence, query),
+            vec![MatchedSegment {
+                segment: "Hello world".to_string(),
+                matched: false
+            },]
+        );
+    }
+
+    #[test]
+    fn test_no_match() {
+        let sentence = "Hello world";
+        let query = "test";
+        assert_eq!(
+            match_eng_words(sentence, query),
+            vec![
+                MatchedSegment {
+                    segment: "Hello".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: " ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "world".to_string(),
+                    matched: false
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_exact_match() {
+        let sentence = "Hello world";
+        let query = "hello";
+        assert_eq!(
+            match_eng_words(sentence, &query),
+            vec![
+                MatchedSegment {
+                    segment: "Hello".to_string(),
+                    matched: true
+                },
+                MatchedSegment {
+                    segment: " ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "world".to_string(),
+                    matched: false
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_exact_full_match() {
+        let sentence = "Hello world";
+        let query = "hello world";
+        assert_eq!(
+            match_eng_words(sentence, &query),
+            vec![MatchedSegment {
+                segment: "Hello world".to_string(),
+                matched: true
+            }]
+        );
+    }
+
+    #[test]
+    fn test_broken_full_match() {
+        let sentence = "Hello, world";
+        let query = "hello world";
+        assert_eq!(
+            match_eng_words(sentence, &query),
+            vec![
+                MatchedSegment {
+                    segment: "Hello".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: ", world".to_string(),
+                    matched: false
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn test_apostrophe_match() {
+        let sentence = "Hello world! What's up, y'all!";
+        let query = unicode::normalize_english_word_for_search_index("what's up");
+        assert_eq!(
+            match_eng_words(sentence, &query),
+            vec![
+                MatchedSegment {
+                    segment: "Hello".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: " ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "world".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "! ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "What's up".to_string(),
+                    matched: true
+                },
+                MatchedSegment {
+                    segment: ", ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "y'all!".to_string(),
+                    matched: false
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn test_hyphen_and_apostrophe_match() {
+        let sentence = "Hello world! good-for-nothing' comin' y'all!";
+        let query = unicode::normalize_english_word_for_search_index("good-for-nothing'");
+        assert_eq!(
+            match_eng_words(sentence, &query),
+            vec![
+                MatchedSegment {
+                    segment: "Hello".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: " ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "world".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "! ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "good-for-nothing'".to_string(),
+                    matched: true
+                },
+                MatchedSegment {
+                    segment: " ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "comin'".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: " ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "y'all".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "!".to_string(),
+                    matched: false
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn test_partial_match() {
+        let sentence = "Hello world";
+        let query = "ello";
+        assert_eq!(
+            match_eng_words(sentence, query),
+            vec![
+                MatchedSegment {
+                    segment: "Hello".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: " ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "world".to_string(),
+                    matched: false
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_multiple_matches() {
+        let sentence = "Hello world, hello again";
+        let query = "hello";
+        assert_eq!(
+            match_eng_words(sentence, query),
+            vec![
+                MatchedSegment {
+                    segment: "Hello".to_string(),
+                    matched: true
+                },
+                MatchedSegment {
+                    segment: " ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "world".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: ", ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "hello".to_string(),
+                    matched: true
+                },
+                MatchedSegment {
+                    segment: " ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "again".to_string(),
+                    matched: false,
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn test_case_insensitivity_and_normalization() {
+        let sentence = "Hello, WORLD!";
+        let query = "world";
+        assert_eq!(
+            match_eng_words(sentence, query),
+            vec![
+                MatchedSegment {
+                    segment: "Hello".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: ", ".to_string(),
+                    matched: false
+                },
+                MatchedSegment {
+                    segment: "WORLD".to_string(),
+                    matched: true
+                },
+                MatchedSegment {
+                    segment: "!".to_string(),
+                    matched: false
+                },
+            ]
+        );
+    }
+}
+
+pub fn english_search(
+    english_index: &ArchivedEnglishIndex,
+    dict: &ArchivedRichDict,
+    query: &str,
+) -> Vec<EnglishSearchRank> {
     let query = unicode::normalize_english_word_for_search_index(query);
-    english_index
+    let results = english_index
         .get(query.as_str())
         .map(|results| results.deserialize(&mut rkyv::Infallible).unwrap())
-        .unwrap_or(fuzzy_english_search(english_index, &[query.clone()]))
+        .unwrap_or(fuzzy_english_search(english_index, &[query.clone()]));
+    results
+        .into_iter()
+        .map(
+            |EnglishIndexData {
+                 entry_id,
+                 def_index,
+                 score,
+             }| {
+                let entry = dict.get(&entry_id).unwrap();
+                let def = &entry.defs[def_index as usize];
+                let eng: Clause = def
+                    .eng
+                    .as_ref()
+                    .unwrap()
+                    .deserialize(&mut rkyv::Infallible)
+                    .unwrap();
+                let eng = clause_to_string(&eng);
+                let matched_eng = match_eng_words(&eng, &query);
+                EnglishSearchRank {
+                    entry_id,
+                    def_index,
+                    score,
+                    matched_eng,
+                }
+            },
+        )
+        .collect()
 }
 
 fn fuzzy_english_search<'a>(

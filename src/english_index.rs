@@ -1,5 +1,6 @@
 use crate::dict::EntryId;
 use crate::rich_dict::{ArchivedRichDict, ArchivedRichEntry};
+use crate::search::MatchedSegment;
 
 use super::dict::clause_to_string;
 use super::unicode;
@@ -27,6 +28,21 @@ pub struct EnglishIndexData {
 
     #[serde(rename = "s")]
     pub score: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+pub struct EnglishSearchRank {
+    #[serde(rename = "e")]
+    pub entry_id: EntryId,
+
+    #[serde(rename = "d")]
+    pub def_index: usize,
+
+    #[serde(rename = "s")]
+    pub score: usize,
+
+    #[serde(rename = "m")]
+    pub matched_eng: Vec<MatchedSegment>,
 }
 
 // Use reverse ordering so BTreeSet sorts in descending order according to scores
