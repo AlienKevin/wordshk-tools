@@ -1,5 +1,7 @@
+use rkyv::AlignedVec;
+
 use crate::jyutping::Romanization;
-use crate::pr_index::generate_pr_indices;
+use crate::pr_index::{generate_pr_indices, pr_indices_into_fst, FstPrIndices};
 use crate::rich_dict::ArchivedRichDict;
 
 use super::english_index::generate_english_index;
@@ -9,7 +11,8 @@ use std::fs;
 use std::path::Path;
 
 pub struct Api {
-    dict_data: Vec<u8>,
+    dict_data: AlignedVec,
+    pub fst_pr_indices: FstPrIndices,
 }
 
 fn serialize_dict<P: AsRef<Path>>(output_path: &P, dict: &RichDict) {
@@ -19,8 +22,8 @@ fn serialize_dict<P: AsRef<Path>>(output_path: &P, dict: &RichDict) {
 
 impl Api {
     pub unsafe fn new(app_dir: &str, csv: &str, romanization: Romanization) -> Self {
-        let api = Api::get_new_dict(app_dir, csv);
-        Api::generate_index(app_dir, &api.dict(), romanization);
+        let api = Api::get_new_dict(app_dir, csv, romanization);
+        Api::generate_english_index(app_dir, &api.dict());
         api
     }
 
@@ -28,14 +31,24 @@ impl Api {
         unsafe { rkyv::archived_root::<RichDict>(&self.dict_data) }
     }
 
-    pub unsafe fn load(app_dir: &str) -> Self {
+    pub unsafe fn load(app_dir: &str, romanization: Romanization) -> Self {
         let dict_path = Path::new(app_dir).join("dict.rkyv");
         // Read the data from the file
         let dict_data = fs::read(dict_path).expect("Unable to read serialized data");
-        Api { dict_data }
+        let mut aligned_dict_data = AlignedVec::with_capacity(dict_data.len());
+        aligned_dict_data.extend_from_slice(&dict_data);
+
+        let dict = unsafe { rkyv::archived_root::<RichDict>(&dict_data) };
+
+        let pr_indices = generate_pr_indices(dict, romanization);
+
+        Api {
+            dict_data: aligned_dict_data,
+            fst_pr_indices: pr_indices_into_fst(pr_indices),
+        }
     }
 
-    unsafe fn get_new_dict(app_dir: &str, csv: &str) -> Self {
+    unsafe fn get_new_dict(app_dir: &str, csv: &str, romanization: Romanization) -> Self {
         let dict = parse_dict(csv.as_bytes()).unwrap();
         let dict = crate::dict::filter_unfinished_entries(dict);
         let rich_dict = enrich_dict(
@@ -46,10 +59,10 @@ impl Api {
         );
         let api_path = Path::new(app_dir).join("dict.rkyv");
         serialize_dict(&api_path, &rich_dict);
-        Self::load(app_dir)
+        Self::load(app_dir, romanization)
     }
 
-    fn generate_index(app_dir: &str, dict: &ArchivedRichDict, romanization: Romanization) {
+    fn generate_english_index(app_dir: &str, dict: &ArchivedRichDict) {
         let index_path = Path::new(app_dir).join("english_index.rkyv");
         let english_index = generate_english_index(dict);
         fs::write(
@@ -57,10 +70,5 @@ impl Api {
             rkyv::to_bytes::<_, 1024>(&english_index).unwrap(),
         )
         .expect("Unable to output serailized english index");
-
-        let index_path = Path::new(app_dir).join("pr_indices.rkyv");
-        let pr_indices = generate_pr_indices(dict, romanization);
-        fs::write(index_path, rkyv::to_bytes::<_, 1024>(&pr_indices).unwrap())
-            .expect("Unable to output serialized pr index");
     }
 }

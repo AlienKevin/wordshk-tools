@@ -509,6 +509,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fst"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ab85b9b05e3978cc9a9cf8fea7f01b494e1a09ed3037e16ba39edc7a29eb61a"
+dependencies = [
+ "utf8-ranges",
+]
+
+[[package]]
 name = "funty"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2025,6 +2034,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "utf8-ranges"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fcfc827f90e53a02eaef5e535ee14266c1d569214c6aa70133a624d8a3164ba"
+
+[[package]]
 name = "uuid"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2329,6 +2344,7 @@ dependencies = [
  "csv",
  "deunicode",
  "fast2s",
+ "fst",
  "indexmap 2.0.0",
  "indoc",
  "itertools 0.11.0",
@@ -2348,7 +2364,6 @@ dependencies = [
  "unicode-normalization",
  "unicode-segmentation",
  "unicode_names2",
- "xxhash-rust",
 ]
 
 [[package]]

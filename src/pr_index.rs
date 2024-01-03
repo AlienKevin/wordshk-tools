@@ -3,42 +3,73 @@ use crate::{
     jyutping::{remove_yale_tones, LaxJyutPing, Romanization},
     rich_dict::ArchivedRichDict,
 };
-use rkyv::{
-    collections::{ArchivedHashMap, ArchivedHashSet},
-    Deserialize as _,
-};
+use fst::{automaton::Levenshtein, IntoStreamer, Map, MapBuilder};
+use rkyv::Deserialize as _;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{HashMap, HashSet},
-    hash::{Hash, Hasher},
+    collections::{BTreeMap, BTreeSet, HashMap},
+    hash::Hash,
 };
-use xxhash_rust::xxh3::xxh3_64;
 
 pub const MAX_DELETIONS: usize = 1;
-const MAX_CANDIDATES: usize = 10;
 
-#[derive(Serialize, Deserialize, Default, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct PrIndices {
-    pub tone_and_space: Vec<PrIndex>,
-    pub tone: Vec<PrIndex>,
-    pub space: Vec<PrIndex>,
-    pub none: Vec<PrIndex>,
+    pub tone_and_space: PrIndex,
+    pub tone: PrIndex,
+    pub space: PrIndex,
+    pub none: PrIndex,
 }
 
 impl PrIndices {
     pub fn default() -> Self {
         Self {
-            tone_and_space: vec![HashMap::default(); MAX_DELETIONS + 1],
-            tone: vec![HashMap::default(); MAX_DELETIONS + 1],
-            space: vec![HashMap::default(); MAX_DELETIONS + 1],
-            none: vec![HashMap::default(); MAX_DELETIONS + 1],
+            tone_and_space: BTreeMap::default(),
+            tone: BTreeMap::default(),
+            space: BTreeMap::default(),
+            none: BTreeMap::default(),
         }
     }
 }
 
-#[derive(
-    Debug, Clone, Copy, Serialize, Deserialize, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize,
-)]
+pub struct FstPrIndices {
+    tone_and_space: Map<Vec<u8>>,
+    tone: Map<Vec<u8>>,
+    space: Map<Vec<u8>>,
+    none: Map<Vec<u8>>,
+
+    locations: HashMap<u64, BTreeSet<PrLocation>>,
+}
+
+impl FstPrIndices {
+    pub fn tone_and_space<'a>(&'a self) -> impl FnOnce(Levenshtein) -> BTreeSet<PrLocation> + 'a {
+        |query| self.search(&self.tone_and_space, query)
+    }
+
+    pub fn tone<'a>(&'a self) -> impl FnOnce(Levenshtein) -> BTreeSet<PrLocation> + 'a {
+        |query| self.search(&self.tone, query)
+    }
+
+    pub fn space<'a>(&'a self) -> impl FnOnce(Levenshtein) -> BTreeSet<PrLocation> + 'a {
+        |query| self.search(&self.space, query)
+    }
+
+    pub fn none<'a>(&'a self) -> impl FnOnce(Levenshtein) -> BTreeSet<PrLocation> + 'a {
+        |query| self.search(&self.none, query)
+    }
+
+    fn search(&self, map: &Map<Vec<u8>>, query: Levenshtein) -> BTreeSet<PrLocation> {
+        map.search(query)
+            .into_stream()
+            .into_values()
+            .into_iter()
+            .flat_map(|loc| &self.locations[&loc])
+            .cloned()
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct PrLocation {
     #[serde(rename = "e")]
     pub entry_id: EntryId,
@@ -50,131 +81,7 @@ pub struct PrLocation {
     pub pr_index: u8,
 }
 
-impl PartialEq for PrLocation {
-    fn eq(&self, other: &Self) -> bool {
-        self.entry_id == other.entry_id
-    }
-}
-
-impl Eq for PrLocation {}
-
-impl Hash for PrLocation {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.entry_id.hash(state);
-    }
-}
-
-impl PartialEq for ArchivedPrLocation {
-    fn eq(&self, other: &Self) -> bool {
-        self.entry_id == other.entry_id
-    }
-}
-
-impl Eq for ArchivedPrLocation {}
-
-impl Hash for ArchivedPrLocation {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.entry_id.hash(state);
-    }
-}
-
-// map from hash of permuted pr to entry ids
-pub type PrIndex = HashMap<u64, HashSet<PrLocation>>;
-pub type ArchivedPrIndex = ArchivedHashMap<u64, ArchivedHashSet<ArchivedPrLocation>>;
-
-/// Generate a deletion index for a string
-/// ```
-/// use wordshk_tools::pr_index::generate_deletion_neighborhood;
-/// use std::collections::HashMap;
-///
-/// assert_eq!(generate_deletion_neighborhood("abc", 1), HashMap::from_iter([
-///     ("abc".to_string(), 0),
-///
-///     ("bc".to_string(), 1),
-///     ("ac".to_string(), 1),
-///     ("ab".to_string(), 1),
-/// ]));
-///
-/// assert_eq!(generate_deletion_neighborhood("abcdef", 2), HashMap::from_iter([
-///     ("abcdef".to_string(), 0),
-///
-///     ("bcdef".to_string(), 1),
-///     ("acdef".to_string(), 1),
-///     ("abdef".to_string(), 1),
-///     ("abcef".to_string(), 1),
-///     ("abcdf".to_string(), 1),
-///     ("abcde".to_string(), 1),
-///
-///     ("cdef".to_string(), 2),
-///     ("bdef".to_string(), 2),
-///     ("bcef".to_string(), 2),
-///     ("bcdf".to_string(), 2),
-///     ("bcde".to_string(), 2),
-///     
-///     ("cdef".to_string(), 2),
-///     ("adef".to_string(), 2),
-///     ("acef".to_string(), 2),
-///     ("acdf".to_string(), 2),
-///     ("acde".to_string(), 2),
-///
-///     ("bdef".to_string(), 2),
-///     ("adef".to_string(), 2),
-///     ("abef".to_string(), 2),
-///     ("abdf".to_string(), 2),
-///     ("abde".to_string(), 2),
-///
-///     ("bcef".to_string(), 2),
-///     ("acef".to_string(), 2),
-///     ("abef".to_string(), 2),
-///     ("abcf".to_string(), 2),
-///     ("abce".to_string(), 2),
-///
-///     ("bcdf".to_string(), 2),
-///     ("acdf".to_string(), 2),
-///     ("abdf".to_string(), 2),
-///     ("abcf".to_string(), 2),
-///     ("abcd".to_string(), 2),
-///
-///     ("bcde".to_string(), 2),
-///     ("acde".to_string(), 2),
-///     ("abde".to_string(), 2),
-///     ("abce".to_string(), 2),
-///     ("abcd".to_string(), 2),
-/// ]));
-/// ```
-pub fn generate_deletion_neighborhood(s: &str, max_deletions: usize) -> HashMap<String, usize> {
-    let mut results: HashMap<String, usize> = HashMap::new();
-
-    fn recursive_generate(
-        input: &str,
-        deletions: usize,
-        max_deletions: usize,
-        results: &mut HashMap<String, usize>,
-    ) {
-        if deletions >= max_deletions {
-            return;
-        }
-
-        for (index, _) in input.char_indices() {
-            let mut sub_str = input.to_string();
-            sub_str.remove(index);
-            results
-                .entry(sub_str.clone())
-                .and_modify(|old_deletions| *old_deletions = (*old_deletions).min(deletions + 1))
-                .or_insert(deletions + 1);
-            recursive_generate(&sub_str, deletions + 1, max_deletions, results);
-        }
-    }
-
-    results.insert(s.to_string(), 0);
-    recursive_generate(s, 0, max_deletions, &mut results);
-    results
-}
-
-fn generate_deletion_index(s: &str) -> HashMap<String, usize> {
-    let max_deletions = ((s.chars().count() as f32 * 0.35) as usize).min(MAX_DELETIONS);
-    generate_deletion_neighborhood(s, max_deletions)
-}
+pub type PrIndex = BTreeMap<String, BTreeSet<PrLocation>>;
 
 fn generate_pr_variants(
     pr_location: PrLocation,
@@ -182,46 +89,28 @@ fn generate_pr_variants(
     index: &mut PrIndices,
     remove_tones: fn(&str) -> String,
 ) {
-    let insert = |index: &mut Vec<PrIndex>, variant: String, deletions: usize| {
-        index[deletions]
-            .entry(xxh3_64(variant.as_bytes()))
+    let insert = |index: &mut PrIndex, variant: String| {
+        index
+            .entry(variant.clone())
             .and_modify(|locations| {
-                if locations.len() < MAX_CANDIDATES {
-                    locations.insert(pr_location);
-                }
+                locations.insert(pr_location);
             })
-            .or_insert(HashSet::from_iter([pr_location]));
+            .or_insert(BTreeSet::from_iter([pr_location]));
     };
 
     if pr.contains(' ') {
-        for (variant, deletions) in generate_deletion_index(&pr) {
-            insert(&mut index.tone_and_space, variant, deletions);
-        }
-
-        for (variant, deletions) in generate_deletion_index(&pr.replace(' ', "")) {
-            insert(&mut index.tone, variant, deletions);
-        }
-
-        for (variant, deletions) in generate_deletion_index(&remove_tones(&pr)) {
-            insert(&mut index.space, variant, deletions);
-        }
-
-        for (variant, deletions) in generate_deletion_index(&remove_tones(&pr).replace(' ', "")) {
-            insert(&mut index.none, variant, deletions);
-        }
+        insert(&mut index.tone, pr.replace(' ', ""));
+        insert(&mut index.space, remove_tones(&pr));
+        insert(&mut index.none, remove_tones(&pr).replace(' ', ""));
+        insert(&mut index.tone_and_space, pr);
     } else {
-        for (variant, deletions) in generate_deletion_index(&pr) {
-            insert(&mut index.tone, variant, deletions);
-        }
-
-        for (variant, deletions) in generate_deletion_index(&remove_tones(&pr)) {
-            insert(&mut index.none, variant, deletions);
-        }
+        insert(&mut index.none, remove_tones(&pr));
+        insert(&mut index.tone, pr);
     }
 }
 
 pub fn generate_pr_indices(dict: &ArchivedRichDict, romanization: Romanization) -> PrIndices {
-    let mut index = PrIndices::default();
+    let mut indices = PrIndices::default();
     for (&entry_id, entry) in dict.iter() {
         for (variant_index, variant) in entry.variants.0.iter().enumerate() {
             for (pr_index, pr) in variant.prs.0.iter().enumerate() {
@@ -236,7 +125,7 @@ pub fn generate_pr_indices(dict: &ArchivedRichDict, romanization: Romanization) 
                                 pr_index: pr_index.try_into().unwrap(),
                             },
                             pr.to_string(),
-                            &mut index,
+                            &mut indices,
                             |s| s.replace(&['1', '2', '3', '4', '5', '6'], ""),
                         ),
                         Romanization::Yale => generate_pr_variants(
@@ -246,7 +135,7 @@ pub fn generate_pr_indices(dict: &ArchivedRichDict, romanization: Romanization) 
                                 pr_index: pr_index.try_into().unwrap(),
                             },
                             pr.to_yale(),
-                            &mut index,
+                            &mut indices,
                             remove_yale_tones,
                         ),
                     }
@@ -254,5 +143,57 @@ pub fn generate_pr_indices(dict: &ArchivedRichDict, romanization: Romanization) 
             }
         }
     }
-    index
+    indices
+}
+
+pub fn pr_indices_into_fst(indices: PrIndices) -> FstPrIndices {
+    let mut tone_and_space_builder = MapBuilder::memory();
+    let mut tone_builder = MapBuilder::memory();
+    let mut space_builder = MapBuilder::memory();
+    let mut none_builder = MapBuilder::memory();
+
+    let mut locations = HashMap::new();
+    let mut location_index = 0;
+
+    for (pr, locs) in indices.tone_and_space {
+        let loc_index = locations.entry(locs).or_insert({
+            location_index += 1;
+            location_index - 1
+        });
+        tone_and_space_builder.insert(pr, *loc_index).unwrap();
+    }
+    for (pr, locs) in indices.tone {
+        let loc_index = locations.entry(locs).or_insert({
+            location_index += 1;
+            location_index - 1
+        });
+        tone_builder.insert(pr, *loc_index).unwrap();
+    }
+    for (pr, locs) in indices.space {
+        let loc_index = locations.entry(locs).or_insert({
+            location_index += 1;
+            location_index - 1
+        });
+        space_builder.insert(pr, *loc_index).unwrap();
+    }
+    for (pr, locs) in indices.none {
+        let loc_index = locations.entry(locs).or_insert({
+            location_index += 1;
+            location_index - 1
+        });
+        none_builder.insert(pr, *loc_index).unwrap();
+    }
+
+    let tone_and_space = tone_and_space_builder.into_map();
+    let tone = tone_builder.into_map();
+    let space = space_builder.into_map();
+    let none = none_builder.into_map();
+
+    FstPrIndices {
+        tone_and_space,
+        tone,
+        space,
+        none,
+        locations: locations.into_iter().map(|(k, v)| (v, k)).collect(),
+    }
 }

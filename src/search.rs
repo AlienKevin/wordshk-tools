@@ -1,6 +1,6 @@
 use crate::dict::{clause_to_string, Clause, EntryId};
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
-use crate::pr_index::{PrIndex, PrIndices, PrLocation, MAX_DELETIONS};
+use crate::pr_index::{FstPrIndices, PrLocation, MAX_DELETIONS};
 use crate::rich_dict::{ArchivedRichDict, RichLine};
 
 use super::charlist::CHARLIST;
@@ -12,14 +12,13 @@ use super::jyutping::{LaxJyutPings, Romanization};
 use super::rich_dict::RichEntry;
 use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
+use fst::automaton::Levenshtein;
 use itertools::Itertools;
 use rkyv::Deserialize;
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::collections::{BinaryHeap, HashSet};
-use std::str::FromStr;
 use strsim::{generic_levenshtein, levenshtein, normalized_levenshtein};
-use xxhash_rust::xxh3::xxh3_64;
 
 /// Max score is 100
 type Score = usize;
@@ -223,7 +222,7 @@ fn get_entry_frequency(entry_id: EntryId) -> u8 {
 }
 
 pub fn pr_search(
-    pr_indices: &PrIndices,
+    pr_indices: &FstPrIndices,
     dict: &ArchivedRichDict,
     query: &str,
     romanization: Romanization,
@@ -245,55 +244,49 @@ pub fn pr_search(
 
     fn lookup_index(
         query: &str,
-        deletions: usize,
-        index: &PrIndex,
+        search: impl FnOnce(Levenshtein) -> BTreeSet<PrLocation>,
         dict: &ArchivedRichDict,
         romanization: Romanization,
         ranks: &mut BinaryHeap<PrSearchRank>,
         pr_variant_generator: fn(&str) -> String,
     ) {
         let max_deletions = (query.chars().count() - 1).min(MAX_DELETIONS);
-        if deletions < query.chars().count() {
-            for (query_variant, _added_deletions) in
-                crate::pr_index::generate_deletion_neighborhood(&query, max_deletions)
-            {
-                if let Some(locations) = index.get(&xxh3_64(query_variant.as_bytes())) {
-                    for &PrLocation {
-                        entry_id,
-                        variant_index,
-                        pr_index,
-                    } in locations.iter()
-                    {
-                        let jyutping: LaxJyutPing = dict.get(&entry_id).unwrap().variants.0
-                            [variant_index as Index]
-                            .prs
-                            .0[pr_index as Index]
-                            .deserialize(&mut rkyv::Infallible)
-                            .unwrap();
-                        let jyutping = jyutping.to_string();
-                        let pr_variant = pr_variant_generator(&jyutping);
-                        let distance = levenshtein(&query, &pr_variant);
-                        if distance <= 1 {
-                            let matched_pr = match romanization {
-                                Romanization::Jyutping => diff_prs(query, &jyutping),
-                                Romanization::Yale => {
-                                    use unicode_normalization::UnicodeNormalization;
-                                    let yale = to_yale(&jyutping).nfd().collect::<String>();
-                                    let query = query.nfd().collect::<String>();
-                                    diff_prs(&query, &yale)
-                                }
-                            };
-                            ranks.push(PrSearchRank {
-                                id: entry_id,
-                                variant_index: variant_index as Index,
-                                pr_index: pr_index as Index,
-                                jyutping,
-                                matched_pr,
-                                score: MAX_SCORE - distance,
-                            });
-                        }
+
+        let lev = Levenshtein::new(query, max_deletions as u32).unwrap();
+
+        for PrLocation {
+            entry_id,
+            variant_index,
+            pr_index,
+        } in search(lev)
+        {
+            let jyutping: LaxJyutPing = dict.get(&entry_id).unwrap().variants.0
+                [variant_index as Index]
+                .prs
+                .0[pr_index as Index]
+                .deserialize(&mut rkyv::Infallible)
+                .unwrap();
+            let jyutping = jyutping.to_string();
+            let pr_variant = pr_variant_generator(&jyutping);
+            let distance = levenshtein(&query, &pr_variant);
+            if distance <= 1 {
+                let matched_pr = match romanization {
+                    Romanization::Jyutping => diff_prs(query, &jyutping),
+                    Romanization::Yale => {
+                        use unicode_normalization::UnicodeNormalization;
+                        let yale = to_yale(&jyutping).nfd().collect::<String>();
+                        let query = query.nfd().collect::<String>();
+                        diff_prs(&query, &yale)
                     }
-                }
+                };
+                ranks.push(PrSearchRank {
+                    id: entry_id,
+                    variant_index: variant_index as Index,
+                    pr_index: pr_index as Index,
+                    jyutping,
+                    matched_pr,
+                    score: MAX_SCORE - distance,
+                });
             }
         }
     }
@@ -303,53 +296,41 @@ pub fn pr_search(
             const TONES: [char; 6] = ['1', '2', '3', '4', '5', '6'];
 
             if query.contains(TONES) && query.contains(' ') {
-                for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(
-                        &query,
-                        deletions,
-                        index,
-                        dict,
-                        romanization,
-                        &mut ranks,
-                        |s| s.to_string(),
-                    );
-                }
+                lookup_index(
+                    &query,
+                    pr_indices.tone_and_space(),
+                    dict,
+                    romanization,
+                    &mut ranks,
+                    |s| s.to_string(),
+                );
             } else if query.contains(TONES) {
-                for (deletions, index) in pr_indices.tone.iter().enumerate() {
-                    lookup_index(
-                        &query,
-                        deletions,
-                        index,
-                        dict,
-                        romanization,
-                        &mut ranks,
-                        |s| s.replace(' ', ""),
-                    );
-                }
+                lookup_index(
+                    &query,
+                    pr_indices.tone(),
+                    dict,
+                    romanization,
+                    &mut ranks,
+                    |s| s.replace(' ', ""),
+                );
             } else if query.contains(' ') {
-                for (deletions, index) in pr_indices.space.iter().enumerate() {
-                    lookup_index(
-                        &query,
-                        deletions,
-                        index,
-                        dict,
-                        romanization,
-                        &mut ranks,
-                        |s| s.replace(TONES, ""),
-                    );
-                }
+                lookup_index(
+                    &query,
+                    pr_indices.space(),
+                    dict,
+                    romanization,
+                    &mut ranks,
+                    |s| s.replace(TONES, ""),
+                );
             } else {
-                for (deletions, index) in pr_indices.none.iter().enumerate() {
-                    lookup_index(
-                        &query,
-                        deletions,
-                        index,
-                        dict,
-                        romanization,
-                        &mut ranks,
-                        |s| s.replace(TONES, "").replace(' ', ""),
-                    );
-                }
+                lookup_index(
+                    &query,
+                    pr_indices.none(),
+                    dict,
+                    romanization,
+                    &mut ranks,
+                    |s| s.replace(TONES, "").replace(' ', ""),
+                );
             }
         }
         Romanization::Yale => {
@@ -367,77 +348,59 @@ pub fn pr_search(
             let has_tone = remove_yale_diacritics(&query) != query;
 
             if has_tone && query.contains(' ') {
-                for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(
-                        &query,
-                        deletions,
-                        index,
-                        dict,
-                        romanization,
-                        &mut ranks,
-                        to_yale,
-                    );
-                }
+                lookup_index(
+                    &query,
+                    pr_indices.tone_and_space(),
+                    dict,
+                    romanization,
+                    &mut ranks,
+                    to_yale,
+                );
             } else if has_tone {
-                for (deletions, index) in pr_indices.tone.iter().enumerate() {
-                    lookup_index(
-                        &query,
-                        deletions,
-                        index,
-                        dict,
-                        romanization,
-                        &mut ranks,
-                        |s| to_yale(s).replace(' ', ""),
-                    );
-                }
+                lookup_index(
+                    &query,
+                    pr_indices.tone(),
+                    dict,
+                    romanization,
+                    &mut ranks,
+                    |s| to_yale(s).replace(' ', ""),
+                );
             } else if query.contains(' ') {
-                for (deletions, index) in pr_indices.tone_and_space.iter().enumerate() {
-                    lookup_index(
-                        &query,
-                        deletions,
-                        index,
-                        dict,
-                        romanization,
-                        &mut ranks,
-                        to_yale,
-                    );
-                }
+                lookup_index(
+                    &query,
+                    pr_indices.tone_and_space(),
+                    dict,
+                    romanization,
+                    &mut ranks,
+                    to_yale,
+                );
 
-                for (deletions, index) in pr_indices.space.iter().enumerate() {
-                    lookup_index(
-                        &query,
-                        deletions,
-                        index,
-                        dict,
-                        romanization,
-                        &mut ranks,
-                        to_yale_no_tones,
-                    );
-                }
+                lookup_index(
+                    &query,
+                    pr_indices.space(),
+                    dict,
+                    romanization,
+                    &mut ranks,
+                    to_yale_no_tones,
+                );
             } else {
-                for (deletions, index) in pr_indices.tone.iter().enumerate() {
-                    lookup_index(
-                        &query,
-                        deletions,
-                        index,
-                        dict,
-                        romanization,
-                        &mut ranks,
-                        |s| to_yale(s).replace(' ', ""),
-                    );
-                }
+                lookup_index(
+                    &query,
+                    pr_indices.tone(),
+                    dict,
+                    romanization,
+                    &mut ranks,
+                    |s| to_yale(s).replace(' ', ""),
+                );
 
-                for (deletions, index) in pr_indices.none.iter().enumerate() {
-                    lookup_index(
-                        &query,
-                        deletions,
-                        index,
-                        dict,
-                        romanization,
-                        &mut ranks,
-                        |s| to_yale_no_tones(s).replace(' ', ""),
-                    );
-                }
+                lookup_index(
+                    &query,
+                    pr_indices.none(),
+                    dict,
+                    romanization,
+                    &mut ranks,
+                    |s| to_yale_no_tones(s).replace(' ', ""),
+                );
             }
         }
     }
@@ -677,7 +640,7 @@ pub enum CombinedSearchRank {
 // Auto recognize the type of the query
 pub fn combined_search(
     variants_map: &VariantsMap,
-    pr_indices: Option<&PrIndices>,
+    pr_indices: Option<&FstPrIndices>,
     english_index: &ArchivedEnglishIndex,
     dict: &ArchivedRichDict,
     query: &str,

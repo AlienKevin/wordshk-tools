@@ -29,10 +29,12 @@ use xxhash_rust::xxh3::xxh3_64;
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    std::fs::create_dir(APP_TMP_DIR).ok();
-    let api = unsafe { generate_api_json() };
-    // test_jyutping_search();
-    // test_yale_search();
+    // std::fs::create_dir(APP_TMP_DIR).ok();
+    // let api = unsafe { generate_api_json() };
+
+    test_jyutping_search();
+    test_yale_search();
+
     // generate_jyutping_to_yale(&api);
     // compare_yale();
 
@@ -906,134 +908,121 @@ fn generate_jyutping_to_yale(api: &Api) {
     let output_path = std::path::Path::new(APP_TMP_DIR).join("jyutping_to_yale.json");
     std::fs::write(output_path, json).expect("Failed to write jyutping 2 yale JSON to file");
 }
+*/
 
 fn test_jyutping_search() {
-    use flate2::read::GzDecoder;
-    use flate2::Compression;
-    use serde::Deserialize;
-    use std::io::prelude::*;
-
-    let mut dict_decompressor = GzDecoder::new(&include_bytes!("../app_tmp/dict.json")[..]);
-    let mut dict_str = String::new();
-    dict_decompressor.read_to_string(&mut dict_str).unwrap();
-    let dict: RichDict = serde_json::from_str(&dict_str).unwrap();
-
-    let mut pr_indices_decompressor =
-        GzDecoder::new(&include_bytes!("../app_tmp/pr_indices.msgpack")[..]);
-    let mut pr_indices_bytes = Vec::new();
-    pr_indices_decompressor
-        .read_to_end(&mut pr_indices_bytes)
-        .unwrap();
-    let pr_indices = rmp_serde::from_slice(&pr_indices_bytes[..])
-        .expect("Failed to deserialize pr_indices from msgpack format");
+    use wordshk_tools::search::MatchedSegment;
 
     let romanization = Romanization::Jyutping;
+    let api = unsafe { Api::load(APP_TMP_DIR, romanization) };
 
-    let test_pr_search = |expected: &str, query: &str, expected_score: usize| {
-        println!("query: {}", query);
-        let result = pr_search(&pr_indices, &dict, query, romanization);
-        println!("result: {:?}", result);
-        assert!(result
-            .iter()
-            .any(|rank| rank.pr == expected && rank.score == expected_score));
-    };
+    macro_rules! test_pr_search {
+        ($expected:expr, $query:expr, $expected_score:expr) => {{
+            // println!("query: {}", $query);
+            let result = pr_search(
+                &api.fst_pr_indices,
+                unsafe { &api.dict() },
+                $query,
+                romanization,
+            );
+            // println!("result: {:?}", result);
+            assert!(result
+                .iter()
+                .any(|rank| { rank.jyutping == $expected && rank.score == $expected_score }));
+        }};
+    }
 
-    test_pr_search("hou2 coi2", "hou2 coi2", 100);
-    test_pr_search("hou2 coi2", "hou2coi2", 100);
-    test_pr_search("hou2 coi2", "hou2 coi3", 99);
-    test_pr_search("hou2 coi2", "hou2coi3", 99);
-    test_pr_search("hou2 coi2", "hou coi", 100);
-    test_pr_search("hou2 coi2", "houcoi", 100);
-    test_pr_search("hou2 coi2", "ho coi", 99);
-    test_pr_search("hou2 coi2", "hochoi", 98);
-    test_pr_search("hou2 coi2", "hocoi", 99);
-    test_pr_search("hou2 coi2", "hou choi", 99);
-    test_pr_search("hou2 coi2", "houchoi", 99);
+    test_pr_search!("hou2 coi2", "hou2 coi2", 100);
+    test_pr_search!("hou2 coi2", "hou2coi2", 100);
+    test_pr_search!("hou2 coi2", "hou2 coi3", 99);
+    test_pr_search!("hou2 coi2", "hou2coi3", 99);
+    test_pr_search!("hou2 coi2", "hou coi", 100);
+    test_pr_search!("hou2 coi2", "houcoi", 100);
+    test_pr_search!("hou2 coi2", "ho coi", 99);
+    test_pr_search!("hou2 coi2", "hocoi", 99);
+    test_pr_search!("hou2 coi2", "hou choi", 99);
+    test_pr_search!("hou2 coi2", "houchoi", 99);
 
-    test_pr_search("bok3 laam5 wui2", "bok laam wui", 100);
-    test_pr_search("bok3 laam5 wui2", "boklaamwui", 100);
-    test_pr_search("bok3 laam5 wui2", "bok laahm wui", 99);
-    test_pr_search("bok3 laam5 wui2", "boklaahmwui", 99);
-    test_pr_search("bok3 laam5 wui2", "bok3 laam5 wui2", 100);
-    test_pr_search("bok3 laam5 wui2", "bok3laam5wui2", 100);
-    test_pr_search("bok3 laam5 wui2", "bok3 laam5 wui3", 99);
-    test_pr_search("bok3 laam5 wui2", "bok3laam5wui3", 99);
-    test_pr_search("bok3 laam5 wui2", "bok3 laam5 wui5", 99);
-    test_pr_search("bok3 laam5 wui2", "bok3laam5wui5", 99);
+    test_pr_search!("bok3 laam5 wui2", "bok laam wui", 100);
+    test_pr_search!("bok3 laam5 wui2", "boklaamwui", 100);
+    test_pr_search!("bok3 laam5 wui2", "bok laahm wui", 99);
+    test_pr_search!("bok3 laam5 wui2", "boklaahmwui", 99);
+    test_pr_search!("bok3 laam5 wui2", "bok3 laam5 wui2", 100);
+    test_pr_search!("bok3 laam5 wui2", "bok3laam5wui2", 100);
+    test_pr_search!("bok3 laam5 wui2", "bok3 laam5 wui3", 99);
+    test_pr_search!("bok3 laam5 wui2", "bok3laam5wui3", 99);
+    test_pr_search!("bok3 laam5 wui2", "bok3 laam5 wui5", 99);
+    test_pr_search!("bok3 laam5 wui2", "bok3laam5wui5", 99);
 
-    test_pr_search("ming4 mei4", "ming mei", 100);
-    test_pr_search("ming4 mei4", "mingmei", 100);
-    test_pr_search("ming4 mei4", "ming4 mei3", 99);
-    test_pr_search("ming4 mei4", "ming4mei3", 99);
-    test_pr_search("ming4 mei4", "ming4 mei4", 100);
-    test_pr_search("ming4 mei4", "ming4mei4", 100);
+    test_pr_search!("ming4 mei4", "ming mei", 100);
+    test_pr_search!("ming4 mei4", "mingmei", 100);
+    test_pr_search!("ming4 mei4", "ming4 mei3", 99);
+    test_pr_search!("ming4 mei4", "ming4mei3", 99);
+    test_pr_search!("ming4 mei4", "ming4 mei4", 100);
+    test_pr_search!("ming4 mei4", "ming4mei4", 100);
+
+    test_pr_search!("ming4 mei6", "ming4 mei6", 100);
+
+    println!("All Jyutping search tests passed!");
 }
 
 fn test_yale_search() {
-    use flate2::read::GzDecoder;
-    use flate2::Compression;
-    use serde::Deserialize;
-    use std::io::prelude::*;
-
-    let mut dict_decompressor = GzDecoder::new(&include_bytes!("../app_tmp/dict.json")[..]);
-    let mut dict_str = String::new();
-    dict_decompressor.read_to_string(&mut dict_str).unwrap();
-    let dict: RichDict = serde_json::from_str(&dict_str).unwrap();
-
-    let mut pr_indices_decompressor =
-        GzDecoder::new(&include_bytes!("../app_tmp/pr_indices.msgpack")[..]);
-    let mut pr_indices_bytes = Vec::new();
-    pr_indices_decompressor
-        .read_to_end(&mut pr_indices_bytes)
-        .unwrap();
-    let pr_indices = rmp_serde::from_slice(&pr_indices_bytes[..])
-        .expect("Failed to deserialize pr_indices from msgpack format");
-
-    println!("Loaded pr_indices and dict");
+    use wordshk_tools::search::MatchedSegment;
 
     let romanization = Romanization::Yale;
+    let api = unsafe { Api::load(APP_TMP_DIR, romanization) };
 
-    let test_pr_search = |expected: &str, query: &str, expected_score: usize| {
-        println!("query: {}", query);
-        let result = pr_search(&pr_indices, &dict, query, romanization);
-        println!("result: {:?}", result);
-        assert!(result
-            .iter()
-            .any(|rank| rank.pr == expected && rank.score == expected_score));
-    };
+    macro_rules! test_pr_search {
+        ($expected:expr, $query:expr, $expected_score:expr) => {{
+            // println!("query: {}", $query);
+            let result = pr_search(
+                &api.fst_pr_indices,
+                unsafe { &api.dict() },
+                $query,
+                romanization,
+            );
+            // println!("result: {:?}", result);
+            assert!(result
+                .iter()
+                .any(|rank| { rank.jyutping == $expected && rank.score == $expected_score }));
+        }};
+    }
 
-    test_pr_search("hou2 coi2", "hóu chói", 100);
-    test_pr_search("hou2 coi2", "hóu choi", 99);
-    test_pr_search("hou2 coi2", "hou choi", 100);
-    test_pr_search("hou2 coi2", "ho choi", 99);
-    test_pr_search("hou2 coi2", "hou coi", 99);
-    test_pr_search("hou2 coi2", "houcoi", 99);
+    test_pr_search!("hou2 coi2", "hóu chói", 100);
+    test_pr_search!("hou2 coi2", "hóu choi", 99);
+    test_pr_search!("hou2 coi2", "hou choi", 100);
+    test_pr_search!("hou2 coi2", "ho choi", 99);
+    test_pr_search!("hou2 coi2", "hou coi", 99);
+    test_pr_search!("hou2 coi2", "houcoi", 99);
 
-    test_pr_search("bok3 laam5 wui2", "bok laam wui", 100);
-    test_pr_search("bok3 laam5 wui2", "boklaamwui", 100);
-    test_pr_search("bok3 laam5 wui2", "bok laahm wui", 99);
-    test_pr_search("bok3 laam5 wui2", "boklaahmwui", 99);
-    test_pr_search("bok3 laam5 wui2", "bok láahm wúi", 100);
-    test_pr_search("bok3 laam5 wui2", "bokláahmwúi", 100);
-    test_pr_search("bok3 laam5 wui2", "bok láahm wui", 99);
-    test_pr_search("bok3 laam5 wui2", "bokláahmwui", 99);
-    test_pr_search("bok3 laam5 wui2", "bok láahm wúih", 99);
-    test_pr_search("bok3 laam5 wui2", "bokláahmwúih", 99);
+    test_pr_search!("bok3 laam5 wui2", "bok laam wui", 100);
+    test_pr_search!("bok3 laam5 wui2", "boklaamwui", 100);
+    test_pr_search!("bok3 laam5 wui2", "bok laahm wui", 99);
+    test_pr_search!("bok3 laam5 wui2", "boklaahmwui", 99);
+    test_pr_search!("bok3 laam5 wui2", "bok láahm wúi", 100);
+    test_pr_search!("bok3 laam5 wui2", "bokláahmwúi", 100);
+    test_pr_search!("bok3 laam5 wui2", "bok láahm wui", 99);
+    test_pr_search!("bok3 laam5 wui2", "bokláahmwui", 99);
+    test_pr_search!("bok3 laam5 wui2", "bok láahm wúih", 99);
+    test_pr_search!("bok3 laam5 wui2", "bokláahmwúih", 99);
 
-    test_pr_search("ming4 mei4", "ming mei", 100);
-    test_pr_search("ming4 mei4", "mihng mei", 99);
-    test_pr_search("ming4 mei4", "mìhng mèih", 100);
-    test_pr_search("ming4 mei4", "mìhngmèih", 100);
-    test_pr_search("ming4 mei4", "mìhng mèi", 99);
-    test_pr_search("ming4 mei4", "mìhngmèi", 99);
+    test_pr_search!("ming4 mei4", "ming mei", 100);
+    test_pr_search!("ming4 mei4", "mihng mei", 99);
+    test_pr_search!("ming4 mei4", "mìhng mèih", 100);
+    test_pr_search!("ming4 mei4", "mìhngmèih", 100);
+    test_pr_search!("ming4 mei4", "mìhng mèi", 99);
+    test_pr_search!("ming4 mei4", "mìhngmèi", 99);
 
-    test_pr_search("mei6", "meih", 100);
-    test_pr_search("jat6 jat6", "yaht yaht", 100);
-    test_pr_search("jat6 jat6", "yaht yat", 99);
+    test_pr_search!("ming4 mei6", "mìhng meih", 100);
 
-    test_pr_search("jyun4 cyun4", "yun chyun", 100);
-    test_pr_search("jyun4 cyun4", "yùhn chyùhn", 100);
-    test_pr_search("jyun4 cyun4", "yùhn chyuhn", 99);
-    test_pr_search("jyun4 cyun4", "yuhn chyùhn", 99);
+    test_pr_search!("mei6", "meih", 100);
+    test_pr_search!("jat6 jat6", "yaht yaht", 100);
+    test_pr_search!("jat6 jat6", "yaht yat", 99);
+
+    test_pr_search!("jyun4 cyun4", "yun chyun", 100);
+    test_pr_search!("jyun4 cyun4", "yùhn chyùhn", 100);
+    test_pr_search!("jyun4 cyun4", "yùhn chyuhn", 99);
+    test_pr_search!("jyun4 cyun4", "yuhn chyùhn", 99);
+
+    println!("All Yale search tests passed!");
 }
-*/
