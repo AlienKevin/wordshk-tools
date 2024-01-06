@@ -101,6 +101,7 @@ pub struct PrSearchRank {
     pub pr_index: Index,
     pub jyutping: String,
     pub matched_pr: Vec<MatchedSegment>,
+    pub num_matched_initial_chars: u32,
     pub score: Score,
 }
 
@@ -108,6 +109,10 @@ impl Ord for PrSearchRank {
     fn cmp(&self, other: &Self) -> Ordering {
         self.score
             .cmp(&other.score)
+            .then(
+                self.num_matched_initial_chars
+                    .cmp(&other.num_matched_initial_chars),
+            )
             .then(other.jyutping.cmp(&self.jyutping))
             .then(other.id.cmp(&self.id))
     }
@@ -279,12 +284,32 @@ pub fn pr_search(
                         diff_prs(&query, &yale)
                     }
                 };
+                let mut at_initial = true;
+                let mut num_matched_initial_chars = 0;
+                static VOWELS: [char; 5] = ['a', 'e', 'i', 'o', 'u'];
+                for MatchedSegment { segment, matched } in &matched_pr {
+                    for c in segment.chars() {
+                        match c {
+                            ' ' => {
+                                at_initial = true;
+                            }
+                            _ if VOWELS.contains(&c) => {
+                                at_initial = false;
+                            }
+                            _ if at_initial && *matched => {
+                                num_matched_initial_chars += 1;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
                 ranks.push(PrSearchRank {
                     id: entry_id,
                     variant_index: variant_index as Index,
                     pr_index: pr_index as Index,
                     jyutping,
                     matched_pr,
+                    num_matched_initial_chars,
                     score: MAX_SCORE - distance,
                 });
             }
