@@ -102,6 +102,7 @@ pub struct PrSearchRank {
     pub jyutping: String,
     pub matched_pr: Vec<MatchedSegment>,
     pub num_matched_initial_chars: u32,
+    pub num_matched_final_chars: u32,
     pub score: Score,
 }
 
@@ -112,6 +113,10 @@ impl Ord for PrSearchRank {
             .then(
                 self.num_matched_initial_chars
                     .cmp(&other.num_matched_initial_chars),
+            )
+            .then(
+                self.num_matched_final_chars
+                    .cmp(&other.num_matched_final_chars),
             )
             .then(other.jyutping.cmp(&self.jyutping))
             .then(other.id.cmp(&self.id))
@@ -286,6 +291,7 @@ pub fn pr_search(
                 };
                 let mut at_initial = true;
                 let mut num_matched_initial_chars = 0;
+                let mut num_matched_final_chars = 0;
                 static VOWELS: [char; 5] = ['a', 'e', 'i', 'o', 'u'];
                 for MatchedSegment { segment, matched } in &matched_pr {
                     for c in segment.chars() {
@@ -299,6 +305,13 @@ pub fn pr_search(
                             _ if at_initial && *matched => {
                                 num_matched_initial_chars += 1;
                             }
+                            _ if !at_initial
+                                && *matched
+                                && !VOWELS.contains(&c)
+                                && c.is_ascii_alphabetic() =>
+                            {
+                                num_matched_final_chars += 1;
+                            }
                             _ => {}
                         }
                     }
@@ -310,6 +323,7 @@ pub fn pr_search(
                     jyutping,
                     matched_pr,
                     num_matched_initial_chars,
+                    num_matched_final_chars,
                     score: MAX_SCORE - distance,
                 });
             }
