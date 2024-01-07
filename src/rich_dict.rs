@@ -837,18 +837,16 @@ pub fn enrich_eg(variants: &[&str], eg: &Eg, dict: &Dict, options: &EnrichDictOp
         .zho
         .as_ref()
         .map(|zho| enrich_pr_line(variants, zho, dict, options));
-    let zho_simp = eg
-        .zho
+    let zho_simp = zho
         .as_ref()
-        .map(|zho| line_to_string(&line_to_simplified(&enrich_line(&zho.0, dict, options))));
+        .map(|zho| unicode::to_simplified(&zho.to_string()));
     let yue = eg
         .yue
         .as_ref()
         .map(|yue| enrich_pr_line(variants, yue, dict, options));
-    let yue_simp = eg
-        .yue
+    let yue_simp = yue
         .as_ref()
-        .map(|yue| line_to_string(&line_to_simplified(&enrich_line(&yue.0, dict, options))));
+        .map(|yue| unicode::to_simplified(&yue.to_string()));
     RichEg {
         zho,
         zho_simp,
