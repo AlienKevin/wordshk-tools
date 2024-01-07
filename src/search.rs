@@ -28,7 +28,7 @@ const MAX_SCORE: Score = 100;
 
 type Index = usize;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Script {
     Simplified,
     Traditional,
@@ -461,8 +461,8 @@ pub fn pr_search(
         .collect()
 }
 
-#[derive(Clone, Eq, PartialEq, Default)]
-pub struct MatchedVariant {
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
+pub struct MatchedInfix {
     pub prefix: String,
     pub query: String,
     pub suffix: String,
@@ -474,7 +474,7 @@ pub struct VariantSearchRank {
     pub variant_index: Index,
     pub occurrence_index: Index,
     pub length_diff: usize,
-    pub matched_variant: MatchedVariant,
+    pub matched_variant: MatchedInfix,
     pub frequency_count: usize,
 }
 
@@ -505,15 +505,15 @@ fn score_variant_query(
     variant: &ComboVariant,
     query_normalized: &str,
     query_script: Script,
-) -> (Index, Score, MatchedVariant) {
+) -> (Index, Score, MatchedInfix) {
     let variant_normalized = &unicode::normalize(&pick_variant(variant, query_script).word)[..];
     // The query has to be fully contained by the variant
     let occurrence_index = match variant_normalized.find(query_normalized) {
         Some(i) => i,
-        None => return (usize::MAX, usize::MAX, MatchedVariant::default()),
+        None => return (usize::MAX, usize::MAX, MatchedInfix::default()),
     };
     let length_diff = variant_normalized.chars().count() - query_normalized.chars().count();
-    let matched_variant = MatchedVariant {
+    let matched_variant = MatchedInfix {
         prefix: variant_normalized[..occurrence_index].to_string(),
         query: query_normalized.to_string(),
         suffix: variant_normalized[occurrence_index + query_normalized.len()..].to_string(),
@@ -578,6 +578,7 @@ pub struct EgSearchRank {
     pub def_index: Index,
     pub eg_index: Index,
     pub eg_length: usize,
+    pub matched_eg: MatchedInfix,
 }
 
 impl Ord for EgSearchRank {
@@ -603,7 +604,7 @@ pub fn eg_search(
     query: &str,
     max_first_index_in_eg: usize,
     script: Script,
-) -> (Option<String>, BinaryHeap<EgSearchRank>) {
+) -> BinaryHeap<EgSearchRank> {
     let query_normalized = unicode::to_hk_safe_variant(&unicode::normalize(query));
     let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
         // query contains iconic simplified characters
@@ -622,54 +623,40 @@ pub fn eg_search(
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
 
-    let query_found: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
-
     variants_map.par_iter().for_each(|(entry_id, _)| {
         let entry = dict.get(entry_id).unwrap();
         for (def_index, def) in entry.defs.iter().enumerate() {
             for (eg_index, eg) in def.egs.iter().enumerate() {
-                let line: Option<String> = match query_script {
+                let get_line_in_script = |script| match script {
                     Script::Traditional => eg.yue.as_ref().map(|line| {
                         let line: RichLine = line.deserialize(&mut rkyv::Infallible).unwrap();
                         line.to_string()
                     }),
                     Script::Simplified => eg.yue_simp.deserialize(&mut rkyv::Infallible).unwrap(),
                 };
+                let line: Option<String> = get_line_in_script(query_script);
                 if let Some(line) = line {
                     let line_len = line.chars().count();
                     if let Some(first_index) = line.find(&query_normalized) {
                         let char_index = line[..first_index].chars().count();
                         if char_index <= max_first_index_in_eg {
-                            if query_found.lock().unwrap().is_none() {
-                                *query_found.lock().unwrap() = Some(match (script, query_script) {
-                                    (Script::Simplified, Script::Traditional) => {
-                                        let start_index = line.find(&query_normalized).unwrap();
-                                        eg.yue_simp.as_ref().unwrap()
-                                            [start_index..start_index + query_normalized.len()]
-                                            .to_string()
-                                    }
-                                    (Script::Traditional, Script::Simplified) => {
-                                        let start_index = line.find(&query_normalized).unwrap();
-                                        eg.yue
-                                            .as_ref()
-                                            .map(|line| {
-                                                let line: RichLine = line
-                                                    .deserialize(&mut rkyv::Infallible)
-                                                    .unwrap();
-                                                line.to_string()
-                                            })
-                                            .unwrap()
-                                            [start_index..start_index + query_normalized.len()]
-                                            .to_string()
-                                    }
-                                    (_, _) => query_normalized.to_string(),
-                                });
-                            }
+                            let line = if query_script == script {
+                                line
+                            } else {
+                                get_line_in_script(script).unwrap()
+                            };
+                            let matched_eg = MatchedInfix {
+                                prefix: line[..first_index].to_string(),
+                                query: line[first_index..first_index + query_normalized.len()]
+                                    .to_string(),
+                                suffix: line[first_index + query_normalized.len()..].to_string(),
+                            };
                             ranks.lock().unwrap().push(EgSearchRank {
                                 id: *entry_id,
                                 def_index,
                                 eg_index,
                                 eg_length: line_len,
+                                matched_eg,
                             });
                         }
                     }
@@ -678,10 +665,7 @@ pub fn eg_search(
         }
     });
 
-    (
-        Arc::try_unwrap(query_found).unwrap().into_inner().unwrap(),
-        Arc::try_unwrap(ranks).unwrap().into_inner().unwrap(),
-    )
+    Arc::try_unwrap(ranks).unwrap().into_inner().unwrap()
 }
 
 pub enum CombinedSearchRank {
