@@ -1,5 +1,6 @@
 use crate::dict::{clause_to_string, Clause, EntryId};
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
+use crate::lihkg_frequencies::LIHKG_FREQUENCIES;
 use crate::pr_index::{FstPrIndices, PrLocation, MAX_DELETIONS};
 use crate::rich_dict::{ArchivedRichDict, RichLine};
 
@@ -474,6 +475,7 @@ pub struct VariantSearchRank {
     pub occurrence_index: Index,
     pub length_diff: usize,
     pub matched_variant: MatchedVariant,
+    pub frequency_count: usize,
 }
 
 impl Ord for VariantSearchRank {
@@ -482,6 +484,7 @@ impl Ord for VariantSearchRank {
             .occurrence_index
             .cmp(&self.occurrence_index)
             .then_with(|| other.length_diff.cmp(&self.length_diff))
+            .then_with(|| self.frequency_count.cmp(&other.frequency_count))
     }
 }
 
@@ -534,6 +537,20 @@ pub fn variant_search(
         script
     };
     variants_map.iter().for_each(|(id, variants)| {
+        let frequency_count = *variants
+            .iter()
+            .max_by(|variant1, variant2| {
+                LIHKG_FREQUENCIES
+                    .get(&variant1.word_trad)
+                    .unwrap_or(&0)
+                    .cmp(LIHKG_FREQUENCIES.get(&variant2.word_trad).unwrap_or(&0))
+            })
+            .map(|most_frequent_variant| {
+                LIHKG_FREQUENCIES
+                    .get(&most_frequent_variant.word_trad)
+                    .unwrap_or(&0)
+            })
+            .unwrap_or(&0);
         variants
             .iter()
             .enumerate()
@@ -547,6 +564,7 @@ pub fn variant_search(
                         occurrence_index,
                         length_diff,
                         matched_variant,
+                        frequency_count,
                     });
                 }
             });

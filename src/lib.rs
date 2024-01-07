@@ -24,3 +24,5 @@ pub mod unicode;
 mod variant_to_us_english;
 #[path = "../data/word_frequencies.rs"]
 mod word_frequencies;
+#[path = "../data/lihkg_frequencies.rs"]
+mod lihkg_frequencies;
