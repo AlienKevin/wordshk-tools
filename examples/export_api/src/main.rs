@@ -3,7 +3,6 @@ use itertools::Itertools;
 use rand::rngs::StdRng;
 use rand::{seq::SliceRandom, SeedableRng};
 use regex::Regex;
-use rmp_serde::Deserializer;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::BTreeMap;
@@ -24,7 +23,6 @@ use wordshk_tools::{
     },
     unicode::to_hk_safe_variant,
 };
-use xxhash_rust::xxh3::xxh3_64;
 
 const APP_TMP_DIR: &str = "./app_tmp";
 
@@ -63,64 +61,15 @@ unsafe fn generate_api_json() -> Api {
     api
 }
 
-fn generate_english_vocab() -> anyhow::Result<()> {
-    use rkyv::Deserialize;
-    use std::path::Path;
-    use vtext::tokenize::Tokenizer;
-    use vtext::tokenize::VTextTokenizerParams;
-    use wordshk_tools::dict::Clause;
-
-    let romanization = Romanization::Jyutping;
-    let api = unsafe { Api::load(APP_TMP_DIR, romanization) };
-
-    let tokenizer = VTextTokenizerParams::default().lang("en").build()?;
-
-    let words = unsafe { api.dict() }
-        .iter()
-        .flat_map(|(_, entry)| {
-            entry.defs.iter().flat_map(|def| {
-                def.eng
-                    .as_ref()
-                    .map(|eng| {
-                        let eng: Clause = eng.deserialize(&mut rkyv::Infallible).unwrap();
-                        clause_to_string(&eng)
-                            .split(";")
-                            .map(|part| part.trim())
-                            .filter(|part| !part.is_empty())
-                            .flat_map(|part| {
-                                tokenizer
-                                    .tokenize(part)
-                                    .map(|s| s.to_string())
-                                    .collect::<Vec<_>>()
-                            })
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or(vec![])
-            })
-        })
-        .unique()
-        .sorted()
-        .collect::<Vec<_>>();
-
-    std::fs::write(
-        Path::new(APP_TMP_DIR).join("wordshk_english_vocab.txt"),
-        words.join("\n"),
-    );
-
-    Ok(())
-}
-
 fn test_english_embedding_search() -> anyhow::Result<()> {
     use finalfusion::prelude::*;
-    use sif_embedding::Sif;
+    use rkyv::Deserialize;
     use std::io::BufReader;
     use std::io::Read;
     use std::path::Path;
-    use wordfreq_model::ModelKind;
     use wordshk_tools::dict::Clause;
     use wordshk_tools::english_index::EnglishSearchRank;
     use wordshk_tools::search::english_embedding_search;
-    use rkyv::Deserialize;
 
     let romanization = Romanization::Jyutping;
     let api = unsafe { Api::load(APP_TMP_DIR, romanization) };
@@ -130,22 +79,7 @@ fn test_english_embedding_search() -> anyhow::Result<()> {
     )?);
     let phrase_embeddings = Embeddings::<VocabWrap, StorageWrap>::mmap_embeddings(&mut reader)?;
 
-    let word_probs = wordfreq_model::load_wordfreq(ModelKind::LargeEn)?;
-
-    let mut embeddings_reader = Cursor::new(include_bytes!("../../../data/glove.6B.300d.fifu"));
-    let word_embeddings =
-        Embeddings::<VocabWrap, StorageWrap>::read_embeddings(&mut embeddings_reader)?;
-
-    let mut data = vec![];
-    File::open(Path::new(APP_TMP_DIR).join("english_sif_model.sif"))?.read_to_end(&mut data)?;
-    let sif_model = Sif::deserialize(&data, &word_embeddings, &word_probs)?;
-
-    let result = english_embedding_search(
-        &phrase_embeddings,
-        &sif_model,
-        unsafe { api.dict() },
-        "in a temper",
-    );
+    let result = english_embedding_search(&phrase_embeddings, unsafe { api.dict() }, "freight");
 
     for EnglishSearchRank {
         entry_id,

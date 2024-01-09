@@ -74,11 +74,8 @@ impl Api {
     }
 
     fn generate_english_embeddings(app_dir: &str, dict: &ArchivedRichDict) {
-        let model_path = Path::new(app_dir).join("english_sif_model.sif");
         let embeddings_path = Path::new(app_dir).join("english_embeddings.fifu");
-        let (model_bytes, embeddings_bytes) =
-            super::english_embedding::generate_english_embeddings(dict).unwrap();
-        fs::write(model_path, model_bytes).expect("Unable to output serialized english sif model");
+        let embeddings_bytes = super::english_embedding::generate_english_embeddings(dict).unwrap();
         fs::write(embeddings_path, embeddings_bytes)
             .expect("Unable to output serialized english embeddings");
     }

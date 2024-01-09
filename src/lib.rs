@@ -27,5 +27,3 @@ pub mod unicode;
 mod variant_to_us_english;
 #[path = "../data/word_frequencies.rs"]
 mod word_frequencies;
-
-extern crate openblas_src as _src;

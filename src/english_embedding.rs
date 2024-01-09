@@ -1,69 +1,58 @@
 use std::collections::BTreeMap;
 use std::io::Cursor;
 
+use fastembed::{EmbeddingBase, FlagEmbedding};
 use finalfusion::io::WriteEmbeddings;
 use finalfusion::norms::NdNorms;
 use finalfusion::prelude::*;
 use finalfusion::storage::NdArray;
 use finalfusion::vocab::SimpleVocab;
-use ndarray::Array1;
-use ndarray::ArrayViewMut1;
-use ndarray::ArrayViewMut2;
-use sif_embedding::SentenceEmbedder;
-use sif_embedding::Sif;
-use vtext::tokenize::Tokenizer;
-use vtext::tokenize::VTextTokenizerParams;
-use wordfreq_model::ModelKind;
+use itertools::Itertools;
+use ndarray::{Array1, Array2, ArrayViewMut1, ArrayViewMut2};
 
 use crate::english_index::tokenize_entry;
 use crate::rich_dict::ArchivedRichDict;
-use crate::unicode;
 use anyhow::Result;
 
-pub fn generate_english_embeddings<'a>(dict: &ArchivedRichDict) -> Result<(Vec<u8>, Vec<u8>)> {
+pub fn generate_english_embeddings<'a>(dict: &ArchivedRichDict) -> Result<Vec<u8>> {
     let mut phrase_map: BTreeMap<String, String> = BTreeMap::new();
 
     for (entry_id, entry) in dict.iter() {
-        tokenize_entry(entry, unicode::normalize_english_word_for_embedding)
+        tokenize_entry(entry, |x| x.to_string())
             .into_iter()
             .enumerate()
             .for_each(|(def_index, phrases)| {
-                phrases
-                    .into_iter()
-                    .enumerate()
-                    .for_each(|(phrase_index, (phrase, _))| {
-                        let index: String = format!("{entry_id},{def_index},{phrase_index}");
-                        phrase_map.insert(index, phrase);
+                let index: String = format!("{entry_id},{def_index}");
+                phrase_map
+                    .entry(phrases.into_iter().map(|(s, _)| s).join("; "))
+                    .and_modify(|indices| {
+                        indices.push_str(&format!(";{}", index));
                     })
+                    .or_insert(index);
             });
     }
 
-    let tokenizer = VTextTokenizerParams::default().lang("en").build()?;
-    let separator = sif_embedding::DEFAULT_SEPARATOR.to_string();
+    // With default InitOptions
+    let model: FlagEmbedding = FlagEmbedding::try_new(Default::default())?;
 
-    let word_probs = wordfreq_model::load_wordfreq(ModelKind::LargeEn)?;
+    println!("Number of phrases: {}", phrase_map.len());
 
-    let mut embeddings_reader = Cursor::new(include_bytes!("../data/glove.6B.300d.fifu"));
-    let word_embeddings =
-        Embeddings::<VocabWrap, StorageWrap>::read_embeddings(&mut embeddings_reader)?;
+    let phrase_embeddings = model.embed(
+        phrase_map
+            .keys()
+            .map(|phrase| format!("query: {phrase}"))
+            .collect(),
+        None,
+    )?;
+    let nrows = phrase_embeddings.len();
+    let ncols = phrase_embeddings[0].len();
+    // Flatten the Vec<Vec<f32>>
+    let flat_vec: Vec<f32> = phrase_embeddings.into_iter().flatten().collect();
 
-    let sif_model = Sif::new(&word_embeddings, &word_probs);
+    // Create Array2 from the flattened Vec
+    let mut phrase_embeddings = Array2::from_shape_vec((nrows, ncols), flat_vec).unwrap();
 
-    let phrases: Vec<String> = phrase_map
-        .values()
-        .map(|phrase| {
-            tokenizer
-                .tokenize(&phrase)
-                .collect::<Vec<_>>()
-                .join(&separator)
-                .to_lowercase()
-        })
-        .collect();
-
-    let sif_model = sif_model.fit(&phrases)?;
-    let mut phrase_embeddings = sif_model.embeddings(&phrases)?;
-
-    let vocab: Vec<String> = phrase_map.keys().cloned().collect();
+    let vocab: Vec<String> = phrase_map.values().cloned().collect();
 
     let norms = l2_normalize_array(phrase_embeddings.view_mut());
     let embeddings = Embeddings::new(
@@ -78,7 +67,7 @@ pub fn generate_english_embeddings<'a>(dict: &ArchivedRichDict) -> Result<(Vec<u
     embeddings.write_embeddings(&mut cursor)?;
     let finalfusion_bytes = cursor.into_inner();
 
-    Ok((sif_model.serialize()?, finalfusion_bytes))
+    Ok(finalfusion_bytes)
 }
 
 fn l2_normalize(mut v: ArrayViewMut1<f32>) -> f32 {

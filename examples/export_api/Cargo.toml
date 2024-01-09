@@ -4,31 +4,21 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+rkyv = { version = "0.7.43", features = ["alloc"] }
 wordshk_tools = { path = "../../" }
 flate2 = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-rmp-serde = "1.1.2"
-xxhash-rust = { version = "0.8.5", features = ["xxh3"] }
 csv = "1"
 itertools = "0.11.0"
 rayon = "1.7.0"
 regex = "1"
-fastembed = "1.9.0"
+fastembed = "2"
 acap = "0.3.0"
 rand = "0.8.5"
 anyhow = "1.0.79"
 finalfusion = "0.17.2"
-wordfreq-model = { version = "0.2.3", features = ["large-en"] }
-vtext = "0.2.0"
-rkyv = { version = "0.7.43", features = ["alloc"] }
 
-[dependencies.sif-embedding]
-version = "0.6"
-features = ["finalfusion", "wordfreq", "openblas-static"]
-default-features = false
-
-[dependencies.openblas-src]
-version = "0.10.4"
-features = ["cblas", "static"]
-default-features = false
+[dependencies.ort]
+version = "2.0.0-alpha.4"
+features = ["download-binaries"]

@@ -33,18 +33,10 @@ rkyv = { version = "0.7.43", features = ["alloc"] }
 levenshtein-diff = "0.2.4"
 fst = { version = "0.4.7", features = ["levenshtein"] }
 finalfusion = "0.17.2"
-wordfreq-model = { version = "0.2.3", features = ["large-en"] }
-wordfreq = "0.2.3"
-vtext = "0.2.0"
 anyhow = "1.0.79"
 ndarray = "0.15.6"
+fastembed = "2"
 
-[dependencies.sif-embedding]
-version = "0.6"
-features = ["finalfusion", "wordfreq", "openblas-static"]
-default-features = false
-
-[dependencies.openblas-src]
-version = "0.10.4"
-features = ["cblas", "static"]
-default-features = false
+[dependencies.ort]
+version = "2.0.0-alpha.4"
+features = ["download-binaries"]
