@@ -1283,8 +1283,6 @@ pub fn english_embedding_search(
         .join(&separator)
         .to_lowercase();
 
-    println!("query_tokenized: {query_tokenized}");
-
     let query_embeddings = sif_model.embeddings([query_tokenized]).unwrap();
     let query_embedding = query_embeddings.row(0);
 
@@ -1294,9 +1292,8 @@ pub fn english_embedding_search(
     let mut most_similar_id = (0, 0, 0);
     let mut most_similar_score = -1.0;
 
-    for (id, v) in english_embeddings.iter_with_norms() {
-        let cosine_similarity =
-            v.embedding.dot(&query_embedding_normalized) / (v.norm * query_embedding_norm);
+    for (id, v) in english_embeddings {
+        let cosine_similarity = v.dot(&query_embedding_normalized);
         if cosine_similarity > most_similar_score {
             let indices = id.split(",").collect_vec();
             assert_eq!(indices.len(), 3);

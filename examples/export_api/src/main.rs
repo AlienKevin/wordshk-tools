@@ -34,6 +34,8 @@ fn main() {
 
     test_english_embedding_search();
 
+    // generate_english_vocab();
+
     // test_jyutping_search();
     // test_yale_search();
 
@@ -59,6 +61,53 @@ unsafe fn generate_api_json() -> Api {
         Romanization::Yale,
     );
     api
+}
+
+fn generate_english_vocab() -> anyhow::Result<()> {
+    use rkyv::Deserialize;
+    use std::path::Path;
+    use vtext::tokenize::Tokenizer;
+    use vtext::tokenize::VTextTokenizerParams;
+    use wordshk_tools::dict::Clause;
+
+    let romanization = Romanization::Jyutping;
+    let api = unsafe { Api::load(APP_TMP_DIR, romanization) };
+
+    let tokenizer = VTextTokenizerParams::default().lang("en").build()?;
+
+    let words = unsafe { api.dict() }
+        .iter()
+        .flat_map(|(_, entry)| {
+            entry.defs.iter().flat_map(|def| {
+                def.eng
+                    .as_ref()
+                    .map(|eng| {
+                        let eng: Clause = eng.deserialize(&mut rkyv::Infallible).unwrap();
+                        clause_to_string(&eng)
+                            .split(";")
+                            .map(|part| part.trim())
+                            .filter(|part| !part.is_empty())
+                            .flat_map(|part| {
+                                tokenizer
+                                    .tokenize(part)
+                                    .map(|s| s.to_string())
+                                    .collect::<Vec<_>>()
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or(vec![])
+            })
+        })
+        .unique()
+        .sorted()
+        .collect::<Vec<_>>();
+
+    std::fs::write(
+        Path::new(APP_TMP_DIR).join("wordshk_english_vocab.txt"),
+        words.join("\n"),
+    );
+
+    Ok(())
 }
 
 fn test_english_embedding_search() -> anyhow::Result<()> {
@@ -88,7 +137,12 @@ fn test_english_embedding_search() -> anyhow::Result<()> {
     File::open(Path::new(APP_TMP_DIR).join("english_sif_model.sif"))?.read_to_end(&mut data)?;
     let sif_model = Sif::deserialize(&data, &word_embeddings, &word_probs)?;
 
-    let result = english_embedding_search(&phrase_embeddings, &sif_model, unsafe { api.dict() }, "freight");
+    let result = english_embedding_search(
+        &phrase_embeddings,
+        &sif_model,
+        unsafe { api.dict() },
+        "everyone",
+    );
 
     println!("{:?}", result);
 

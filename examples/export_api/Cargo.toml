@@ -20,6 +20,8 @@ rand = "0.8.5"
 anyhow = "1.0.79"
 finalfusion = "0.17.2"
 wordfreq-model = { version = "0.2.3", features = ["large-en"] }
+vtext = "0.2.0"
+rkyv = { version = "0.7.43", features = ["alloc"] }
 
 [dependencies.sif-embedding]
 version = "0.6"
