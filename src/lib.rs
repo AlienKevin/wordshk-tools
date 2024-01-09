@@ -4,6 +4,7 @@ mod charlist;
 pub mod dict;
 pub mod emit_apple_dict;
 pub mod emit_html;
+pub mod english_embedding;
 pub mod english_index;
 #[path = "../data/hk_variant_map_safe.rs"]
 mod hk_variant_map_safe;
@@ -13,6 +14,8 @@ mod iconic_simps;
 mod iconic_trads;
 pub mod jyutping;
 pub mod lean_rich_dict;
+#[path = "../data/lihkg_frequencies.rs"]
+mod lihkg_frequencies;
 pub mod parse;
 pub mod pr_index;
 pub mod rich_dict;
@@ -24,5 +27,5 @@ pub mod unicode;
 mod variant_to_us_english;
 #[path = "../data/word_frequencies.rs"]
 mod word_frequencies;
-#[path = "../data/lihkg_frequencies.rs"]
-mod lihkg_frequencies;
+
+extern crate openblas_src as _src;

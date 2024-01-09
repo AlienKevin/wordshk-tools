@@ -30,7 +30,7 @@ pub struct EnglishIndexData {
     pub score: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct EnglishSearchRank {
     #[serde(rename = "e")]
     pub entry_id: EntryId,
@@ -76,18 +76,20 @@ pub fn generate_english_index(dict: &ArchivedRichDict) -> EnglishIndex {
     for (_, entry) in dict.iter() {
         let mut repeated_terms = HashSet::new();
         // for _, terms in indexer.tokenize_word(word):
-        tokenize_entry(entry).iter().for_each(|terms_of_defs| {
-            terms_of_defs.iter().for_each(|(_, terms)| {
-                terms.iter().for_each(|term| {
-                    let term = unicode::american_english_stem(term);
-                    if repeated_terms.contains(&term) {
-                        return;
-                    }
-                    repeated_terms.insert(term.to_string());
-                    *counter.entry(term).or_insert(0) += 1;
+        tokenize_entry(entry, unicode::normalize_english_word_for_search_index)
+            .iter()
+            .for_each(|terms_of_defs| {
+                terms_of_defs.iter().for_each(|(_, terms)| {
+                    terms.iter().for_each(|term| {
+                        let term = unicode::american_english_stem(term);
+                        if repeated_terms.contains(&term) {
+                            return;
+                        }
+                        repeated_terms.insert(term.to_string());
+                        *counter.entry(term).or_insert(0) += 1;
+                    });
                 });
             });
-        });
     }
 
     let mut index = HashMap::new();
@@ -164,7 +166,10 @@ fn score_for_term(term: &str, splitted_phrase: &[String], counter: &Counter) -> 
 
 /// Returns a normalized phrase and a normalized splitted phrase with
 /// individual tokens
-fn tokenize_entry(entry: &ArchivedRichEntry) -> Vec<Vec<(String, Vec<String>)>> {
+pub fn tokenize_entry(
+    entry: &ArchivedRichEntry,
+    normalizer: fn(&str) -> String,
+) -> Vec<Vec<(String, Vec<String>)>> {
     entry
         .defs
         .iter()
@@ -176,14 +181,8 @@ fn tokenize_entry(entry: &ArchivedRichEntry) -> Vec<Vec<(String, Vec<String>)>> 
                     .filter_map(|phrase| {
                         if let Some(phrase) = process_phrase(phrase) {
                             // Split the phrase into different keywords
-                            let splitted_phrase = phrase
-                                .split(' ')
-                                .map(unicode::normalize_english_word_for_search_index)
-                                .collect();
-                            Some((
-                                unicode::normalize_english_word_for_search_index(&phrase),
-                                splitted_phrase,
-                            ))
+                            let splitted_phrase = phrase.split(' ').map(normalizer).collect();
+                            Some((normalizer(&phrase), splitted_phrase))
                         } else {
                             None
                         }
@@ -222,7 +221,7 @@ fn index_entry(counter: &Counter, entry: &ArchivedRichEntry, index: &mut English
     let mut scores: HashMap<String, Vec<f32>> = HashMap::new();
 
     // For phrase, splitted_phrase in tokenize_word(word):
-    tokenize_entry(entry)
+    tokenize_entry(entry, unicode::normalize_english_word_for_search_index)
         .iter()
         .enumerate()
         .for_each(|(def_index, phrases)| {

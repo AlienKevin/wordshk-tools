@@ -32,8 +32,10 @@ fn main() {
     // std::fs::create_dir(APP_TMP_DIR).ok();
     // let api = unsafe { generate_api_json() };
 
-    test_jyutping_search();
-    test_yale_search();
+    test_english_embedding_search();
+
+    // test_jyutping_search();
+    // test_yale_search();
 
     // generate_jyutping_to_yale(&api);
     // compare_yale();
@@ -57,6 +59,40 @@ unsafe fn generate_api_json() -> Api {
         Romanization::Yale,
     );
     api
+}
+
+fn test_english_embedding_search() -> anyhow::Result<()> {
+    use finalfusion::prelude::*;
+    use sif_embedding::Sif;
+    use std::io::BufReader;
+    use std::io::Read;
+    use std::path::Path;
+    use wordfreq_model::ModelKind;
+    use wordshk_tools::search::english_embedding_search;
+
+    let romanization = Romanization::Jyutping;
+    let api = unsafe { Api::load(APP_TMP_DIR, romanization) };
+
+    let mut reader = BufReader::new(File::open(
+        Path::new(APP_TMP_DIR).join("english_embeddings.fifu"),
+    )?);
+    let phrase_embeddings = Embeddings::<VocabWrap, StorageWrap>::mmap_embeddings(&mut reader)?;
+
+    let word_probs = wordfreq_model::load_wordfreq(ModelKind::LargeEn)?;
+
+    let mut embeddings_reader = Cursor::new(include_bytes!("../../../data/glove.6B.300d.fifu"));
+    let word_embeddings =
+        Embeddings::<VocabWrap, StorageWrap>::read_embeddings(&mut embeddings_reader)?;
+
+    let mut data = vec![];
+    File::open(Path::new(APP_TMP_DIR).join("english_sif_model.sif"))?.read_to_end(&mut data)?;
+    let sif_model = Sif::deserialize(&data, &word_embeddings, &word_probs)?;
+
+    let result = english_embedding_search(&phrase_embeddings, &sif_model, unsafe { api.dict() }, "freight");
+
+    println!("{:?}", result);
+
+    Ok(())
 }
 
 /*

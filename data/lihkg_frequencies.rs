@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 lazy_static! {
     pub static ref LIHKG_FREQUENCIES: HashMap<String, usize> = {
-        let m: HashMap<String, usize> = HashMap::new();
         include_str!("lihkg_frequencies.tsv")
             .lines()
             .map(|line| {

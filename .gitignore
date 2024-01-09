@@ -4,3 +4,4 @@ ast_outputs.txt
 apple_dict/objects/
 wordshk.xml
 app_tmp/
+data/glove.6B.300d.txt

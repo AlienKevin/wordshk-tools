@@ -24,6 +24,7 @@ impl Api {
     pub unsafe fn new(app_dir: &str, csv: &str, romanization: Romanization) -> Self {
         let api = Api::get_new_dict(app_dir, csv, romanization);
         Api::generate_english_index(app_dir, &api.dict());
+        Api::generate_english_embeddings(app_dir, &api.dict());
         api
     }
 
@@ -69,6 +70,16 @@ impl Api {
             index_path,
             rkyv::to_bytes::<_, 1024>(&english_index).unwrap(),
         )
-        .expect("Unable to output serailized english index");
+        .expect("Unable to output serialized english index");
+    }
+
+    fn generate_english_embeddings(app_dir: &str, dict: &ArchivedRichDict) {
+        let model_path = Path::new(app_dir).join("english_sif_model.sif");
+        let embeddings_path = Path::new(app_dir).join("english_embeddings.fifu");
+        let (model_bytes, embeddings_bytes) =
+            super::english_embedding::generate_english_embeddings(dict).unwrap();
+        fs::write(model_path, model_bytes).expect("Unable to output serialized english sif model");
+        fs::write(embeddings_path, embeddings_bytes)
+            .expect("Unable to output serialized english embeddings");
     }
 }

@@ -13,13 +13,17 @@ use super::jyutping::{LaxJyutPings, Romanization};
 use super::rich_dict::RichEntry;
 use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
+use finalfusion::prelude::*;
 use fst::automaton::Levenshtein;
 use itertools::Itertools;
 use rkyv::Deserialize;
+use sif_embedding::{SentenceEmbedder, Sif};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::collections::{BinaryHeap, HashSet};
 use strsim::{generic_levenshtein, levenshtein, normalized_levenshtein};
+use vtext::tokenize::{Tokenizer, VTextTokenizerParams};
+use wordfreq::WordFreq;
 
 /// Max score is 100
 type Score = usize;
@@ -683,6 +687,8 @@ pub fn combined_search(
     variants_map: &VariantsMap,
     pr_indices: Option<&FstPrIndices>,
     english_index: &ArchivedEnglishIndex,
+    english_embeddings: &Embeddings<VocabWrap, StorageWrap>,
+    sif_model: &Sif<VocabWrap, StorageWrap>,
     dict: &ArchivedRichDict,
     query: &str,
     script: Script,
@@ -1261,6 +1267,95 @@ mod test_match_eng_words {
             ]
         );
     }
+}
+
+pub fn english_embedding_search(
+    english_embeddings: &Embeddings<VocabWrap, StorageWrap>,
+    sif_model: &Sif<Embeddings<VocabWrap, StorageWrap>, WordFreq>,
+    dict: &ArchivedRichDict,
+    query: &str,
+) -> Vec<EnglishSearchRank> {
+    let tokenizer = VTextTokenizerParams::default().lang("en").build().unwrap();
+    let separator = sif_embedding::DEFAULT_SEPARATOR.to_string();
+    let query_tokenized = tokenizer
+        .tokenize(&unicode::normalize_english_word_for_embedding(query))
+        .collect::<Vec<_>>()
+        .join(&separator)
+        .to_lowercase();
+
+    println!("query_tokenized: {query_tokenized}");
+
+    let query_embeddings = sif_model.embeddings([query_tokenized]).unwrap();
+    let query_embedding = query_embeddings.row(0);
+
+    let query_embedding_norm: f32 = query_embedding.dot(&query_embedding).sqrt();
+    let query_embedding_normalized = query_embedding.mapv(|x| x / query_embedding_norm);
+
+    let mut most_similar_id = (0, 0, 0);
+    let mut most_similar_score = -1.0;
+
+    for (id, v) in english_embeddings.iter_with_norms() {
+        let cosine_similarity =
+            v.embedding.dot(&query_embedding_normalized) / (v.norm * query_embedding_norm);
+        if cosine_similarity > most_similar_score {
+            let indices = id.split(",").collect_vec();
+            assert_eq!(indices.len(), 3);
+            let entry_id = indices[0].parse::<EntryId>().unwrap();
+            let def_index = indices[1].parse::<usize>().unwrap();
+            let phrase_index = indices[2].parse::<usize>().unwrap();
+            most_similar_id = (entry_id, def_index, phrase_index);
+            most_similar_score = cosine_similarity;
+
+            let entry = dict.get(&entry_id).unwrap();
+            let def = &entry.defs[def_index as usize];
+            let eng: Clause = def
+                .eng
+                .as_ref()
+                .unwrap()
+                .deserialize(&mut rkyv::Infallible)
+                .unwrap();
+            println!("new most similar entry eng: {}", clause_to_string(&eng));
+        }
+    }
+
+    let entry_id = most_similar_id.0;
+    let def_index = most_similar_id.1;
+
+    let entry = dict.get(&entry_id).unwrap();
+    let def = &entry.defs[def_index as usize];
+    let eng: Clause = def
+        .eng
+        .as_ref()
+        .unwrap()
+        .deserialize(&mut rkyv::Infallible)
+        .unwrap();
+
+    let eng = clause_to_string(&eng);
+    let mut matched_eng = eng
+        .split(';')
+        .enumerate()
+        .flat_map(|(phrase_index, phrase)| {
+            vec![
+                MatchedSegment {
+                    segment: phrase.to_string(),
+                    matched: phrase_index == most_similar_id.2,
+                },
+                MatchedSegment {
+                    segment: ";".to_string(),
+                    matched: false,
+                },
+            ]
+        })
+        .collect_vec();
+    // Remove extra ";" at the end
+    matched_eng.pop();
+
+    vec![EnglishSearchRank {
+        entry_id,
+        def_index,
+        score: 100,
+        matched_eng,
+    }]
 }
 
 pub fn english_search(

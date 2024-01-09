@@ -133,6 +133,18 @@ pub fn normalize_english_word_for_search_index(word: &str) -> String {
     )
 }
 
+pub fn normalize_english_word_for_embedding(word: &str) -> String {
+    to_us_english(
+        &word
+            .to_lowercase()
+            .split_whitespace()
+            .join(" ")
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric() || c == &' ' || c.is_ascii_punctuation())
+            .collect::<String>(),
+    )
+}
+
 pub fn to_us_english(str: &str) -> String {
     str.split_whitespace()
         .map(|word| VARIANT_TO_US_ENGLISH.get(word).unwrap_or(&word).to_string())
