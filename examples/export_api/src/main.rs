@@ -117,7 +117,10 @@ fn test_english_embedding_search() -> anyhow::Result<()> {
     use std::io::Read;
     use std::path::Path;
     use wordfreq_model::ModelKind;
+    use wordshk_tools::dict::Clause;
+    use wordshk_tools::english_index::EnglishSearchRank;
     use wordshk_tools::search::english_embedding_search;
+    use rkyv::Deserialize;
 
     let romanization = Romanization::Jyutping;
     let api = unsafe { Api::load(APP_TMP_DIR, romanization) };
@@ -144,7 +147,22 @@ fn test_english_embedding_search() -> anyhow::Result<()> {
         "everyone",
     );
 
-    println!("{:?}", result);
+    for EnglishSearchRank {
+        entry_id,
+        def_index,
+        matched_eng,
+        score,
+    } in result
+    {
+        let entry = unsafe { api.dict() }.get(&entry_id).unwrap();
+        let variant = &entry.variants.0[0].word;
+        let def = &entry.defs[def_index as usize];
+        let eng = def.eng.as_ref().unwrap();
+        let eng: Clause = eng.deserialize(&mut rkyv::Infallible).unwrap();
+        let eng = clause_to_string(&eng);
+        println!("{entry_id}\t{variant}\t{def_index}\t{eng}");
+        println!("{:?}", matched_eng);
+    }
 
     Ok(())
 }

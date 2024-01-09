@@ -1289,70 +1289,64 @@ pub fn english_embedding_search(
     let query_embedding_norm: f32 = query_embedding.dot(&query_embedding).sqrt();
     let query_embedding_normalized = query_embedding.mapv(|x| x / query_embedding_norm);
 
-    let mut most_similar_id = (0, 0, 0);
-    let mut most_similar_score = -1.0;
+    let mut ranks: Vec<(String, f32)> = vec![];
 
     for (id, v) in english_embeddings {
         let cosine_similarity = v.dot(&query_embedding_normalized);
-        if cosine_similarity > most_similar_score {
+        if cosine_similarity > 0.5 {
+            ranks.push((id.to_string(), cosine_similarity));
+        }
+    }
+
+    ranks.sort_by(|(_, s1), (_, s2)| s2.total_cmp(s1));
+
+    ranks
+        .into_iter()
+        .take(20)
+        .map(|(id, similarity)| {
             let indices = id.split(",").collect_vec();
             assert_eq!(indices.len(), 3);
             let entry_id = indices[0].parse::<EntryId>().unwrap();
             let def_index = indices[1].parse::<usize>().unwrap();
             let phrase_index = indices[2].parse::<usize>().unwrap();
-            most_similar_id = (entry_id, def_index, phrase_index);
-            most_similar_score = cosine_similarity;
 
             let entry = dict.get(&entry_id).unwrap();
-            let def = &entry.defs[def_index as usize];
+            let def = &entry.defs[def_index];
             let eng: Clause = def
                 .eng
                 .as_ref()
                 .unwrap()
                 .deserialize(&mut rkyv::Infallible)
                 .unwrap();
-            println!("new most similar entry eng: {}", clause_to_string(&eng));
-        }
-    }
 
-    let entry_id = most_similar_id.0;
-    let def_index = most_similar_id.1;
+            let eng = clause_to_string(&eng);
+            let mut matched_eng = eng
+                .split(';')
+                .enumerate()
+                .flat_map(|(current_phrase_index, current_phrase)| {
+                    vec![
+                        MatchedSegment {
+                            segment: current_phrase.to_string(),
+                            matched: current_phrase_index == phrase_index,
+                        },
+                        MatchedSegment {
+                            segment: ";".to_string(),
+                            matched: false,
+                        },
+                    ]
+                })
+                .collect_vec();
+            // Remove extra ";" at the end
+            matched_eng.pop();
 
-    let entry = dict.get(&entry_id).unwrap();
-    let def = &entry.defs[def_index as usize];
-    let eng: Clause = def
-        .eng
-        .as_ref()
-        .unwrap()
-        .deserialize(&mut rkyv::Infallible)
-        .unwrap();
-
-    let eng = clause_to_string(&eng);
-    let mut matched_eng = eng
-        .split(';')
-        .enumerate()
-        .flat_map(|(phrase_index, phrase)| {
-            vec![
-                MatchedSegment {
-                    segment: phrase.to_string(),
-                    matched: phrase_index == most_similar_id.2,
-                },
-                MatchedSegment {
-                    segment: ";".to_string(),
-                    matched: false,
-                },
-            ]
+            EnglishSearchRank {
+                entry_id,
+                def_index,
+                score: 100 * similarity as Score,
+                matched_eng,
+            }
         })
-        .collect_vec();
-    // Remove extra ";" at the end
-    matched_eng.pop();
-
-    vec![EnglishSearchRank {
-        entry_id,
-        def_index,
-        score: 100,
-        matched_eng,
-    }]
+        .collect()
 }
 
 pub fn english_search(
