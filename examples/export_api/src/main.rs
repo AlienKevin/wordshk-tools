@@ -144,7 +144,7 @@ fn test_english_embedding_search() -> anyhow::Result<()> {
         &phrase_embeddings,
         &sif_model,
         unsafe { api.dict() },
-        "everyone",
+        "in a temper",
     );
 
     for EnglishSearchRank {
@@ -160,8 +160,7 @@ fn test_english_embedding_search() -> anyhow::Result<()> {
         let eng = def.eng.as_ref().unwrap();
         let eng: Clause = eng.deserialize(&mut rkyv::Infallible).unwrap();
         let eng = clause_to_string(&eng);
-        println!("{entry_id}\t{variant}\t{def_index}\t{eng}");
-        println!("{:?}", matched_eng);
+        println!("{entry_id}\t{variant}\t{def_index}\t{score}\t{eng}");
     }
 
     Ok(())

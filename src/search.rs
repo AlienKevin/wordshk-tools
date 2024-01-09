@@ -1302,7 +1302,7 @@ pub fn english_embedding_search(
 
     ranks
         .into_iter()
-        .take(20)
+        .take(50)
         .map(|(id, similarity)| {
             let indices = id.split(",").collect_vec();
             assert_eq!(indices.len(), 3);
@@ -1342,7 +1342,7 @@ pub fn english_embedding_search(
             EnglishSearchRank {
                 entry_id,
                 def_index,
-                score: 100 * similarity as Score,
+                score: (100.0 * similarity) as Score,
                 matched_eng,
             }
         })
