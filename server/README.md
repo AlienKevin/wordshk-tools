@@ -42,3 +42,7 @@ openssl req -new -key wordshk_server.key -out wordshk_server.csr
 openssl x509 -req -days 365 -in wordshk_server.csr -signkey wordshk_server.key -out wordshk_server.crt
 aws iam upload-server-certificate --server-certificate-name wordshk_server_cert --certificate-body file://wordshk_server.crt --private-key file://wordshk_server.key
 ```
+
+# Issue real SSL certificate for .beanstalk.com
+
+See: https://stackoverflow.com/a/65738006/6798201
