@@ -1272,6 +1272,8 @@ pub fn english_embedding_search(
     dict: &ArchivedRichDict,
     query: &str,
 ) -> Vec<EnglishSearchRank> {
+    // let mut start_time = std::time::Instant::now();
+
     let model: FlagEmbedding = FlagEmbedding::try_new(Default::default()).unwrap();
 
     let query_embedding = model
@@ -1280,8 +1282,15 @@ pub fn english_embedding_search(
         .remove(0);
     let query_embedding: Array1<f32> = query_embedding.into();
 
+    // println!(
+    //     "calculating query's embedding took {:?}",
+    //     start_time.elapsed()
+    // );
+
     let query_embedding_norm: f32 = query_embedding.dot(&query_embedding).sqrt();
     let query_embedding_normalized = query_embedding.mapv(|x| x / query_embedding_norm);
+
+    // start_time = std::time::Instant::now();
 
     let mut ranks: Vec<(String, f32)> = vec![];
 
@@ -1293,6 +1302,8 @@ pub fn english_embedding_search(
     }
 
     ranks.sort_by(|(_, s1), (_, s2)| s2.total_cmp(s1));
+
+    // println!("embedding search took {:?}", start_time.elapsed());
 
     ranks
         .into_iter()
