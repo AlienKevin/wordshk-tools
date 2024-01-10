@@ -79,7 +79,7 @@ fn test_english_embedding_search() -> anyhow::Result<()> {
     )?);
     let phrase_embeddings = Embeddings::<VocabWrap, StorageWrap>::mmap_embeddings(&mut reader)?;
 
-    let result = english_embedding_search(&phrase_embeddings, unsafe { api.dict() }, "freight");
+    let result = english_embedding_search(&phrase_embeddings, unsafe { api.dict() }, "beverages");
 
     for EnglishSearchRank {
         entry_id,

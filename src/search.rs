@@ -686,7 +686,7 @@ pub fn combined_search(
     variants_map: &VariantsMap,
     pr_indices: Option<&FstPrIndices>,
     english_index: &ArchivedEnglishIndex,
-    english_embeddings: &Embeddings<VocabWrap, StorageWrap>,
+    english_embeddings: &Option<Embeddings<VocabWrap, StorageWrap>>,
     dict: &ArchivedRichDict,
     query: &str,
     script: Script,
@@ -714,7 +714,7 @@ pub fn combined_search(
     } else {
         BinaryHeap::new()
     };
-    let english_results = english_search(english_index, dict, query);
+    let english_results = english_search(english_index, english_embeddings, dict, query);
 
     CombinedSearchRank::All(variants_ranks, pr_ranks, english_results)
 }
@@ -1334,9 +1334,14 @@ pub fn english_embedding_search(
 
 pub fn english_search(
     english_index: &ArchivedEnglishIndex,
+    english_embeddings: &Option<Embeddings<VocabWrap, StorageWrap>>,
     dict: &ArchivedRichDict,
     query: &str,
 ) -> Vec<EnglishSearchRank> {
+    if let Some(english_embeddings) = english_embeddings {
+        return english_embedding_search(english_embeddings, dict, query);
+    }
+
     let query = unicode::normalize_english_word_for_search_index(query);
     let results = english_index
         .get(query.as_str())
