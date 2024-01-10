@@ -1,11 +1,49 @@
 use axum::{extract::Query, routing::get, Json, Router};
+use finalfusion::prelude::*;
+use once_cell::sync::Lazy;
+use rkyv::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::Read;
+use std::path::Path;
+use wordshk_tools::app_api::Api;
+use wordshk_tools::dict::clause_to_string;
+use wordshk_tools::dict::Clause;
+use wordshk_tools::english_index::EnglishSearchRank;
+use wordshk_tools::jyutping::Romanization;
+use wordshk_tools::search::english_embedding_search;
 
 // Define a struct to capture query parameters
 #[derive(Debug, serde::Deserialize)]
 struct SearchQuery {
     query: String,
+}
+
+const APP_DIR: &str = "data";
+
+static API: Lazy<Api> = Lazy::new(|| {
+    let romanization = Romanization::Jyutping;
+    let api = unsafe { Api::load(APP_DIR, romanization) };
+    api
+});
+
+static EMBEDDINGS: Lazy<Embeddings<VocabWrap, StorageWrap>> = Lazy::new(|| {
+    let mut reader =
+        BufReader::new(File::open(Path::new(APP_DIR).join("english_embeddings.fifu")).unwrap());
+    let phrase_embeddings =
+        Embeddings::<VocabWrap, StorageWrap>::mmap_embeddings(&mut reader).unwrap();
+    phrase_embeddings
+});
+
+#[derive(Debug, serde::Serialize)]
+struct SearchResult {
+    entry_id: u32,
+    variant: String,
+    def_index: u32,
+    score: u16,
+    eng: String,
 }
 
 #[tokio::main]
@@ -18,9 +56,32 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn search(Query(params): Query<SearchQuery>) -> Json<HashMap<String, String>> {
-    let mut response = HashMap::new();
-    response.insert("entry_id".to_string(), "123".to_string());
+async fn search(Query(params): Query<SearchQuery>) -> Json<Vec<SearchResult>> {
+    let result = english_embedding_search(&EMBEDDINGS, unsafe { API.dict() }, &params.query);
 
-    Json(response)
+    let mut results = vec![];
+
+    for EnglishSearchRank {
+        entry_id,
+        def_index,
+        matched_eng,
+        score,
+    } in result
+    {
+        let entry = unsafe { API.dict() }.get(&entry_id).unwrap();
+        let variant = entry.variants.0[0].word.to_string();
+        let def = &entry.defs[def_index as usize];
+        let eng = def.eng.as_ref().unwrap();
+        let eng: Clause = eng.deserialize(&mut rkyv::Infallible).unwrap();
+        let eng = clause_to_string(&eng);
+        results.push(SearchResult {
+            entry_id,
+            variant,
+            def_index: def_index as u32,
+            score: score as u16,
+            eng,
+        });
+    }
+
+    Json(results)
 }
