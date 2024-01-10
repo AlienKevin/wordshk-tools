@@ -1,4 +1,12 @@
-use axum::{extract::Query, routing::get, Json, Router};
+use axum::{
+    body::Body,
+    extract::Query,
+    http::HeaderValue,
+    response::{IntoResponse, Response},
+    routing::get,
+    Json, Router,
+};
+
 use finalfusion::prelude::*;
 use once_cell::sync::Lazy;
 use rkyv::Deserialize;
@@ -8,6 +16,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
 use std::path::Path;
+use tower_http::cors::{Any, CorsLayer};
 use wordshk_tools::app_api::Api;
 use wordshk_tools::dict::clause_to_string;
 use wordshk_tools::dict::Clause;
@@ -49,7 +58,13 @@ struct SearchResult {
 #[tokio::main]
 async fn main() {
     // build our application with routes
-    let app = Router::new().route("/search", get(search));
+    let app = Router::new()
+        .route("/search", get(search))
+        .route(
+            "/.well-known/pki-validation/770DE1A4A87AD3AB4CDDD3664C481C37.txt",
+            get(static_file),
+        )
+        .layer(CorsLayer::new().allow_origin(Any));
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -84,4 +99,13 @@ async fn search(Query(params): Query<SearchQuery>) -> Json<Vec<SearchResult>> {
     }
 
     Json(results)
+}
+
+async fn static_file() -> impl IntoResponse {
+    Response::builder()
+        .header(axum::http::header::CONTENT_TYPE, "text/plain")
+        .body(Body::from(include_str!(
+            "../.well-known/pki-validation/770DE1A4A87AD3AB4CDDD3664C481C37.txt"
+        )))
+        .unwrap()
 }

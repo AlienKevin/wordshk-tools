@@ -1,7 +1,7 @@
 {
     "AWSEBDockerrunVersion": "1",
     "Image": {
-        "Name": "alienkevin/wordshk-server",
+        "Name": "alienkevin/wordshk-server:latest",
         "Update": "true"
     },
     "Ports": [
