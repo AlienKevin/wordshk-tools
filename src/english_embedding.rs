@@ -7,10 +7,9 @@ use finalfusion::norms::NdNorms;
 use finalfusion::prelude::*;
 use finalfusion::storage::NdArray;
 use finalfusion::vocab::SimpleVocab;
-use itertools::Itertools;
 use ndarray::{Array1, Array2, ArrayViewMut1, ArrayViewMut2};
 
-use crate::english_index::tokenize_entry;
+use crate::english_index::split_entry_eng_defs_into_phrases;
 use crate::rich_dict::ArchivedRichDict;
 use anyhow::Result;
 
@@ -18,13 +17,12 @@ pub fn generate_english_embeddings<'a>(dict: &ArchivedRichDict) -> Result<Vec<u8
     let mut phrase_map: BTreeMap<String, String> = BTreeMap::new();
 
     for (entry_id, entry) in dict.iter() {
-        tokenize_entry(entry, |x| x.to_string())
+        split_entry_eng_defs_into_phrases(entry, |x| x.to_string())
             .into_iter()
-            .enumerate()
             .for_each(|(def_index, phrases)| {
                 let index: String = format!("{entry_id},{def_index}");
                 phrase_map
-                    .entry(phrases.into_iter().map(|(s, _)| s).join("; "))
+                    .entry(phrases.join("; "))
                     .and_modify(|indices| {
                         indices.push_str(&format!(";{}", index));
                     })

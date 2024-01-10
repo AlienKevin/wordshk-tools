@@ -30,7 +30,9 @@ pub struct EnglishIndexData {
     pub score: usize,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(
+    Serialize, Deserialize, Debug, Clone, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize,
+)]
 pub struct EnglishSearchRank {
     #[serde(rename = "e")]
     pub entry_id: EntryId,
@@ -76,11 +78,15 @@ pub fn generate_english_index(dict: &ArchivedRichDict) -> EnglishIndex {
     for (_, entry) in dict.iter() {
         let mut repeated_terms = HashSet::new();
         // for _, terms in indexer.tokenize_word(word):
-        tokenize_entry(entry, unicode::normalize_english_word_for_search_index)
+        split_entry_eng_defs_into_phrases(entry, unicode::normalize_english_word_for_search_index)
             .iter()
-            .for_each(|terms_of_defs| {
-                terms_of_defs.iter().for_each(|(_, terms)| {
-                    terms.iter().for_each(|term| {
+            .for_each(|(_, phrases)| {
+                phrases.iter().for_each(|phrase| {
+                    let splitted_phrase = phrase
+                        .split_whitespace()
+                        .map(|s| s.to_string())
+                        .collect_vec();
+                    splitted_phrase.iter().for_each(|term| {
                         let term = unicode::american_english_stem(term);
                         if repeated_terms.contains(&term) {
                             return;
@@ -118,11 +124,6 @@ fn process_phrase(phrase: &str) -> Option<String> {
     // lower so that our strings will match regardless of case below.
     let mut phrase = phrase.replace(['\r', '\n'], " ").trim().to_lowercase();
 
-    // Skip empty phrases
-    if phrase.is_empty() {
-        return None;
-    }
-
     // Remove parentheses
     phrase = Regex::new(r#"\(.*\)"#)
         .unwrap()
@@ -145,6 +146,7 @@ fn process_phrase(phrase: &str) -> Option<String> {
 
     match phrase.as_str() {
         "x" | "xxx" | "asdf" => None,
+        "" => None,
         _ => Some(phrase),
     }
 }
@@ -164,30 +166,28 @@ fn score_for_term(term: &str, splitted_phrase: &[String], counter: &Counter) -> 
             .sum::<f32>();
 }
 
-/// Returns a normalized phrase and a normalized splitted phrase with
+/// Returns a normalized phrase with
 /// individual tokens
-pub fn tokenize_entry(
+pub fn split_entry_eng_defs_into_phrases(
     entry: &ArchivedRichEntry,
-    normalizer: fn(&str) -> String,
-) -> Vec<Vec<(String, Vec<String>)>> {
+    normalize: fn(&str) -> String,
+) -> Vec<(usize, Vec<String>)> {
     entry
         .defs
         .iter()
-        .filter_map(|def| {
-            def.eng.as_ref().map(|eng| {
-                clause_to_string(&eng.deserialize(&mut rkyv::Infallible).unwrap())
+        .enumerate()
+        .filter_map(|(def_index, def)| {
+            def.eng.as_ref().and_then(|eng| {
+                let phrases = clause_to_string(&eng.deserialize(&mut rkyv::Infallible).unwrap())
                     // Split with semicolon
                     .split(';')
-                    .filter_map(|phrase| {
-                        if let Some(phrase) = process_phrase(phrase) {
-                            // Split the phrase into different keywords
-                            let splitted_phrase = phrase.split(' ').map(normalizer).collect();
-                            Some((normalizer(&phrase), splitted_phrase))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
+                    .filter_map(|s| process_phrase(&normalize(s)))
+                    .collect_vec();
+                if phrases.is_empty() {
+                    None
+                } else {
+                    Some((def_index, phrases))
+                }
             })
         })
         .collect()
@@ -221,18 +221,21 @@ fn index_entry(counter: &Counter, entry: &ArchivedRichEntry, index: &mut English
     let mut scores: HashMap<String, Vec<f32>> = HashMap::new();
 
     // For phrase, splitted_phrase in tokenize_word(word):
-    tokenize_entry(entry, unicode::normalize_english_word_for_search_index)
+    split_entry_eng_defs_into_phrases(entry, unicode::normalize_english_word_for_search_index)
         .iter()
-        .enumerate()
         .for_each(|(def_index, phrases)| {
-            phrases.iter().for_each(|(phrase, splitted_phrase)| {
+            phrases.iter().for_each(|phrase| {
+                let splitted_phrase = phrase
+                    .split_whitespace()
+                    .map(|s| s.to_string())
+                    .collect_vec();
                 if splitted_phrase.len() <= 7 {
                     // Score = 100 for exact phrase match
                     insert_to_index(
                         phrase,
                         EnglishIndexData {
                             entry_id: entry.id,
-                            def_index,
+                            def_index: *def_index,
                             score: 100,
                         },
                         index,
@@ -240,7 +243,7 @@ fn index_entry(counter: &Counter, entry: &ArchivedRichEntry, index: &mut English
                 }
 
                 splitted_phrase.iter().for_each(|term| {
-                    let score = score_for_term(term, splitted_phrase, counter);
+                    let score = score_for_term(term, &splitted_phrase, counter);
 
                     // Don't repeat the whole phrase
                     if splitted_phrase.len() > 1 {
@@ -268,7 +271,7 @@ fn index_entry(counter: &Counter, entry: &ArchivedRichEntry, index: &mut English
                             term_stem,
                             EnglishIndexData {
                                 entry_id: entry.id,
-                                def_index,
+                                def_index: *def_index,
                                 score: score as usize,
                             },
                             index,

@@ -27,10 +27,10 @@ use wordshk_tools::{
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    // std::fs::create_dir(APP_TMP_DIR).ok();
-    // let api = unsafe { generate_api_json() };
+    std::fs::create_dir(APP_TMP_DIR).ok();
+    let api = unsafe { generate_api_json() };
 
-    test_english_embedding_search();
+    // test_english_embedding_search();
 
     // generate_english_vocab();
 
