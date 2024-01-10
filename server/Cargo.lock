@@ -2601,7 +2601,7 @@ dependencies = [
 [[package]]
 name = "wordshk_tools"
 version = "3.16.0-beta.10"
-source = "git+https://github.com/AlienKevin/wordshk-tools.git?rev=34fda4050698806c17875cd94cffebf0bdb14751#34fda4050698806c17875cd94cffebf0bdb14751"
+source = "git+https://github.com/AlienKevin/wordshk-tools.git#29756e23f00d85742e3782fa68f119e93b8ba5a7"
 dependencies = [
  "anyhow",
  "csv",
