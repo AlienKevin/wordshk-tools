@@ -3,15 +3,6 @@
 version = 3
 
 [[package]]
-name = "acap"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6851a0b3b2d5729a0b7e61e3c36923ed9d72240146b0efda61121b0b84ad595d"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -454,7 +445,6 @@ checksum = "d817e038c30374a4bcb22f94d0a8a0e216958d4c3dcde369b1439fec4bdda6e6"
 name = "export_api"
 version = "0.1.0"
 dependencies = [
- "acap",
  "anyhow",
  "csv",
  "fastembed",

@@ -24,6 +24,7 @@ impl Api {
     pub unsafe fn new(app_dir: &str, csv: &str, romanization: Romanization) -> Self {
         let api = Api::get_new_dict(app_dir, csv, romanization);
         Api::generate_english_index(app_dir, &api.dict());
+        #[cfg(feature = "embedding-search")]
         Api::generate_english_embeddings(app_dir, &api.dict());
         api
     }
@@ -73,6 +74,7 @@ impl Api {
         .expect("Unable to output serialized english index");
     }
 
+    #[cfg(feature = "embedding-search")]
     fn generate_english_embeddings(app_dir: &str, dict: &ArchivedRichDict) {
         let embeddings_path = Path::new(app_dir).join("english_embeddings.fifu");
         let embeddings_bytes = super::english_embedding::generate_english_embeddings(dict).unwrap();

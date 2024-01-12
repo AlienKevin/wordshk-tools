@@ -32,11 +32,22 @@ rayon = "1.7.0"
 rkyv = { version = "0.7.43", features = ["alloc"] }
 levenshtein-diff = "0.2.4"
 fst = { version = "0.4.7", features = ["levenshtein"] }
-finalfusion = "0.17.2"
-anyhow = "1.0.79"
-ndarray = "0.15.6"
-fastembed = "2"
+
+finalfusion = { version = "0.17.2", optional = true }
+anyhow = { version = "1.0.79", optional = true }
+ndarray = { version = "0.15.6", optional = true }
+fastembed = { version = "2", optional = true }
 
 [dependencies.ort]
 version = "2.0.0-alpha.4"
 features = ["download-binaries"]
+optional = true
+
+[features]
+embedding-search = [
+    "dep:finalfusion",
+    "dep:anyhow",
+    "dep:ndarray",
+    "dep:fastembed",
+    "dep:ort",
+]

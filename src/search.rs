@@ -13,11 +13,8 @@ use super::jyutping::{LaxJyutPings, Romanization};
 use super::rich_dict::RichEntry;
 use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
-use fastembed::{EmbeddingBase, FlagEmbedding};
-use finalfusion::prelude::*;
 use fst::automaton::Levenshtein;
 use itertools::Itertools;
-use ndarray::Array1;
 use rkyv::Deserialize;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
@@ -686,7 +683,6 @@ pub fn combined_search(
     variants_map: &VariantsMap,
     pr_indices: Option<&FstPrIndices>,
     english_index: &ArchivedEnglishIndex,
-    english_embeddings: &Option<Embeddings<VocabWrap, StorageWrap>>,
     dict: &ArchivedRichDict,
     query: &str,
     script: Script,
@@ -714,7 +710,7 @@ pub fn combined_search(
     } else {
         BinaryHeap::new()
     };
-    let english_results = english_search(english_index, english_embeddings, dict, query);
+    let english_results = english_search(english_index, dict, query);
 
     CombinedSearchRank::All(variants_ranks, pr_ranks, english_results)
 }
@@ -1267,6 +1263,13 @@ mod test_match_eng_words {
     }
 }
 
+#[cfg(feature = "embedding-search")]
+use fastembed::{EmbeddingBase, FlagEmbedding};
+#[cfg(feature = "embedding-search")]
+use finalfusion::prelude::*;
+#[cfg(feature = "embedding-search")]
+use ndarray::Array1;
+#[cfg(feature = "embedding-search")]
 pub fn english_embedding_search(
     english_embeddings: &Embeddings<VocabWrap, StorageWrap>,
     dict: &ArchivedRichDict,
@@ -1345,14 +1348,9 @@ pub fn english_embedding_search(
 
 pub fn english_search(
     english_index: &ArchivedEnglishIndex,
-    english_embeddings: &Option<Embeddings<VocabWrap, StorageWrap>>,
     dict: &ArchivedRichDict,
     query: &str,
 ) -> Vec<EnglishSearchRank> {
-    if let Some(english_embeddings) = english_embeddings {
-        return english_embedding_search(english_embeddings, dict, query);
-    }
-
     let query = unicode::normalize_english_word_for_search_index(query);
     let results = english_index
         .get(query.as_str())

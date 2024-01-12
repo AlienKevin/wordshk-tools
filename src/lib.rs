@@ -4,6 +4,7 @@ mod charlist;
 pub mod dict;
 pub mod emit_apple_dict;
 pub mod emit_html;
+#[cfg(feature = "embedding-search")]
 pub mod english_embedding;
 pub mod english_index;
 #[path = "../data/hk_variant_map_safe.rs"]

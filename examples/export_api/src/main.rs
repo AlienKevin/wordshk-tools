@@ -1,4 +1,3 @@
-use fastembed::{EmbeddingBase, EmbeddingModel, FlagEmbedding, InitOptions};
 use itertools::Itertools;
 use rand::rngs::StdRng;
 use rand::{seq::SliceRandom, SeedableRng};
@@ -61,6 +60,7 @@ unsafe fn generate_api_json() -> Api {
     api
 }
 
+#[cfg(feature = "embedding-search")]
 fn test_english_embedding_search() -> anyhow::Result<()> {
     use finalfusion::prelude::*;
     use rkyv::Deserialize;
