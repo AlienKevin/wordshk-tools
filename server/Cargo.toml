@@ -11,7 +11,9 @@ rkyv = "0.7.43"
 serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0.111"
 tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread"] }
-wordshk_tools = { git = "https://github.com/AlienKevin/wordshk-tools.git" }
+wordshk_tools = { git = "https://github.com/AlienKevin/wordshk-tools.git", branch = "main", features = [
+    "embedding-search",
+] }
 finalfusion = "0.17.2"
 tower-http = { version = "0.5.0", features = ["cors"] }
 
