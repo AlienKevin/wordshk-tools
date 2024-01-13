@@ -33,6 +33,7 @@ pub struct EnglishIndexData {
 #[derive(Debug, Clone)]
 pub struct EnglishSearchRank {
     pub entry_id: EntryId,
+    pub def_len: usize,
     pub def_index: usize,
     pub variant: String,
     pub score: usize,
@@ -52,6 +53,7 @@ impl Ord for EnglishSearchRank {
                     .then_with(|| {
                         get_entry_frequency(self.entry_id).cmp(&get_entry_frequency(other.entry_id))
                     })
+                    .then(self.def_len.cmp(&other.def_len))
                     .then(other.entry_id.cmp(&self.entry_id))
                     .then(other.def_index.cmp(&self.def_index)),
             )

@@ -98,6 +98,7 @@ pub struct MatchedSegment {
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct PrSearchRank {
     pub id: EntryId,
+    pub def_len: usize,
     pub variant_index: Index,
     pub variant: String,
     pub pr_index: Index,
@@ -125,6 +126,7 @@ impl Ord for PrSearchRank {
             .then(self.frequency_count.cmp(&other.frequency_count))
             .then(other.variant.cmp(&self.variant))
             .then_with(|| get_entry_frequency(self.id).cmp(&get_entry_frequency(other.id)))
+            .then(self.def_len.cmp(&other.def_len))
             .then(other.id.cmp(&self.id))
     }
 }
@@ -328,6 +330,7 @@ pub fn pr_search(
                 let frequency_count = get_max_frequency_count(variants_map.get(&entry_id).unwrap());
                 ranks.push(PrSearchRank {
                     id: entry_id,
+                    def_len: dict.get(&entry_id).unwrap().defs.len(),
                     variant_index: variant_index as Index,
                     variant: pick_variant(
                         variants_map
@@ -510,6 +513,7 @@ pub struct MatchedInfix {
 #[derive(Clone, Eq, PartialEq)]
 pub struct VariantSearchRank {
     pub id: EntryId,
+    pub def_len: usize,
     pub variant_index: Index,
     pub variant: String,
     pub occurrence_index: Index,
@@ -527,6 +531,7 @@ impl Ord for VariantSearchRank {
             .then(self.frequency_count.cmp(&other.frequency_count))
             .then(other.variant.cmp(&self.variant))
             .then_with(|| get_entry_frequency(self.id).cmp(&get_entry_frequency(other.id)))
+            .then(self.def_len.cmp(&other.def_len))
             .then(other.id.cmp(&self.id))
     }
 }
@@ -565,6 +570,7 @@ fn score_variant_query(
 }
 
 pub fn variant_search(
+    dict: &ArchivedRichDict,
     variants_map: &VariantsMap,
     query: &str,
     script: Script,
@@ -590,6 +596,7 @@ pub fn variant_search(
                 if occurrence_index < usize::MAX && length_diff <= 2 {
                     ranks.push(VariantSearchRank {
                         id: *id,
+                        def_len: dict.get(id).unwrap().defs.len(),
                         variant_index,
                         variant: pick_variant(variant, query_script).word,
                         occurrence_index,
@@ -606,6 +613,7 @@ pub fn variant_search(
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct EgSearchRank {
     pub id: EntryId,
+    pub def_len: usize,
     pub def_index: Index,
     pub eg_index: Index,
     pub variant: String,
@@ -620,6 +628,7 @@ impl Ord for EgSearchRank {
             .cmp(&self.eg_length)
             .then(other.variant.cmp(&self.variant))
             .then_with(|| get_entry_frequency(self.id).cmp(&get_entry_frequency(other.id)))
+            .then(self.def_len.cmp(&other.def_len))
             .then(other.id.cmp(&self.id))
             .then(other.def_index.cmp(&self.def_index))
             .then(other.eg_index.cmp(&self.eg_index))
@@ -687,6 +696,7 @@ pub fn eg_search(
                             };
                             ranks.lock().unwrap().push(EgSearchRank {
                                 id: *entry_id,
+                                def_len: entry.defs.len(),
                                 def_index,
                                 eg_index,
                                 variant: pick_variant(variants.first().unwrap(), script).word,
@@ -725,7 +735,7 @@ pub fn combined_search(
 ) -> CombinedSearchRank {
     // if the query has CJK characters, it can only be a variant
     if query.chars().any(unicode::is_cjk) {
-        return CombinedSearchRank::Variant(variant_search(variants_map, query, script));
+        return CombinedSearchRank::Variant(variant_search(dict, variants_map, query, script));
     }
 
     // otherwise if the query doesn't have a very strong feature,
@@ -739,7 +749,7 @@ pub fn combined_search(
     } else {
         script
     };
-    let variants_ranks = variant_search(variants_map, query, query_script);
+    let variants_ranks = variant_search(dict, variants_map, query, query_script);
     let pr_ranks = if let Some(pr_indices) = pr_indices {
         pr_search(pr_indices, dict, variants_map, query, script, romanization)
     } else {
@@ -1415,6 +1425,7 @@ pub fn english_search(
                     get_max_frequency_count(&variants_map.get(&entry_id).unwrap());
                 EnglishSearchRank {
                     entry_id,
+                    def_len: entry.defs.len(),
                     def_index,
                     variant: pick_variant(
                         variants_map.get(&entry_id).unwrap().first().unwrap(),
