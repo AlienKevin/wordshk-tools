@@ -955,7 +955,9 @@ fn test_jyutping_search() {
     use wordshk_tools::search::MatchedSegment;
 
     let romanization = Romanization::Jyutping;
+    let script = Script::Traditional;
     let api = unsafe { Api::load(APP_TMP_DIR, romanization) };
+    let variants_map = wordshk_tools::search::rich_dict_to_variants_map(unsafe { &api.dict() });
 
     macro_rules! test_pr_search {
         ($expected:expr, $query:expr, $expected_score:expr) => {{
@@ -963,7 +965,9 @@ fn test_jyutping_search() {
             let result = pr_search(
                 &api.fst_pr_indices,
                 unsafe { &api.dict() },
+                &variants_map,
                 $query,
+                script,
                 romanization,
             );
             // println!("result: {:?}", result);
@@ -1011,7 +1015,9 @@ fn test_yale_search() {
     use wordshk_tools::search::MatchedSegment;
 
     let romanization = Romanization::Yale;
+    let script = Script::Traditional;
     let api = unsafe { Api::load(APP_TMP_DIR, romanization) };
+    let variants_map = wordshk_tools::search::rich_dict_to_variants_map(unsafe { &api.dict() });
 
     macro_rules! test_pr_search {
         ($expected:expr, $query:expr, $expected_score:expr) => {{
@@ -1019,7 +1025,9 @@ fn test_yale_search() {
             let result = pr_search(
                 &api.fst_pr_indices,
                 unsafe { &api.dict() },
+                &variants_map,
                 $query,
+                script,
                 romanization,
             );
             // println!("result: {:?}", result);
