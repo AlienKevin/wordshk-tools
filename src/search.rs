@@ -204,33 +204,15 @@ pub fn get_entry_group(
     )
 }
 
-fn sort_entry_group(entry_group: Vec<RichEntry>) -> Vec<RichEntry> {
-    let mut general = vec![];
-    let mut vulgar = vec![];
-
-    entry_group.iter().for_each(|entry| {
-        if entry.labels.contains(&"粗俗".to_string()) || entry.labels.contains(&"俚語".to_string())
-        {
-            vulgar.push(entry);
-        } else {
-            general.push(entry);
-        }
-    });
-
-    sort_entries_by_frequency(&mut general);
-    sort_entries_by_frequency(&mut vulgar);
-
-    general.append(&mut vulgar);
-    general.iter().map(|entry| (*entry).clone()).collect()
-}
-
-fn sort_entries_by_frequency(entries: &mut [&RichEntry]) {
-    entries.sort_by(|a, b| {
+fn sort_entry_group(mut entry_group: Vec<RichEntry>) -> Vec<RichEntry> {
+    entry_group.sort_by(|a, b| {
         get_entry_frequency(a.id)
             .cmp(&get_entry_frequency(b.id))
             .reverse()
             .then(a.defs.len().cmp(&b.defs.len()).reverse())
+            .then(a.id.cmp(&b.id))
     });
+    entry_group
 }
 
 pub(crate) fn get_entry_frequency(entry_id: EntryId) -> u8 {
