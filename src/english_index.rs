@@ -1,6 +1,6 @@
 use crate::dict::EntryId;
 use crate::rich_dict::{ArchivedRichDict, ArchivedRichEntry};
-use crate::search::MatchedSegment;
+use crate::search::{get_entry_frequency, MatchedSegment};
 
 use super::dict::clause_to_string;
 use super::unicode;
@@ -30,22 +30,46 @@ pub struct EnglishIndexData {
     pub score: usize,
 }
 
-#[derive(
-    Serialize, Deserialize, Debug, Clone, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize,
-)]
+#[derive(Debug, Clone)]
 pub struct EnglishSearchRank {
-    #[serde(rename = "e")]
     pub entry_id: EntryId,
-
-    #[serde(rename = "d")]
     pub def_index: usize,
-
-    #[serde(rename = "s")]
+    pub variant: String,
     pub score: usize,
-
-    #[serde(rename = "m")]
+    pub frequency_count: usize,
     pub matched_eng: Vec<MatchedSegment>,
 }
+
+impl Ord for EnglishSearchRank {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other
+            .score
+            .partial_cmp(&self.score) // we don't have edge cases like NaN, Inf, etc.
+            .unwrap_or(
+                self.frequency_count
+                    .cmp(&other.frequency_count)
+                    .then(other.variant.cmp(&self.variant))
+                    .then_with(|| {
+                        get_entry_frequency(self.entry_id).cmp(&get_entry_frequency(other.entry_id))
+                    })
+                    .then(other.entry_id.cmp(&self.entry_id))
+                    .then(other.def_index.cmp(&self.def_index)),
+            )
+    }
+}
+impl PartialOrd for EnglishSearchRank {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(other.cmp(&self))
+    }
+}
+
+impl PartialEq for EnglishSearchRank {
+    fn eq(&self, other: &Self) -> bool {
+        other.score == self.score
+    }
+}
+
+impl Eq for EnglishSearchRank {}
 
 // Use reverse ordering so BTreeSet sorts in descending order according to scores
 impl Ord for EnglishIndexData {
@@ -59,7 +83,7 @@ impl Ord for EnglishIndexData {
 
 impl PartialOrd for EnglishIndexData {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        other.score.partial_cmp(&self.score)
+        Some(other.cmp(&self))
     }
 }
 

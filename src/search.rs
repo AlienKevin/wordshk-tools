@@ -99,12 +99,14 @@ pub struct MatchedSegment {
 pub struct PrSearchRank {
     pub id: EntryId,
     pub variant_index: Index,
+    pub variant: String,
     pub pr_index: Index,
     pub jyutping: String,
     pub matched_pr: Vec<MatchedSegment>,
     pub num_matched_initial_chars: u32,
     pub num_matched_final_chars: u32,
     pub score: Score,
+    pub frequency_count: Index,
 }
 
 impl Ord for PrSearchRank {
@@ -120,6 +122,9 @@ impl Ord for PrSearchRank {
                     .cmp(&other.num_matched_final_chars),
             )
             .then(other.jyutping.cmp(&self.jyutping))
+            .then(self.frequency_count.cmp(&other.frequency_count))
+            .then(other.variant.cmp(&self.variant))
+            .then_with(|| get_entry_frequency(self.id).cmp(&get_entry_frequency(other.id)))
             .then(other.id.cmp(&self.id))
     }
 }
@@ -228,14 +233,33 @@ fn sort_entries_by_frequency(entries: &mut [&RichEntry]) {
     });
 }
 
-fn get_entry_frequency(entry_id: EntryId) -> u8 {
+pub(crate) fn get_entry_frequency(entry_id: EntryId) -> u8 {
     *WORD_FREQUENCIES.get(&entry_id).unwrap_or(&50)
+}
+
+fn get_max_frequency_count(variants: &ComboVariants) -> usize {
+    *variants
+        .iter()
+        .max_by(|variant1, variant2| {
+            LIHKG_FREQUENCIES
+                .get(&variant1.word_trad)
+                .unwrap_or(&0)
+                .cmp(LIHKG_FREQUENCIES.get(&variant2.word_trad).unwrap_or(&0))
+        })
+        .map(|most_frequent_variant| {
+            LIHKG_FREQUENCIES
+                .get(&most_frequent_variant.word_trad)
+                .unwrap_or(&0)
+        })
+        .unwrap_or(&0)
 }
 
 pub fn pr_search(
     pr_indices: &FstPrIndices,
     dict: &ArchivedRichDict,
+    variants_map: &VariantsMap,
     query: &str,
+    script: Script,
     romanization: Romanization,
 ) -> BinaryHeap<PrSearchRank> {
     let mut ranks = BinaryHeap::new();
@@ -257,6 +281,8 @@ pub fn pr_search(
         query: &str,
         search: impl FnOnce(Levenshtein) -> BTreeSet<PrLocation>,
         dict: &ArchivedRichDict,
+        variants_map: &VariantsMap,
+        script: Script,
         romanization: Romanization,
         ranks: &mut BinaryHeap<PrSearchRank>,
         pr_variant_generator: fn(&str) -> String,
@@ -317,15 +343,26 @@ pub fn pr_search(
                         }
                     }
                 }
+                let frequency_count = get_max_frequency_count(variants_map.get(&entry_id).unwrap());
                 ranks.push(PrSearchRank {
                     id: entry_id,
                     variant_index: variant_index as Index,
+                    variant: pick_variant(
+                        variants_map
+                            .get(&entry_id)
+                            .unwrap()
+                            .get(variant_index as usize)
+                            .unwrap(),
+                        script,
+                    )
+                    .word,
                     pr_index: pr_index as Index,
                     jyutping,
                     matched_pr,
                     num_matched_initial_chars,
                     num_matched_final_chars,
                     score: MAX_SCORE - distance,
+                    frequency_count,
                 });
             }
         }
@@ -340,6 +377,8 @@ pub fn pr_search(
                     &query,
                     pr_indices.tone_and_space(),
                     dict,
+                    variants_map,
+                    script,
                     romanization,
                     &mut ranks,
                     |s| s.to_string(),
@@ -349,6 +388,8 @@ pub fn pr_search(
                     &query,
                     pr_indices.tone(),
                     dict,
+                    variants_map,
+                    script,
                     romanization,
                     &mut ranks,
                     |s| s.replace(' ', ""),
@@ -358,6 +399,8 @@ pub fn pr_search(
                     &query,
                     pr_indices.space(),
                     dict,
+                    variants_map,
+                    script,
                     romanization,
                     &mut ranks,
                     |s| s.replace(TONES, ""),
@@ -367,6 +410,8 @@ pub fn pr_search(
                     &query,
                     pr_indices.none(),
                     dict,
+                    variants_map,
+                    script,
                     romanization,
                     &mut ranks,
                     |s| s.replace(TONES, "").replace(' ', ""),
@@ -392,6 +437,8 @@ pub fn pr_search(
                     &query,
                     pr_indices.tone_and_space(),
                     dict,
+                    variants_map,
+                    script,
                     romanization,
                     &mut ranks,
                     to_yale,
@@ -401,6 +448,8 @@ pub fn pr_search(
                     &query,
                     pr_indices.tone(),
                     dict,
+                    variants_map,
+                    script,
                     romanization,
                     &mut ranks,
                     |s| to_yale(s).replace(' ', ""),
@@ -410,6 +459,8 @@ pub fn pr_search(
                     &query,
                     pr_indices.tone_and_space(),
                     dict,
+                    variants_map,
+                    script,
                     romanization,
                     &mut ranks,
                     to_yale,
@@ -419,6 +470,8 @@ pub fn pr_search(
                     &query,
                     pr_indices.space(),
                     dict,
+                    variants_map,
+                    script,
                     romanization,
                     &mut ranks,
                     to_yale_no_tones,
@@ -428,6 +481,8 @@ pub fn pr_search(
                     &query,
                     pr_indices.tone(),
                     dict,
+                    variants_map,
+                    script,
                     romanization,
                     &mut ranks,
                     |s| to_yale(s).replace(' ', ""),
@@ -437,6 +492,8 @@ pub fn pr_search(
                     &query,
                     pr_indices.none(),
                     dict,
+                    variants_map,
+                    script,
                     romanization,
                     &mut ranks,
                     |s| to_yale_no_tones(s).replace(' ', ""),
@@ -472,6 +529,7 @@ pub struct MatchedInfix {
 pub struct VariantSearchRank {
     pub id: EntryId,
     pub variant_index: Index,
+    pub variant: String,
     pub occurrence_index: Index,
     pub length_diff: usize,
     pub matched_variant: MatchedInfix,
@@ -483,8 +541,11 @@ impl Ord for VariantSearchRank {
         other
             .occurrence_index
             .cmp(&self.occurrence_index)
-            .then_with(|| other.length_diff.cmp(&self.length_diff))
-            .then_with(|| self.frequency_count.cmp(&other.frequency_count))
+            .then(other.length_diff.cmp(&self.length_diff))
+            .then(self.frequency_count.cmp(&other.frequency_count))
+            .then(other.variant.cmp(&self.variant))
+            .then_with(|| get_entry_frequency(self.id).cmp(&get_entry_frequency(other.id)))
+            .then(other.id.cmp(&self.id))
     }
 }
 
@@ -537,20 +598,7 @@ pub fn variant_search(
         script
     };
     variants_map.iter().for_each(|(id, variants)| {
-        let frequency_count = *variants
-            .iter()
-            .max_by(|variant1, variant2| {
-                LIHKG_FREQUENCIES
-                    .get(&variant1.word_trad)
-                    .unwrap_or(&0)
-                    .cmp(LIHKG_FREQUENCIES.get(&variant2.word_trad).unwrap_or(&0))
-            })
-            .map(|most_frequent_variant| {
-                LIHKG_FREQUENCIES
-                    .get(&most_frequent_variant.word_trad)
-                    .unwrap_or(&0)
-            })
-            .unwrap_or(&0);
+        let frequency_count = get_max_frequency_count(variants);
         variants
             .iter()
             .enumerate()
@@ -561,6 +609,7 @@ pub fn variant_search(
                     ranks.push(VariantSearchRank {
                         id: *id,
                         variant_index,
+                        variant: pick_variant(variant, query_script).word,
                         occurrence_index,
                         length_diff,
                         matched_variant,
@@ -577,6 +626,7 @@ pub struct EgSearchRank {
     pub id: EntryId,
     pub def_index: Index,
     pub eg_index: Index,
+    pub variant: String,
     pub eg_length: usize,
     pub matched_eg: MatchedInfix,
 }
@@ -586,6 +636,8 @@ impl Ord for EgSearchRank {
         other
             .eg_length
             .cmp(&self.eg_length)
+            .then(other.variant.cmp(&self.variant))
+            .then_with(|| get_entry_frequency(self.id).cmp(&get_entry_frequency(other.id)))
             .then(other.id.cmp(&self.id))
             .then(other.def_index.cmp(&self.def_index))
             .then(other.eg_index.cmp(&self.eg_index))
@@ -623,7 +675,7 @@ pub fn eg_search(
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
 
-    variants_map.par_iter().for_each(|(entry_id, _)| {
+    variants_map.par_iter().for_each(|(entry_id, variants)| {
         let entry = dict.get(entry_id).unwrap();
         for (def_index, def) in entry.defs.iter().enumerate() {
             for (eg_index, eg) in def.egs.iter().enumerate() {
@@ -655,6 +707,7 @@ pub fn eg_search(
                                 id: *entry_id,
                                 def_index,
                                 eg_index,
+                                variant: pick_variant(variants.first().unwrap(), script).word,
                                 eg_length: line_len,
                                 matched_eg,
                             });
@@ -674,7 +727,7 @@ pub enum CombinedSearchRank {
     All(
         BinaryHeap<VariantSearchRank>,
         BinaryHeap<PrSearchRank>,
-        Vec<EnglishSearchRank>,
+        BinaryHeap<EnglishSearchRank>,
     ),
 }
 
@@ -706,11 +759,11 @@ pub fn combined_search(
     };
     let variants_ranks = variant_search(variants_map, query, query_script);
     let pr_ranks = if let Some(pr_indices) = pr_indices {
-        pr_search(pr_indices, dict, query, romanization)
+        pr_search(pr_indices, dict, variants_map, query, script, romanization)
     } else {
         BinaryHeap::new()
     };
-    let english_results = english_search(english_index, dict, query);
+    let english_results = english_search(english_index, dict, variants_map, query, script);
 
     CombinedSearchRank::All(variants_ranks, pr_ranks, english_results)
 }
@@ -1349,8 +1402,10 @@ pub fn english_embedding_search(
 pub fn english_search(
     english_index: &ArchivedEnglishIndex,
     dict: &ArchivedRichDict,
+    variants_map: &VariantsMap,
     query: &str,
-) -> Vec<EnglishSearchRank> {
+    script: Script,
+) -> BinaryHeap<EnglishSearchRank> {
     let query = unicode::normalize_english_word_for_search_index(query);
     let results = english_index
         .get(query.as_str())
@@ -1374,10 +1429,18 @@ pub fn english_search(
                     .unwrap();
                 let eng = clause_to_string(&eng);
                 let matched_eng = match_eng_words(&eng, &query);
+                let frequency_count =
+                    get_max_frequency_count(&variants_map.get(&entry_id).unwrap());
                 EnglishSearchRank {
                     entry_id,
                     def_index,
+                    variant: pick_variant(
+                        variants_map.get(&entry_id).unwrap().first().unwrap(),
+                        script,
+                    )
+                    .word,
                     score,
+                    frequency_count,
                     matched_eng,
                 }
             },
