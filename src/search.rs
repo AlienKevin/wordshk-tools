@@ -553,6 +553,7 @@ fn score_variant_query(
     variant: &ComboVariant,
     query_normalized: &str,
     query_script: Script,
+    script: Script,
 ) -> (Index, Score, MatchedInfix) {
     let variant_normalized = &unicode::normalize(&pick_variant(variant, query_script).word)[..];
     // The query has to be fully contained by the variant
@@ -560,11 +561,16 @@ fn score_variant_query(
         Some(i) => i,
         None => return (usize::MAX, usize::MAX, MatchedInfix::default()),
     };
-    let length_diff = variant_normalized.chars().count() - query_normalized.chars().count();
+    let length_diff: usize = variant_normalized.chars().count() - query_normalized.chars().count();
+    let variant_normalized_original = &unicode::normalize(&pick_variant(variant, script).word)[..];
+    assert_eq!(variant_normalized.len(), variant_normalized_original.len());
     let matched_variant = MatchedInfix {
-        prefix: variant_normalized[..occurrence_index].to_string(),
-        query: query_normalized.to_string(),
-        suffix: variant_normalized[occurrence_index + query_normalized.len()..].to_string(),
+        prefix: variant_normalized_original[..occurrence_index].to_string(),
+        query: variant_normalized_original
+            [occurrence_index..occurrence_index + query_normalized.len()]
+            .to_string(),
+        suffix: variant_normalized_original[occurrence_index + query_normalized.len()..]
+            .to_string(),
     };
     (occurrence_index, length_diff, matched_variant)
 }
@@ -592,13 +598,13 @@ pub fn variant_search(
             .enumerate()
             .for_each(|(variant_index, variant)| {
                 let (occurrence_index, length_diff, matched_variant) =
-                    score_variant_query(variant, &query_normalized, query_script);
+                    score_variant_query(variant, &query_normalized, query_script, script);
                 if occurrence_index < usize::MAX && length_diff <= 2 {
                     ranks.push(VariantSearchRank {
                         id: *id,
                         def_len: dict.get(id).unwrap().defs.len(),
                         variant_index,
-                        variant: pick_variant(variant, query_script).word,
+                        variant: pick_variant(variant, script).word,
                         occurrence_index,
                         length_diff,
                         matched_variant,
