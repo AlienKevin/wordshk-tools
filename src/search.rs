@@ -99,9 +99,9 @@ pub struct MatchedSegment {
 pub struct PrSearchRank {
     pub id: EntryId,
     pub def_len: usize,
-    pub variant_index: Index,
-    pub variant: String,
-    pub pr_index: Index,
+    // (variant_index, pr_index)
+    pub variant_indices: Vec<(Index, Index)>,
+    pub variants: Vec<String>,
     pub jyutping: String,
     pub matched_pr: Vec<MatchedSegment>,
     pub num_matched_initial_chars: u32,
@@ -124,7 +124,7 @@ impl Ord for PrSearchRank {
             )
             .then(other.jyutping.cmp(&self.jyutping))
             .then(self.frequency_count.cmp(&other.frequency_count))
-            .then(other.variant.cmp(&self.variant))
+            .then(other.variants.cmp(&self.variants))
             .then_with(|| get_entry_frequency(self.id).cmp(&get_entry_frequency(other.id)))
             .then(self.def_len.cmp(&other.def_len))
             .then(other.id.cmp(&self.id))
@@ -246,12 +246,13 @@ pub fn pr_search(
     script: Script,
     romanization: Romanization,
 ) -> BinaryHeap<PrSearchRank> {
-    let mut ranks = BinaryHeap::new();
     let query = unicode::normalize(query);
 
     if query.is_empty() {
-        return ranks;
+        return BinaryHeap::new();
     }
+
+    let mut ranks = BTreeMap::new();
 
     fn to_yale(s: &str) -> String {
         parse_jyutpings(s)
@@ -268,7 +269,7 @@ pub fn pr_search(
         variants_map: &VariantsMap,
         script: Script,
         romanization: Romanization,
-        ranks: &mut BinaryHeap<PrSearchRank>,
+        ranks: &mut BTreeMap<EntryId, PrSearchRank>,
         pr_variant_generator: fn(&str) -> String,
     ) {
         let max_deletions = (query.chars().count() - 1).min(MAX_DELETIONS);
@@ -328,27 +329,54 @@ pub fn pr_search(
                     }
                 }
                 let frequency_count = get_max_frequency_count(variants_map.get(&entry_id).unwrap());
-                ranks.push(PrSearchRank {
-                    id: entry_id,
-                    def_len: dict.get(&entry_id).unwrap().defs.len(),
-                    variant_index: variant_index as Index,
-                    variant: pick_variant(
-                        variants_map
-                            .get(&entry_id)
-                            .unwrap()
-                            .get(variant_index as usize)
-                            .unwrap(),
-                        script,
-                    )
-                    .word,
-                    pr_index: pr_index as Index,
-                    jyutping,
-                    matched_pr,
-                    num_matched_initial_chars,
-                    num_matched_final_chars,
-                    score: MAX_SCORE - distance,
-                    frequency_count,
-                });
+                let def_len = dict.get(&entry_id).unwrap().defs.len();
+                let variant = pick_variant(
+                    variants_map
+                        .get(&entry_id)
+                        .unwrap()
+                        .get(variant_index as usize)
+                        .unwrap(),
+                    script,
+                )
+                .word;
+                let score = MAX_SCORE - distance;
+                match ranks.entry(entry_id) {
+                    std::collections::btree_map::Entry::Occupied(mut rank) => {
+                        let rank = rank.get_mut();
+                        if score > rank.score {
+                            rank.score = score;
+                            rank.variant_indices =
+                                vec![(variant_index as Index, pr_index as Index)];
+                            rank.variants = vec![variant];
+                            rank.jyutping = jyutping;
+                            rank.matched_pr = matched_pr;
+                            rank.num_matched_initial_chars = num_matched_initial_chars;
+                            rank.num_matched_final_chars = num_matched_final_chars;
+                            rank.frequency_count = frequency_count;
+                        } else if score == rank.score
+                            && jyutping == rank.jyutping
+                            && !rank.variants.contains(&variant)
+                        {
+                            rank.variant_indices
+                                .push((variant_index as Index, pr_index as Index));
+                            rank.variants.push(variant);
+                        }
+                    }
+                    std::collections::btree_map::Entry::Vacant(rank) => {
+                        rank.insert(PrSearchRank {
+                            id: entry_id,
+                            def_len,
+                            variant_indices: vec![(variant_index as Index, pr_index as Index)],
+                            variants: vec![variant],
+                            jyutping,
+                            matched_pr,
+                            num_matched_initial_chars,
+                            num_matched_final_chars,
+                            score,
+                            frequency_count,
+                        });
+                    }
+                }
             }
         }
     }
@@ -487,20 +515,7 @@ pub fn pr_search(
         }
     }
 
-    // deduplicate ranks
-    let mut seen_ids = HashSet::new();
-    ranks
-        .into_sorted_vec()
-        .into_iter()
-        .rev()
-        .filter(|rank| {
-            if seen_ids.contains(&rank.id) {
-                false
-            } else {
-                seen_ids.insert(rank.id)
-            }
-        })
-        .collect()
+    ranks.into_values().collect()
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Default)]

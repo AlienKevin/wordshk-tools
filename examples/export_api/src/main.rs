@@ -26,12 +26,14 @@ use wordshk_tools::{
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    std::fs::create_dir(APP_TMP_DIR).ok();
-    let api = unsafe { generate_api_json() };
+    // std::fs::create_dir(APP_TMP_DIR).ok();
+    // let api = unsafe { generate_api_json() };
 
     // test_english_embedding_search();
 
     // generate_english_vocab();
+
+    test_pr_search_ranking();
 
     // test_jyutping_search();
     // test_yale_search();
@@ -950,6 +952,26 @@ fn generate_jyutping_to_yale(api: &Api) {
     std::fs::write(output_path, json).expect("Failed to write jyutping 2 yale JSON to file");
 }
 */
+
+fn test_pr_search_ranking() {
+    use wordshk_tools::search::MatchedSegment;
+
+    let romanization = Romanization::Jyutping;
+    let script = Script::Traditional;
+    let api = unsafe { Api::load(APP_TMP_DIR, romanization) };
+    let variants_map = wordshk_tools::search::rich_dict_to_variants_map(unsafe { &api.dict() });
+
+    let results = pr_search(
+        &api.fst_pr_indices,
+        unsafe { &api.dict() },
+        &variants_map,
+        "gau1",
+        script,
+        romanization,
+    );
+
+    println!("results: {:?}", results);
+}
 
 fn test_jyutping_search() {
     use wordshk_tools::search::MatchedSegment;
