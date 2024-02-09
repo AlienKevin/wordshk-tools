@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::Cursor;
 use std::io::{self, BufRead};
@@ -13,8 +14,8 @@ use wordshk_tools::{
     app_api::Api,
     dict::clause_to_string,
     jyutping::{
-        is_standard_jyutping, jyutping_to_yale, JyutPing, LaxJyutPingSegment, LaxJyutPings,
-        Romanization,
+        is_standard_jyutping, jyutping_to_yale, JyutPing, LaxJyutPing, LaxJyutPingSegment,
+        LaxJyutPings, Romanization,
     },
     rich_dict::{RichDict, RichLine, RubySegment},
     search::{
@@ -33,7 +34,7 @@ fn main() {
 
     // generate_english_vocab();
 
-    test_pr_search_ranking();
+    // test_pr_search_ranking();
 
     // test_jyutping_search();
     // test_yale_search();
@@ -51,6 +52,8 @@ fn main() {
     // test_calculate_embedding(&model);
     // map_hbl_to_wordshk(&model);
     // sample_mappings();
+
+    get_bisyllabic_words();
 }
 
 unsafe fn generate_api_json() -> Api {
@@ -60,6 +63,31 @@ unsafe fn generate_api_json() -> Api {
         Romanization::Yale,
     );
     api
+}
+
+fn get_bisyllabic_words() {
+    use rkyv::Deserialize;
+
+    let api = unsafe { Api::load(APP_TMP_DIR, Romanization::Jyutping) };
+    let mut bisyllabic_words = vec![];
+    for entry in unsafe { api.dict() }.values() {
+        for variant in entry.variants.0.iter() {
+            for pr in variant.prs.0.iter() {
+                let pr: LaxJyutPing = pr.deserialize(&mut rkyv::Infallible).unwrap();
+                if pr
+                    .0
+                    .iter()
+                    .all(|jyutping| matches!(jyutping, LaxJyutPingSegment::Standard(_)))
+                    && pr.0.len() == 2
+                {
+                    bisyllabic_words.push(pr.to_string());
+                }
+            }
+        }
+    }
+    bisyllabic_words.sort();
+    bisyllabic_words.dedup();
+    println!("{:?}", bisyllabic_words);
 }
 
 #[cfg(feature = "embedding-search")]
