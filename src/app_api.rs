@@ -1,13 +1,12 @@
-use rkyv::{AlignedVec, Deserialize};
+use rkyv::AlignedVec;
 
 use crate::jyutping::Romanization;
 use crate::pr_index::{generate_pr_indices, pr_indices_into_fst, FstPrIndices};
-use crate::rich_dict::{ArchivedRichDict, RichEntry};
+use crate::rich_dict::ArchivedRichDict;
 
 use super::english_index::generate_english_index;
 use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, EnrichDictOptions, RichDict};
-use rusqlite::{params, Connection};
 use std::fs;
 use std::path::Path;
 
@@ -34,16 +33,23 @@ impl Api {
         unsafe { rkyv::archived_root::<RichDict>(&self.dict_data) }
     }
 
-    fn insert_rich_entry(conn: &Connection, entry: &RichEntry) -> rusqlite::Result<()> {
+    #[cfg(feature = "sqlite")]
+    fn insert_rich_entry(
+        conn: &rusqlite::Connection,
+        entry: &crate::rich_dict::RichEntry,
+    ) -> rusqlite::Result<()> {
         conn.execute(
             "INSERT INTO rich_dict (id, entry_json) VALUES (?, ?)",
-            params![entry.id, serde_json::to_string(entry).unwrap()],
+            rusqlite::params![entry.id, serde_json::to_string(entry).unwrap()],
         )?;
         Ok(())
     }
 
+    #[cfg(feature = "sqlite")]
     pub fn export_dict_as_sqlite_db(&self, db_name: &str) -> rusqlite::Result<()> {
-        let conn = Connection::open(db_name)?;
+        use rkyv::Deserialize;
+
+        let conn = rusqlite::Connection::open(db_name)?;
         conn.execute(
             "CREATE TABLE rich_dict (
                 id INTEGER PRIMARY KEY,

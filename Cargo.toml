@@ -32,7 +32,8 @@ rayon = "1.7.0"
 rkyv = { version = "0.7.43", features = ["alloc"] }
 levenshtein-diff = "0.2.4"
 fst = { version = "0.4.7", features = ["levenshtein"] }
-rusqlite = "0.31.0"
+
+rusqlite = { version = "0.31.0", optional = true }
 
 finalfusion = { version = "0.17.2", optional = true }
 anyhow = { version = "1.0.79", optional = true }
@@ -52,3 +53,4 @@ embedding-search = [
     "dep:fastembed",
     "dep:ort",
 ]
+sqlite = ["rusqlite"]
