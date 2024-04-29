@@ -272,9 +272,9 @@ pub fn pr_search(
         ranks: &mut BTreeMap<EntryId, PrSearchRank>,
         pr_variant_generator: fn(&str) -> String,
     ) {
-        let max_deletions = (query.chars().count() - 1).min(MAX_DELETIONS);
-
-        let lev = Levenshtein::new(query, max_deletions as u32).unwrap();
+        let query_no_space = query.replace(' ', "");
+        let max_deletions = (query_no_space.chars().count() - 1).min(MAX_DELETIONS);
+        let lev = Levenshtein::new(&query_no_space, max_deletions as u32).unwrap();
 
         for PrLocation {
             entry_id,
@@ -388,7 +388,7 @@ pub fn pr_search(
             if query.contains(TONES) && query.contains(' ') {
                 lookup_index(
                     &query,
-                    pr_indices.tone_and_space(),
+                    pr_indices.tone(),
                     dict,
                     variants_map,
                     script,
@@ -410,7 +410,7 @@ pub fn pr_search(
             } else if query.contains(' ') {
                 lookup_index(
                     &query,
-                    pr_indices.space(),
+                    pr_indices.none(),
                     dict,
                     variants_map,
                     script,
@@ -448,7 +448,7 @@ pub fn pr_search(
             if has_tone && query.contains(' ') {
                 lookup_index(
                     &query,
-                    pr_indices.tone_and_space(),
+                    pr_indices.tone(),
                     dict,
                     variants_map,
                     script,
@@ -470,7 +470,7 @@ pub fn pr_search(
             } else if query.contains(' ') {
                 lookup_index(
                     &query,
-                    pr_indices.tone_and_space(),
+                    pr_indices.tone(),
                     dict,
                     variants_map,
                     script,
@@ -481,7 +481,7 @@ pub fn pr_search(
 
                 lookup_index(
                     &query,
-                    pr_indices.space(),
+                    pr_indices.none(),
                     dict,
                     variants_map,
                     script,

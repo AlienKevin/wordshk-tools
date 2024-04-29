@@ -15,43 +15,29 @@ pub const MAX_DELETIONS: usize = 1;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct PrIndices {
-    pub tone_and_space: PrIndex,
     pub tone: PrIndex,
-    pub space: PrIndex,
     pub none: PrIndex,
 }
 
 impl PrIndices {
     pub fn default() -> Self {
         Self {
-            tone_and_space: BTreeMap::default(),
             tone: BTreeMap::default(),
-            space: BTreeMap::default(),
             none: BTreeMap::default(),
         }
     }
 }
 
 pub struct FstPrIndices {
-    tone_and_space: Map<Vec<u8>>,
     tone: Map<Vec<u8>>,
-    space: Map<Vec<u8>>,
     none: Map<Vec<u8>>,
 
     locations: HashMap<u64, BTreeSet<PrLocation>>,
 }
 
 impl FstPrIndices {
-    pub fn tone_and_space<'a>(&'a self) -> impl FnOnce(Levenshtein) -> BTreeSet<PrLocation> + 'a {
-        |query| self.search(&self.tone_and_space, query)
-    }
-
     pub fn tone<'a>(&'a self) -> impl FnOnce(Levenshtein) -> BTreeSet<PrLocation> + 'a {
         |query| self.search(&self.tone, query)
-    }
-
-    pub fn space<'a>(&'a self) -> impl FnOnce(Levenshtein) -> BTreeSet<PrLocation> + 'a {
-        |query| self.search(&self.space, query)
     }
 
     pub fn none<'a>(&'a self) -> impl FnOnce(Levenshtein) -> BTreeSet<PrLocation> + 'a {
@@ -98,15 +84,8 @@ fn generate_pr_variants(
             .or_insert(BTreeSet::from_iter([pr_location]));
     };
 
-    if pr.contains(' ') {
-        insert(&mut index.tone, pr.replace(' ', ""));
-        insert(&mut index.space, remove_tones(&pr));
-        insert(&mut index.none, remove_tones(&pr).replace(' ', ""));
-        insert(&mut index.tone_and_space, pr);
-    } else {
-        insert(&mut index.none, remove_tones(&pr));
-        insert(&mut index.tone, pr);
-    }
+    insert(&mut index.tone, pr.replace(' ', ""));
+    insert(&mut index.none, remove_tones(&pr).replace(' ', ""))
 }
 
 pub fn generate_pr_indices(dict: &ArchivedRichDict, romanization: Romanization) -> PrIndices {
@@ -147,21 +126,12 @@ pub fn generate_pr_indices(dict: &ArchivedRichDict, romanization: Romanization) 
 }
 
 pub fn pr_indices_into_fst(indices: PrIndices) -> FstPrIndices {
-    let mut tone_and_space_builder = MapBuilder::memory();
     let mut tone_builder = MapBuilder::memory();
-    let mut space_builder = MapBuilder::memory();
     let mut none_builder = MapBuilder::memory();
 
     let mut locations = HashMap::new();
     let mut location_index = 0;
 
-    for (pr, locs) in indices.tone_and_space {
-        let loc_index = locations.entry(locs).or_insert({
-            location_index += 1;
-            location_index - 1
-        });
-        tone_and_space_builder.insert(pr, *loc_index).unwrap();
-    }
     for (pr, locs) in indices.tone {
         let loc_index = locations.entry(locs).or_insert({
             location_index += 1;
@@ -169,13 +139,7 @@ pub fn pr_indices_into_fst(indices: PrIndices) -> FstPrIndices {
         });
         tone_builder.insert(pr, *loc_index).unwrap();
     }
-    for (pr, locs) in indices.space {
-        let loc_index = locations.entry(locs).or_insert({
-            location_index += 1;
-            location_index - 1
-        });
-        space_builder.insert(pr, *loc_index).unwrap();
-    }
+
     for (pr, locs) in indices.none {
         let loc_index = locations.entry(locs).or_insert({
             location_index += 1;
@@ -184,15 +148,11 @@ pub fn pr_indices_into_fst(indices: PrIndices) -> FstPrIndices {
         none_builder.insert(pr, *loc_index).unwrap();
     }
 
-    let tone_and_space = tone_and_space_builder.into_map();
     let tone = tone_builder.into_map();
-    let space = space_builder.into_map();
     let none = none_builder.into_map();
 
     FstPrIndices {
-        tone_and_space,
         tone,
-        space,
         none,
         locations: locations.into_iter().map(|(k, v)| (v, k)).collect(),
     }
