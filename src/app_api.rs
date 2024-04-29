@@ -37,38 +37,9 @@ impl Api {
     }
 
     fn insert_rich_entry(conn: &Connection, entry: &RichEntry) -> rusqlite::Result<()> {
-        let words: Vec<_> = entry
-            .variants
-            .0
-            .iter()
-            .map(|variant| variant.word.clone())
-            .collect();
-        let unique_prs: Vec<_> = entry
-            .variants
-            .0
-            .iter()
-            .flat_map(|variant| variant.prs.0.iter().map(|pr| pr.to_string()))
-            .collect::<HashSet<_>>()
-            .into_iter()
-            .collect();
-
         conn.execute(
-            "INSERT INTO rich_dict (id, words, words_simp, prs, entry_json) VALUES (?, ?, ?, ?, ?)",
-            params![
-                entry.id,
-                serde_json::to_string(&words).unwrap(),
-                serde_json::to_string(
-                    &entry
-                        .variants_simp
-                        .iter()
-                        .unique()
-                        .cloned()
-                        .collect::<Vec<String>>()
-                )
-                .unwrap(),
-                serde_json::to_string(&unique_prs).unwrap(),
-                serde_json::to_string(entry).unwrap()
-            ],
+            "INSERT INTO rich_dict (id, entry_json) VALUES (?, ?)",
+            params![entry.id, serde_json::to_string(entry).unwrap()],
         )?;
         Ok(())
     }
@@ -78,9 +49,6 @@ impl Api {
         conn.execute(
             "CREATE TABLE rich_dict (
                 id INTEGER PRIMARY KEY,
-                words TEXT NOT NULL,
-                words_simp TEXT NOT NULL,
-                prs TEXT NOT NULL,
                 entry_json TEXT NOT NULL
             )",
             [],
