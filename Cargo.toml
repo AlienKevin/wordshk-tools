@@ -1,3 +1,4 @@
+workspace = { members = ["examples/export_sqlite_db"] }
 [package]
 name = "wordshk_tools"
 description = "A combination of parsers and other tools for words.hk (粵典)"
@@ -32,6 +33,7 @@ rayon = "1.7.0"
 rkyv = { version = "0.7.43", features = ["alloc"] }
 levenshtein-diff = "0.2.4"
 fst = { version = "0.4.7", features = ["levenshtein"] }
+rusqlite = "0.31.0"
 
 finalfusion = { version = "0.17.2", optional = true }
 anyhow = { version = "1.0.79", optional = true }

@@ -1,12 +1,15 @@
-use rkyv::AlignedVec;
+use itertools::Itertools;
+use rkyv::{AlignedVec, Deserialize};
 
 use crate::jyutping::Romanization;
 use crate::pr_index::{generate_pr_indices, pr_indices_into_fst, FstPrIndices};
-use crate::rich_dict::ArchivedRichDict;
+use crate::rich_dict::{ArchivedRichDict, RichEntry};
 
 use super::english_index::generate_english_index;
 use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, EnrichDictOptions, RichDict};
+use rusqlite::{params, Connection};
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
@@ -31,6 +34,63 @@ impl Api {
 
     pub unsafe fn dict(&self) -> &ArchivedRichDict {
         unsafe { rkyv::archived_root::<RichDict>(&self.dict_data) }
+    }
+
+    fn insert_rich_entry(conn: &Connection, entry: &RichEntry) -> rusqlite::Result<()> {
+        let words: Vec<_> = entry
+            .variants
+            .0
+            .iter()
+            .map(|variant| variant.word.clone())
+            .collect();
+        let unique_prs: Vec<_> = entry
+            .variants
+            .0
+            .iter()
+            .flat_map(|variant| variant.prs.0.iter().map(|pr| pr.to_string()))
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+
+        conn.execute(
+            "INSERT INTO rich_dict (id, words, words_simp, prs, entry_json) VALUES (?, ?, ?, ?, ?)",
+            params![
+                entry.id,
+                serde_json::to_string(&words).unwrap(),
+                serde_json::to_string(
+                    &entry
+                        .variants_simp
+                        .iter()
+                        .unique()
+                        .cloned()
+                        .collect::<Vec<String>>()
+                )
+                .unwrap(),
+                serde_json::to_string(&unique_prs).unwrap(),
+                serde_json::to_string(entry).unwrap()
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn export_dict_as_sqlite_db(&self, db_name: &str) -> rusqlite::Result<()> {
+        let conn = Connection::open(db_name)?;
+        conn.execute(
+            "CREATE TABLE rich_dict (
+                id INTEGER PRIMARY KEY,
+                words TEXT NOT NULL,
+                words_simp TEXT NOT NULL,
+                prs TEXT NOT NULL,
+                entry_json TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        for entry in unsafe { self.dict().values() } {
+            Self::insert_rich_entry(&conn, &entry.deserialize(&mut rkyv::Infallible).unwrap())?;
+        }
+
+        Ok(())
     }
 
     pub unsafe fn load(app_dir: &str, romanization: Romanization) -> Self {
