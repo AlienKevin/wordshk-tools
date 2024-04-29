@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use rkyv::{AlignedVec, Deserialize};
 
 use crate::jyutping::Romanization;
@@ -9,7 +8,6 @@ use super::english_index::generate_english_index;
 use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, EnrichDictOptions, RichDict};
 use rusqlite::{params, Connection};
-use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 

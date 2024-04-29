@@ -1,4 +1,3 @@
-workspace = { members = ["examples/export_sqlite_db"] }
 [package]
 name = "wordshk_tools"
 description = "A combination of parsers and other tools for words.hk (粵典)"
