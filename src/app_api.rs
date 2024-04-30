@@ -49,16 +49,28 @@ impl Api {
     }
 
     #[cfg(feature = "sqlite")]
-    pub fn export_dict_as_sqlite_db(&self, db_name: &str) -> rusqlite::Result<()> {
+    pub fn export_dict_as_sqlite_db(&self, db_path: &Path, version: &str) -> rusqlite::Result<()> {
         use rkyv::Deserialize;
 
-        let conn = rusqlite::Connection::open(db_name)?;
+        let conn = rusqlite::Connection::open(db_path)?;
         conn.execute(
             "CREATE TABLE rich_dict (
                 id INTEGER PRIMARY KEY,
                 entry_rkyv BLOB NOT NULL
             )",
             [],
+        )?;
+        // Keep track of dict version in a separate metadata table
+        conn.execute(
+            "CREATE TABLE rich_dict_metadata (
+            key TEXT NOT NULL UNIQUE,
+            value TEXT
+        )",
+            [],
+        )?;
+        conn.execute(
+            "INSERT INTO rich_dict_metadata (key, value) VALUES ('version', ?)",
+            rusqlite::params![version],
         )?;
 
         for entry in unsafe { self.dict().values() } {

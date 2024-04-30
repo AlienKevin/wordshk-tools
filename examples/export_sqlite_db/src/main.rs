@@ -10,13 +10,30 @@ use wordshk_tools::{
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    // export_sqlite_db();
-    test_sqlite_search();
+    export_sqlite_db(true);
+    // test_sqlite_search();
 }
 
-fn export_sqlite_db() {
-    let api = unsafe { Api::load(APP_TMP_DIR, Romanization::Jyutping) };
-    api.export_dict_as_sqlite_db("dict.db").unwrap();
+fn export_sqlite_db(regenerate_api_from_csv: bool) {
+    let api = if regenerate_api_from_csv {
+        std::fs::create_dir(APP_TMP_DIR).ok();
+        unsafe {
+            Api::new(
+                APP_TMP_DIR,
+                include_str!("../../wordshk.csv"),
+                Romanization::Jyutping,
+            )
+        }
+    } else {
+        unsafe { Api::load(APP_TMP_DIR, Romanization::Jyutping) }
+    };
+
+    let dict_path = std::path::Path::new(APP_TMP_DIR).join("dict.db");
+    if std::fs::metadata(&dict_path).is_ok() {
+        std::fs::remove_file(&dict_path).unwrap();
+    }
+    api.export_dict_as_sqlite_db(&dict_path, "3.2.3+26")
+        .unwrap();
 }
 
 fn test_sqlite_search() {
