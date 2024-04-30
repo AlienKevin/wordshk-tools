@@ -1,8 +1,66 @@
-use wordshk_tools::{app_api::Api, jyutping::Romanization};
+use r2d2_sqlite::SqliteConnectionManager;
+use wordshk_tools::{
+    app_api::Api,
+    dict::EntryId,
+    jyutping::Romanization,
+    rich_dict::RichEntry,
+    search::{self, rich_dict_to_variants_map, RichDictLike, Script},
+};
+use std::time::Instant;
 
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
+    test_sqlite_search();
+}
+
+fn export_sqlite_db() {
     let api = unsafe { Api::load(APP_TMP_DIR, Romanization::Jyutping) };
     api.export_dict_as_sqlite_db("dict.db").unwrap();
+}
+
+struct SqliteRichDict {
+    pool: r2d2::Pool<SqliteConnectionManager>,
+}
+
+impl SqliteRichDict {
+    fn new(dict_path: &str) -> Self {
+        let manager = SqliteConnectionManager::file(dict_path);
+        let pool = r2d2::Pool::new(manager).unwrap();
+        Self { pool }
+    }
+
+    fn conn(&self) -> r2d2::PooledConnection<SqliteConnectionManager> {
+        self.pool.get().unwrap()
+    }
+}
+
+impl RichDictLike for SqliteRichDict {
+    fn get_entry(&self, entry_id: EntryId) -> RichEntry {
+        let conn = self.conn();
+        let mut stmt = conn
+            .prepare("SELECT entry_json FROM rich_dict WHERE id = ?")
+            .unwrap();
+        let entry_json: String = stmt.query_row([entry_id], |row| row.get(0)).unwrap();
+        let entry: RichEntry = serde_json::from_str(&entry_json).unwrap();
+        entry
+    }
+
+    fn get_ids(&self) -> Vec<EntryId> {
+        let conn = self.conn();
+        let mut stmt = conn.prepare("SELECT id FROM rich_dict").unwrap();
+        stmt.query_map([], |row| row.get(0))
+            .unwrap()
+            .map(|id| id.unwrap())
+            .collect()
+    }
+}
+
+fn test_sqlite_search() {
+    let dict = SqliteRichDict::new("dict.db");
+    let variants_map = rich_dict_to_variants_map(&dict);
+    let start_time = Instant::now();
+    let results = search::variant_search(&dict, &variants_map, "好", Script::Simplified);
+    println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
 }

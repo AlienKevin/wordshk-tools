@@ -2,7 +2,6 @@ use crate::dict::{clause_to_string, Clause, EntryId};
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
 use crate::lihkg_frequencies::LIHKG_FREQUENCIES;
 use crate::pr_index::{FstPrIndices, PrLocation, MAX_DELETIONS};
-use crate::rich_dict::{ArchivedRichDict, RichLine};
 
 use super::charlist::CHARLIST;
 use super::dict::{Variant, Variants};
@@ -46,18 +45,14 @@ pub struct ComboVariant {
 
 pub type ComboVariants = Vec<ComboVariant>;
 
-pub fn rich_dict_to_variants_map(dict: &ArchivedRichDict) -> VariantsMap {
-    dict.iter()
-        .map(|(id, entry)| {
+pub fn rich_dict_to_variants_map(dict: &dyn RichDictLike) -> VariantsMap {
+    dict.get_ids()
+        .iter()
+        .map(|id| {
+            let entry = dict.get_entry(*id);
             (
                 *id,
-                create_combo_variants(
-                    &entry.variants.deserialize(&mut rkyv::Infallible).unwrap(),
-                    &entry
-                        .variants_simp
-                        .deserialize(&mut rkyv::Infallible)
-                        .unwrap(),
-                ),
+                create_combo_variants(&entry.variants, &entry.variants_simp),
             )
         })
         .collect()
@@ -137,6 +132,11 @@ impl PartialOrd for PrSearchRank {
     }
 }
 
+pub trait RichDictLike: Sync {
+    fn get_entry(&self, id: EntryId) -> RichEntry;
+    fn get_ids(&self) -> Vec<EntryId>;
+}
+
 fn pick_variant(variant: &ComboVariant, script: Script) -> Variant {
     match script {
         Script::Simplified => Variant {
@@ -174,7 +174,7 @@ pub fn get_entry_id(variants_map: &VariantsMap, query: &str, script: Script) -> 
 
 pub fn get_entry_group(
     variants_map: &VariantsMap,
-    dict: &ArchivedRichDict,
+    dict: &dyn RichDictLike,
     id: EntryId,
 ) -> Vec<RichEntry> {
     let query_word_set: HashSet<&str> = variants_map
@@ -184,8 +184,9 @@ pub fn get_entry_group(
         .map(|ComboVariant { word_trad, .. }| word_trad.as_str())
         .collect();
     sort_entry_group(
-        dict.iter()
-            .filter_map(|(id, entry)| {
+        dict.get_ids()
+            .iter()
+            .filter_map(|id| {
                 let current_word_set: HashSet<&str> = variants_map
                     .get(&id)
                     .unwrap()
@@ -197,7 +198,7 @@ pub fn get_entry_group(
                     .next()
                     .is_some()
                 {
-                    Some(entry.deserialize(&mut rkyv::Infallible).unwrap())
+                    Some(dict.get_entry(*id).clone())
                 } else {
                     None
                 }
@@ -240,7 +241,7 @@ fn get_max_frequency_count(variants: &ComboVariants) -> usize {
 
 pub fn pr_search(
     pr_indices: &FstPrIndices,
-    dict: &ArchivedRichDict,
+    dict: &dyn RichDictLike,
     variants_map: &VariantsMap,
     query: &str,
     script: Script,
@@ -265,7 +266,7 @@ pub fn pr_search(
     fn lookup_index(
         query: &str,
         search: impl FnOnce(Levenshtein) -> BTreeSet<PrLocation>,
-        dict: &ArchivedRichDict,
+        dict: &dyn RichDictLike,
         variants_map: &VariantsMap,
         script: Script,
         romanization: Romanization,
@@ -282,12 +283,10 @@ pub fn pr_search(
             pr_index,
         } in search(lev)
         {
-            let jyutping: LaxJyutPing = dict.get(&entry_id).unwrap().variants.0
+            let jyutping: &LaxJyutPing = &dict.get_entry(entry_id).variants.0
                 [variant_index as Index]
                 .prs
-                .0[pr_index as Index]
-                .deserialize(&mut rkyv::Infallible)
-                .unwrap();
+                .0[pr_index as Index];
             let jyutping = jyutping.to_string();
             let pr_variant = pr_variant_generator(&jyutping);
             let distance = levenshtein(&query, &pr_variant);
@@ -329,7 +328,7 @@ pub fn pr_search(
                     }
                 }
                 let frequency_count = get_max_frequency_count(variants_map.get(&entry_id).unwrap());
-                let def_len = dict.get(&entry_id).unwrap().defs.len();
+                let def_len = dict.get_entry(entry_id).defs.len();
                 let variant = pick_variant(
                     variants_map
                         .get(&entry_id)
@@ -525,7 +524,7 @@ pub struct MatchedInfix {
     pub suffix: String,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct VariantSearchRank {
     pub id: EntryId,
     pub def_len: usize,
@@ -591,7 +590,7 @@ fn score_variant_query(
 }
 
 pub fn variant_search(
-    dict: &ArchivedRichDict,
+    dict: &dyn RichDictLike,
     variants_map: &VariantsMap,
     query: &str,
     script: Script,
@@ -617,7 +616,7 @@ pub fn variant_search(
                 if occurrence_index < usize::MAX && length_diff <= 2 {
                     ranks.push(VariantSearchRank {
                         id: *id,
-                        def_len: dict.get(id).unwrap().defs.len(),
+                        def_len: dict.get_entry(*id).defs.len(),
                         variant_index,
                         variant: pick_variant(variant, script).word,
                         occurrence_index,
@@ -664,7 +663,7 @@ impl PartialOrd for EgSearchRank {
 
 pub fn eg_search(
     variants_map: &VariantsMap,
-    dict: &ArchivedRichDict,
+    dict: &dyn RichDictLike,
     query: &str,
     max_first_index_in_eg: usize,
     script: Script,
@@ -688,15 +687,12 @@ pub fn eg_search(
     use rayon::iter::ParallelIterator;
 
     variants_map.par_iter().for_each(|(entry_id, variants)| {
-        let entry = dict.get(entry_id).unwrap();
+        let entry = dict.get_entry(*entry_id);
         for (def_index, def) in entry.defs.iter().enumerate() {
             for (eg_index, eg) in def.egs.iter().enumerate() {
                 let get_line_in_script = |script| match script {
-                    Script::Traditional => eg.yue.as_ref().map(|line| {
-                        let line: RichLine = line.deserialize(&mut rkyv::Infallible).unwrap();
-                        line.to_string()
-                    }),
-                    Script::Simplified => eg.yue_simp.deserialize(&mut rkyv::Infallible).unwrap(),
+                    Script::Traditional => eg.yue.as_ref().map(|line| line.to_string()),
+                    Script::Simplified => eg.yue_simp.clone(),
                 };
                 let line: Option<String> = get_line_in_script(query_script);
                 if let Some(line) = line {
@@ -749,7 +745,7 @@ pub fn combined_search(
     variants_map: &VariantsMap,
     pr_indices: Option<&FstPrIndices>,
     english_index: &ArchivedEnglishIndex,
-    dict: &ArchivedRichDict,
+    dict: &dyn RichDictLike,
     query: &str,
     script: Script,
     romanization: Romanization,
@@ -1414,7 +1410,7 @@ pub fn english_embedding_search(
 
 pub fn english_search(
     english_index: &ArchivedEnglishIndex,
-    dict: &ArchivedRichDict,
+    dict: &dyn RichDictLike,
     variants_map: &VariantsMap,
     query: &str,
     script: Script,
@@ -1432,14 +1428,9 @@ pub fn english_search(
                  def_index,
                  score,
              }| {
-                let entry = dict.get(&entry_id).unwrap();
+                let entry = dict.get_entry(entry_id);
                 let def = &entry.defs[def_index as usize];
-                let eng: Clause = def
-                    .eng
-                    .as_ref()
-                    .unwrap()
-                    .deserialize(&mut rkyv::Infallible)
-                    .unwrap();
+                let eng: Clause = def.eng.as_ref().unwrap().clone();
                 let eng = clause_to_string(&eng);
                 let matched_eng = match_eng_words(&eng, &query);
                 let frequency_count =
