@@ -1,8 +1,8 @@
-use rkyv::AlignedVec;
+use rkyv::{AlignedVec, Deserialize};
 
 use crate::jyutping::Romanization;
 use crate::pr_index::{generate_pr_indices, pr_indices_into_fst, FstPrIndices};
-use crate::rich_dict::ArchivedRichDict;
+use crate::rich_dict::{ArchivedRichDict, RichDictWrapper};
 
 use super::english_index::generate_english_index;
 use super::parse::parse_dict;
@@ -40,7 +40,10 @@ impl Api {
     ) -> rusqlite::Result<()> {
         conn.execute(
             "INSERT INTO rich_dict (id, entry_rkyv) VALUES (?, ?)",
-            rusqlite::params![entry.id, rkyv::to_bytes::<_, 1024>(entry).unwrap().as_slice()],
+            rusqlite::params![
+                entry.id,
+                rkyv::to_bytes::<_, 1024>(entry).unwrap().as_slice()
+            ],
         )?;
         Ok(())
     }
@@ -74,7 +77,8 @@ impl Api {
 
         let dict = unsafe { rkyv::archived_root::<RichDict>(&dict_data) };
 
-        let pr_indices = generate_pr_indices(dict, romanization);
+        let dict = RichDictWrapper::new(dict.deserialize(&mut rkyv::Infallible).unwrap());
+        let pr_indices = generate_pr_indices(&dict, romanization);
 
         Api {
             dict_data: aligned_dict_data,

@@ -1,3 +1,5 @@
+use crate::search::RichDictLike;
+
 use super::charlist::CHARLIST;
 use super::dict::{
     line_to_string, line_to_strings, AltClause, Clause, Def, Dict, Eg, EntryId, Line, PrLine,
@@ -266,6 +268,26 @@ pub type RubyLine = Vec<RubySegment>;
 
 /// A line consists of one or more [WordSegment]s
 pub type WordLine = Vec<WordSegment>;
+
+pub struct RichDictWrapper {
+    dict: RichDict,
+}
+
+impl RichDictWrapper {
+    pub fn new(dict: RichDict) -> Self {
+        Self { dict }
+    }
+}
+
+impl RichDictLike for RichDictWrapper {
+    fn get_entry(&self, id: EntryId) -> RichEntry {
+        self.dict.get(&id).unwrap().clone()
+    }
+
+    fn get_ids(&self) -> Vec<EntryId> {
+        self.dict.keys().map(|x| *x).collect()
+    }
+}
 
 // source: https://stackoverflow.com/a/35907071/6798201
 // Important: strings are normalized before comparison

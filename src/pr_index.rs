@@ -1,10 +1,9 @@
 use crate::{
     dict::EntryId,
-    jyutping::{remove_yale_tones, LaxJyutPing, Romanization},
-    rich_dict::ArchivedRichDict,
+    jyutping::{remove_yale_tones, Romanization},
+    search::RichDictLike,
 };
 use fst::{automaton::Levenshtein, IntoStreamer, Map, MapBuilder};
-use rkyv::Deserialize as _;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
@@ -88,12 +87,12 @@ fn generate_pr_variants(
     insert(&mut index.none, remove_tones(&pr).replace(' ', ""))
 }
 
-pub fn generate_pr_indices(dict: &ArchivedRichDict, romanization: Romanization) -> PrIndices {
+pub fn generate_pr_indices(dict: &dyn RichDictLike, romanization: Romanization) -> PrIndices {
     let mut indices = PrIndices::default();
-    for (&entry_id, entry) in dict.iter() {
+    for entry_id in dict.get_ids() {
+        let entry = dict.get_entry(entry_id);
         for (variant_index, variant) in entry.variants.0.iter().enumerate() {
             for (pr_index, pr) in variant.prs.0.iter().enumerate() {
-                let pr: LaxJyutPing = pr.deserialize(&mut rkyv::Infallible).unwrap();
                 // only add standard jyutping to pr index
                 if pr.is_standard_jyutping() {
                     match romanization {
