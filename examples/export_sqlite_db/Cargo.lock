@@ -279,12 +279,8 @@ dependencies = [
 name = "export_sqlite_db"
 version = "0.1.0"
 dependencies = [
- "r2d2",
- "r2d2_sqlite",
  "rkyv",
  "rusqlite",
- "serde",
- "serde_json",
  "wordshk_tools",
 ]
 
@@ -1812,6 +1808,8 @@ dependencies = [
  "lazy_static",
  "levenshtein-diff",
  "lip",
+ "r2d2",
+ "r2d2_sqlite",
  "rayon",
  "regex",
  "reqwest",

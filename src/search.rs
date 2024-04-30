@@ -150,6 +150,50 @@ fn pick_variant(variant: &ComboVariant, script: Script) -> Variant {
     }
 }
 
+#[cfg(feature = "sqlite")]
+pub struct SqliteRichDict {
+    pool: r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>,
+}
+
+#[cfg(feature = "sqlite")]
+impl SqliteRichDict {
+    pub fn new(dict_path: &str) -> Self {
+        let manager = r2d2_sqlite::SqliteConnectionManager::file(dict_path);
+        let pool = r2d2::Pool::new(manager).unwrap();
+        Self { pool }
+    }
+
+    fn conn(&self) -> r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager> {
+        self.pool.get().unwrap()
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl RichDictLike for SqliteRichDict {
+    fn get_entry(&self, entry_id: EntryId) -> RichEntry {
+        use rkyv::Deserialize;
+
+        let conn = self.conn();
+        let mut stmt = conn
+            .prepare("SELECT entry_rkyv FROM rich_dict WHERE id = ?")
+            .unwrap();
+        let entry_rkyv_bytes: Vec<u8> = stmt.query_row([entry_id], |row| row.get(0)).unwrap();
+        let entry: RichEntry = unsafe { rkyv::archived_root::<RichEntry>(&entry_rkyv_bytes[..]) }
+            .deserialize(&mut rkyv::Infallible)
+            .unwrap();
+        entry
+    }
+
+    fn get_ids(&self) -> Vec<EntryId> {
+        let conn = self.conn();
+        let mut stmt = conn.prepare("SELECT id FROM rich_dict").unwrap();
+        stmt.query_map([], |row| row.get(0))
+            .unwrap()
+            .map(|id| id.unwrap())
+            .collect()
+    }
+}
+
 pub fn pick_variants(variants: &ComboVariants, script: Script) -> Variants {
     Variants(
         variants

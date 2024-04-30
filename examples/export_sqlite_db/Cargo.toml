@@ -9,7 +9,3 @@ edition = "2021"
 rkyv = { version = "0.7.43", features = ["alloc"] }
 wordshk_tools = { path = "../../", features = ["sqlite"] }
 rusqlite = "0.31.0"
-serde = "1.0"
-serde_json = "1.0"
-r2d2_sqlite = "0.24.0"
-r2d2 = "0.8.10"

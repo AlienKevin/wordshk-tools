@@ -34,6 +34,8 @@ levenshtein-diff = "0.2.4"
 fst = { version = "0.4.7", features = ["levenshtein"] }
 
 rusqlite = { version = "0.31.0", optional = true }
+r2d2_sqlite = { version = "0.24.0", optional = true }
+r2d2 = { version = "0.8.10", optional = true }
 
 finalfusion = { version = "0.17.2", optional = true }
 anyhow = { version = "1.0.79", optional = true }
@@ -53,4 +55,4 @@ embedding-search = [
     "dep:fastembed",
     "dep:ort",
 ]
-sqlite = ["rusqlite"]
+sqlite = ["rusqlite", "r2d2_sqlite", "r2d2"]
