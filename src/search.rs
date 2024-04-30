@@ -132,7 +132,7 @@ impl PartialOrd for PrSearchRank {
     }
 }
 
-pub trait RichDictLike: Sync {
+pub trait RichDictLike: Sync + Send {
     fn get_entry(&self, id: EntryId) -> RichEntry;
     fn get_ids(&self) -> Vec<EntryId>;
 }
