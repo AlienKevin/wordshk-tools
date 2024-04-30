@@ -39,8 +39,8 @@ impl Api {
         entry: &crate::rich_dict::RichEntry,
     ) -> rusqlite::Result<()> {
         conn.execute(
-            "INSERT INTO rich_dict (id, entry_json) VALUES (?, ?)",
-            rusqlite::params![entry.id, serde_json::to_string(entry).unwrap()],
+            "INSERT INTO rich_dict (id, entry_rkyv) VALUES (?, ?)",
+            rusqlite::params![entry.id, rkyv::to_bytes::<_, 1024>(entry).unwrap().as_slice()],
         )?;
         Ok(())
     }
@@ -53,7 +53,7 @@ impl Api {
         conn.execute(
             "CREATE TABLE rich_dict (
                 id INTEGER PRIMARY KEY,
-                entry_json TEXT NOT NULL
+                entry_rkyv BLOB NOT NULL
             )",
             [],
         )?;

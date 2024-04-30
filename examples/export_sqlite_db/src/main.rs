@@ -1,4 +1,5 @@
 use r2d2_sqlite::SqliteConnectionManager;
+use std::time::Instant;
 use wordshk_tools::{
     app_api::Api,
     dict::EntryId,
@@ -6,11 +7,11 @@ use wordshk_tools::{
     rich_dict::RichEntry,
     search::{self, rich_dict_to_variants_map, RichDictLike, Script},
 };
-use std::time::Instant;
 
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
+    // export_sqlite_db();
     test_sqlite_search();
 }
 
@@ -37,12 +38,16 @@ impl SqliteRichDict {
 
 impl RichDictLike for SqliteRichDict {
     fn get_entry(&self, entry_id: EntryId) -> RichEntry {
+        use rkyv::Deserialize;
+
         let conn = self.conn();
         let mut stmt = conn
-            .prepare("SELECT entry_json FROM rich_dict WHERE id = ?")
+            .prepare("SELECT entry_rkyv FROM rich_dict WHERE id = ?")
             .unwrap();
-        let entry_json: String = stmt.query_row([entry_id], |row| row.get(0)).unwrap();
-        let entry: RichEntry = serde_json::from_str(&entry_json).unwrap();
+        let entry_rkyv_bytes: Vec<u8> = stmt.query_row([entry_id], |row| row.get(0)).unwrap();
+        let entry: RichEntry = unsafe { rkyv::archived_root::<RichEntry>(&entry_rkyv_bytes[..]) }
+            .deserialize(&mut rkyv::Infallible)
+            .unwrap();
         entry
     }
 
