@@ -4,14 +4,15 @@ use wordshk_tools::{
     dict::EntryId,
     jyutping::Romanization,
     rich_dict::RichEntry,
-    search::{self, rich_dict_to_variants_map, RichDictLike, Script, SqliteRichDict},
+    search::{self, rich_dict_to_variants_map, RichDictLike, Script},
+    sqlite_db::SqliteDb,
 };
 
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    export_sqlite_db(true);
-    // test_sqlite_search();
+    // export_sqlite_db(true);
+    test_sqlite_search();
 }
 
 fn export_sqlite_db(regenerate_api_from_csv: bool) {
@@ -32,15 +33,20 @@ fn export_sqlite_db(regenerate_api_from_csv: bool) {
     if std::fs::metadata(&dict_path).is_ok() {
         std::fs::remove_file(&dict_path).unwrap();
     }
-    api.export_dict_as_sqlite_db(&dict_path, "3.2.3+26")
+    api.export_dict_as_sqlite_db(&dict_path, "3.2.4+27")
         .unwrap();
 }
 
 fn test_sqlite_search() {
-    let dict = SqliteRichDict::new("dict.db");
+    let dict = SqliteDb::new(&std::path::Path::new(APP_TMP_DIR).join("dict.db"));
     let variants_map = rich_dict_to_variants_map(&dict);
     let start_time = Instant::now();
     let results = search::variant_search(&dict, &variants_map, "好", Script::Simplified);
+    println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
+
+    let start_time = Instant::now();
+    let results = search::english_search(&dict, &dict, &variants_map, "lucky", Script::Simplified);
     println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 }

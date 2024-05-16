@@ -1,22 +1,88 @@
 use crate::dict::EntryId;
 use crate::rich_dict::{ArchivedRichDict, ArchivedRichEntry};
 use crate::search::{get_entry_frequency, MatchedSegment};
+use crate::sqlite_db::SqliteDb;
 
 use super::dict::clause_to_string;
 use super::unicode;
 use itertools::Itertools;
 use regex::Regex;
-use rkyv::collections::ArchivedHashMap;
-use rkyv::string::ArchivedString;
-use rkyv::vec::ArchivedVec;
 use rkyv::Deserialize as _;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
 
 pub type EnglishIndex = HashMap<String, Vec<EnglishIndexData>>;
-pub type ArchivedEnglishIndex =
-    ArchivedHashMap<ArchivedString, ArchivedVec<ArchivedEnglishIndexData>>;
+
+#[ouroboros::self_referencing]
+pub struct EnglishIndexLikeIteratorRows<'conn> {
+    stmt: rusqlite::Statement<'conn>,
+    #[borrows(mut stmt)]
+    #[covariant]
+    rows: rusqlite::Rows<'this>,
+}
+
+#[ouroboros::self_referencing]
+pub struct EnglishIndexLikeIterator {
+    conn: r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>,
+    #[borrows(conn)]
+    #[covariant]
+    rows: EnglishIndexLikeIteratorRows<'this>,
+}
+
+pub trait EnglishIndexLike: Sync + Send {
+    fn get(&self, phrase: &str) -> Option<Vec<EnglishIndexData>>;
+
+    fn iter(&self) -> EnglishIndexLikeIterator;
+}
+
+impl Iterator for EnglishIndexLikeIterator {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.with_rows_mut(|rows| {
+            rows.with_rows_mut(|rows| {
+                rows.next()
+                    .ok()
+                    .and_then(|row| row.map(|row| row.get(0).unwrap()))
+            })
+        })
+    }
+}
+
+impl EnglishIndexLike for SqliteDb {
+    fn get(&self, phrase: &str) -> Option<Vec<EnglishIndexData>> {
+        use rkyv::Deserialize;
+
+        let conn = self.conn();
+        let mut stmt = conn
+            .prepare("SELECT english_index_data_rkyv FROM english_index WHERE phrase = ?")
+            .unwrap();
+        let english_index_data_rkyv_bytes: Option<Vec<u8>> =
+            stmt.query_row([phrase], |row| row.get(0)).ok();
+        english_index_data_rkyv_bytes.map(|bytes| {
+            unsafe { rkyv::archived_root::<Vec<EnglishIndexData>>(&bytes[..]) }
+                .deserialize(&mut rkyv::Infallible)
+                .unwrap()
+        })
+    }
+
+    fn iter(&self) -> EnglishIndexLikeIterator {
+        let conn = self.conn();
+        EnglishIndexLikeIteratorTryBuilder {
+            conn,
+            rows_builder: |c| {
+                EnglishIndexLikeIteratorRowsTryBuilder {
+                    stmt: c.prepare("SELECT phrase FROM english_index").unwrap(),
+                    rows_builder: |s| s.query([]),
+                }
+                .try_build()
+            },
+        }
+        .try_build()
+        .unwrap()
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 pub struct EnglishIndexData {

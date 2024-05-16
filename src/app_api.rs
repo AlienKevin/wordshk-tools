@@ -33,7 +33,6 @@ impl Api {
         unsafe { rkyv::archived_root::<RichDict>(&self.dict_data) }
     }
 
-    #[cfg(feature = "sqlite")]
     fn insert_rich_entry(
         conn: &rusqlite::Connection,
         entry: &crate::rich_dict::RichEntry,
@@ -48,7 +47,23 @@ impl Api {
         Ok(())
     }
 
-    #[cfg(feature = "sqlite")]
+    fn insert_english_index_data(
+        conn: &rusqlite::Connection,
+        phrase: &str,
+        english_index_data: &Vec<crate::english_index::EnglishIndexData>,
+    ) -> rusqlite::Result<()> {
+        conn.execute(
+            "INSERT INTO english_index (phrase, english_index_data_rkyv) VALUES (?, ?)",
+            rusqlite::params![
+                phrase,
+                rkyv::to_bytes::<_, 1024>(english_index_data)
+                    .unwrap()
+                    .as_slice()
+            ],
+        )?;
+        Ok(())
+    }
+
     pub fn export_dict_as_sqlite_db(&self, db_path: &Path, version: &str) -> rusqlite::Result<()> {
         use rkyv::Deserialize;
 
@@ -60,6 +75,15 @@ impl Api {
             )",
             [],
         )?;
+
+        conn.execute(
+            "CREATE TABLE english_index (
+                phrase TEXT PRIMARY KEY,
+                english_index_data_rkyv BLOB NOT NULL
+            )",
+            [],
+        )?;
+
         // Keep track of dict version in a separate metadata table
         conn.execute(
             "CREATE TABLE rich_dict_metadata (
@@ -75,6 +99,10 @@ impl Api {
 
         for entry in unsafe { self.dict().values() } {
             Self::insert_rich_entry(&conn, &entry.deserialize(&mut rkyv::Infallible).unwrap())?;
+        }
+
+        for (phrase, english_index_data) in generate_english_index(unsafe { self.dict() }) {
+            Self::insert_english_index_data(&conn, &phrase, &english_index_data)?;
         }
 
         Ok(())

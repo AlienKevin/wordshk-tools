@@ -2,10 +2,11 @@ use crate::dict::{clause_to_string, Clause, EntryId};
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
 use crate::lihkg_frequencies::LIHKG_FREQUENCIES;
 use crate::pr_index::{FstPrIndices, PrLocation, MAX_DELETIONS};
+use crate::sqlite_db::SqliteDb;
 
 use super::charlist::CHARLIST;
 use super::dict::{Variant, Variants};
-use super::english_index::{ArchivedEnglishIndex, EnglishIndexData, EnglishSearchRank};
+use super::english_index::{EnglishIndexData, EnglishIndexLike, EnglishSearchRank};
 use super::iconic_simps::ICONIC_SIMPS;
 use super::iconic_trads::ICONIC_TRADS;
 use super::jyutping::{LaxJyutPings, Romanization};
@@ -14,7 +15,6 @@ use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
 use fst::automaton::Levenshtein;
 use itertools::Itertools;
-use rkyv::Deserialize;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::collections::{BinaryHeap, HashSet};
@@ -150,26 +150,7 @@ fn pick_variant(variant: &ComboVariant, script: Script) -> Variant {
     }
 }
 
-#[cfg(feature = "sqlite")]
-pub struct SqliteRichDict {
-    pool: r2d2::Pool<r2d2_sqlite::SqliteConnectionManager>,
-}
-
-#[cfg(feature = "sqlite")]
-impl SqliteRichDict {
-    pub fn new(dict_path: &str) -> Self {
-        let manager = r2d2_sqlite::SqliteConnectionManager::file(dict_path);
-        let pool = r2d2::Pool::new(manager).unwrap();
-        Self { pool }
-    }
-
-    fn conn(&self) -> r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager> {
-        self.pool.get().unwrap()
-    }
-}
-
-#[cfg(feature = "sqlite")]
-impl RichDictLike for SqliteRichDict {
+impl RichDictLike for SqliteDb {
     fn get_entry(&self, entry_id: EntryId) -> RichEntry {
         use rkyv::Deserialize;
 
@@ -788,7 +769,7 @@ pub enum CombinedSearchRank {
 pub fn combined_search(
     variants_map: &VariantsMap,
     pr_indices: Option<&FstPrIndices>,
-    english_index: &ArchivedEnglishIndex,
+    english_index: &dyn EnglishIndexLike,
     dict: &dyn RichDictLike,
     query: &str,
     script: Script,
@@ -1453,7 +1434,7 @@ pub fn english_embedding_search(
 }
 
 pub fn english_search(
-    english_index: &ArchivedEnglishIndex,
+    english_index: &dyn EnglishIndexLike,
     dict: &dyn RichDictLike,
     variants_map: &VariantsMap,
     query: &str,
@@ -1462,7 +1443,6 @@ pub fn english_search(
     let query = unicode::normalize_english_word_for_search_index(query);
     let results = english_index
         .get(query.as_str())
-        .map(|results| results.deserialize(&mut rkyv::Infallible).unwrap())
         .unwrap_or(fuzzy_english_search(english_index, &[query.clone()]));
     results
         .into_iter()
@@ -1498,26 +1478,26 @@ pub fn english_search(
 }
 
 fn fuzzy_english_search<'a>(
-    english_index: &'a ArchivedEnglishIndex,
+    english_index: &'a dyn EnglishIndexLike,
     queries: &[String],
 ) -> Vec<EnglishIndexData> {
     english_index
         .iter()
         .fold(
             (60, None), // must have a score of at least 60 out of 100
-            |(max_score, max_entries), (phrase, entries)| {
+            |(max_score, max_entries), phrase| {
                 let (mut next_max_score, mut next_max_entries) = (max_score, max_entries);
                 queries.iter().for_each(|query| {
-                    let current_score = score_english_query(query, phrase);
+                    let current_score = score_english_query(query, &phrase);
                     if current_score > max_score {
-                        (next_max_score, next_max_entries) = (current_score, Some(entries))
+                        (next_max_score, next_max_entries) =
+                            (current_score, english_index.get(&phrase))
                     }
                 });
                 (next_max_score, next_max_entries)
             },
         )
         .1
-        .map(|results| results.deserialize(&mut rkyv::Infallible).unwrap())
         .unwrap_or(vec![])
 }
 

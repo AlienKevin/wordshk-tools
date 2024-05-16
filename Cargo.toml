@@ -33,14 +33,16 @@ rkyv = { version = "0.7.43", features = ["alloc"] }
 levenshtein-diff = "0.2.4"
 fst = { version = "0.4.7", features = ["levenshtein"] }
 
-rusqlite = { version = "0.31.0", optional = true, features = ["bundled"] }
-r2d2_sqlite = { version = "0.24.0", optional = true }
-r2d2 = { version = "0.8.10", optional = true }
+rusqlite = { version = "0.31.0", features = ["bundled"] }
+r2d2_sqlite = { version = "0.24.0" }
+r2d2 = { version = "0.8.10" }
+ouroboros = "0.18.3"
 
 finalfusion = { version = "0.17.2", optional = true }
 anyhow = { version = "1.0.79", optional = true }
 ndarray = { version = "0.15.6", optional = true }
 fastembed = { version = "2", optional = true }
+
 
 [dependencies.ort]
 version = "2.0.0-alpha.4"
@@ -55,4 +57,3 @@ embedding-search = [
     "dep:fastembed",
     "dep:ort",
 ]
-sqlite = ["rusqlite", "r2d2_sqlite", "r2d2"]

@@ -21,6 +21,7 @@ pub mod parse;
 pub mod pr_index;
 pub mod rich_dict;
 pub mod search;
+pub mod sqlite_db;
 #[cfg(test)]
 mod tests;
 pub mod unicode;
