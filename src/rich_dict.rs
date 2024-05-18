@@ -1,9 +1,10 @@
+use crate::jyutping::LaxJyutPings;
 use crate::search::RichDictLike;
 
 use super::charlist::CHARLIST;
 use super::dict::{
     line_to_string, line_to_strings, AltClause, Clause, Def, Dict, Eg, EntryId, Line, PrLine,
-    Segment, SegmentType, Variant, Variants,
+    Segment, SegmentType, Variants,
 };
 use super::unicode;
 use itertools::Itertools;
@@ -11,7 +12,7 @@ use rkyv::collections::ArchivedBTreeMap;
 use serde::Deserialize;
 use serde::Serialize;
 use std::cmp;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
 
 pub type RichDict = BTreeMap<EntryId, RichEntry>;
@@ -32,10 +33,7 @@ pub struct RichEntry {
     pub id: EntryId,
 
     #[serde(rename = "v")]
-    pub variants: Variants,
-
-    #[serde(rename = "vs")]
-    pub variants_simp: Vec<String>,
+    pub variants: RichVariants,
 
     #[serde(rename = "p")]
     pub poses: Vec<String>,
@@ -66,6 +64,49 @@ pub struct RichEntry {
 
     #[serde(rename = "pb")]
     pub published: bool,
+}
+
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+)]
+pub struct RichVariants(pub Vec<RichVariant>);
+
+impl RichVariants {
+    pub fn to_words(&self) -> Vec<&str> {
+        self.0.iter().map(|variant| &variant.word[..]).collect()
+    }
+    pub fn to_words_set(&self) -> HashSet<&str> {
+        self.0.iter().map(|variant| &variant.word[..]).collect()
+    }
+}
+
+/// A variant of a \[word\] with \[prs\] (pronounciations)
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+)]
+pub struct RichVariant {
+    #[serde(rename = "w")]
+    pub word: String,
+
+    #[serde(rename = "ws")]
+    pub word_simp: String,
+
+    #[serde(rename = "p")]
+    pub prs: LaxJyutPings,
 }
 
 #[derive(
@@ -761,8 +802,7 @@ pub fn enrich_dict(dict: &Dict, options: &EnrichDictOptions) -> RichDict {
                 *id,
                 RichEntry {
                     id: *id,
-                    variants: entry.variants.clone(),
-                    variants_simp: get_simplified_variant_strings(&entry.variants, &entry.defs),
+                    variants: enrich_variant(&entry.variants, &entry.defs),
                     poses: entry.poses.clone(),
                     labels: entry.labels.clone(),
                     sims,
@@ -949,24 +989,9 @@ pub fn replace_contents_in_word(
     )
 }
 
-pub fn get_simplified_variants(
-    trad_variants: &Variants,
-    simp_variant_strings: &[String],
-) -> Variants {
-    Variants(
-        trad_variants
-            .0
-            .iter()
-            .enumerate()
-            .map(|(variant_index, Variant { prs, .. })| Variant {
-                word: simp_variant_strings[variant_index].clone(),
-                prs: prs.clone(),
-            })
-            .collect(),
-    )
-}
-
-fn get_simplified_variant_strings(trad_variants: &Variants, defs: &[Def]) -> Vec<String> {
+// Needs the defs context to handle one traditional to multiple simplified variants
+// Like 乾 -> 乾隆/干净
+fn enrich_variant(trad_variants: &Variants, defs: &[Def]) -> RichVariants {
     let mut lines: Vec<Line> = defs
         .iter()
         .flat_map(|def| {
@@ -1002,18 +1027,22 @@ fn get_simplified_variant_strings(trad_variants: &Variants, defs: &[Def]) -> Vec
                 }
             });
     });
-    trad_variants
-        .0
-        .iter()
-        .enumerate()
-        .map(|(variant_index, trad_variant)| {
-            if let Some(simp_variant) = simp_variants.get(&variant_index) {
-                simp_variant.clone()
-            } else {
-                unicode::to_simplified(&trad_variant.word)
-            }
-        })
-        .collect()
+    RichVariants(
+        trad_variants
+            .0
+            .iter()
+            .enumerate()
+            .map(|(variant_index, trad_variant)| RichVariant {
+                word: trad_variant.word.clone(),
+                word_simp: if let Some(simp_variant) = simp_variants.get(&variant_index) {
+                    simp_variant.clone()
+                } else {
+                    unicode::to_simplified(&trad_variant.word)
+                },
+                prs: trad_variant.prs.clone(),
+            })
+            .collect(),
+    )
 }
 
 fn get_simplified_sims_or_ants(sims_or_ants: &[String]) -> Vec<String> {

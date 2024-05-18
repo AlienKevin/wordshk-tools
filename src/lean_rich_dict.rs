@@ -1,7 +1,8 @@
-use super::dict::{AltClause, Clause, EntryId, Line, Segment, Variants};
-use super::rich_dict::{
-    get_simplified_rich_line, get_simplified_variants, RichDef, RichEg, RichEntry, RichLine,
-};
+use crate::rich_dict::RichVariants;
+use crate::search::Script;
+
+use super::dict::{AltClause, Clause, EntryId, Line, Segment};
+use super::rich_dict::{get_simplified_rich_line, RichDef, RichEg, RichEntry, RichLine};
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -48,11 +49,8 @@ pub struct LeanEg {
 pub fn to_lean_rich_entry(entry: &RichEntry) -> LeanRichEntry {
     LeanRichEntry {
         id: entry.id,
-        variants: to_lean_variants(&entry.variants),
-        variants_simp: to_lean_variants(&get_simplified_variants(
-            &entry.variants,
-            &entry.variants_simp,
-        )),
+        variants: to_lean_variants(&entry.variants, Script::Traditional),
+        variants_simp: to_lean_variants(&entry.variants, Script::Simplified),
         poses: entry.poses.clone(),
         labels: entry.labels.clone(),
         sims: entry.sims.clone(),
@@ -90,12 +88,15 @@ fn to_lean_eg(eg: &RichEg) -> LeanEg {
     }
 }
 
-fn to_lean_variants(variant: &Variants) -> Vec<LeanVariant> {
+fn to_lean_variants(variant: &RichVariants, script: Script) -> Vec<LeanVariant> {
     variant
         .0
         .iter()
         .map(|variant| LeanVariant {
-            word: variant.word.clone(),
+            word: match script {
+                Script::Traditional => variant.word.clone(),
+                Script::Simplified => variant.word_simp.clone(),
+            },
             prs: variant.prs.to_string(),
         })
         .collect()

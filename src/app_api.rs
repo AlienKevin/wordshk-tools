@@ -3,7 +3,7 @@ use rkyv::{AlignedVec, Deserialize};
 use crate::dict::EntryId;
 use crate::jyutping::Romanization;
 use crate::pr_index::{generate_pr_indices, pr_indices_into_fst, FstPrIndices};
-use crate::rich_dict::{ArchivedRichDict, RichDictWrapper};
+use crate::rich_dict::{ArchivedRichDict, ArchivedRichEntry, RichDictWrapper};
 use crate::search::Script;
 use crate::variant_index::generate_variant_index;
 
@@ -48,6 +48,29 @@ impl Api {
                 rkyv::to_bytes::<_, 1024>(entry).unwrap().as_slice()
             ],
         )?;
+        Ok(())
+    }
+
+    fn insert_variant(
+        conn: &rusqlite::Connection,
+        entry: &ArchivedRichEntry,
+        script: Script,
+    ) -> rusqlite::Result<()> {
+        for variant in entry.variants.0.iter() {
+            conn.execute(
+                &format!(
+                    "INSERT INTO variant_map_{} (variant, entry_id) VALUES (?, ?) ON CONFLICT(variant) DO NOTHING",
+                    match script {
+                        Script::Traditional => "trad",
+                        Script::Simplified => "simp",
+                    }
+                ),
+                rusqlite::params![match script {
+                    Script::Traditional => variant.word.as_str(),
+                    Script::Simplified => variant.word_simp.as_str(),
+                }, entry.id,],
+            )?;
+        }
         Ok(())
     }
 
@@ -126,6 +149,21 @@ impl Api {
             [],
         )?;
 
+        conn.execute(
+            "CREATE TABLE variant_map_trad (
+                variant TEXT PRIMARY KEY,
+                entry_id INTEGER NOT NULL
+            )",
+            [],
+        )?;
+        conn.execute(
+            "CREATE TABLE variant_map_simp (
+                variant TEXT PRIMARY KEY,
+                entry_id INTEGER NOT NULL
+            )",
+            [],
+        )?;
+
         // Keep track of dict version in a separate metadata table
         conn.execute(
             "CREATE TABLE rich_dict_metadata (
@@ -141,6 +179,8 @@ impl Api {
 
         for entry in unsafe { self.dict().values() } {
             Self::insert_rich_entry(&conn, &entry.deserialize(&mut rkyv::Infallible).unwrap())?;
+            Self::insert_variant(&conn, entry, Script::Simplified)?;
+            Self::insert_variant(&conn, entry, Script::Traditional)?;
         }
 
         for (phrase, english_index_data) in generate_english_index(unsafe { self.dict() }) {

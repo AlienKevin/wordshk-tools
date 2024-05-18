@@ -2,6 +2,7 @@ use crate::dict::{clause_to_string, Clause, EntryId};
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
 use crate::lihkg_frequencies::LIHKG_FREQUENCIES;
 use crate::pr_index::{FstPrIndices, PrLocation, MAX_DELETIONS};
+use crate::rich_dict::{RichVariant, RichVariants};
 use crate::sqlite_db::SqliteDb;
 use crate::variant_index::VariantIndexLike;
 
@@ -34,9 +35,6 @@ pub enum Script {
     Traditional,
 }
 
-/// A Map from entry ID to variants and simplified variants
-pub type VariantsMap = BTreeMap<EntryId, ComboVariants>;
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComboVariant {
     pub word_trad: String,
@@ -45,19 +43,6 @@ pub struct ComboVariant {
 }
 
 pub type ComboVariants = Vec<ComboVariant>;
-
-pub fn rich_dict_to_variants_map(dict: &dyn RichDictLike) -> VariantsMap {
-    dict.get_ids()
-        .iter()
-        .map(|id| {
-            let entry = dict.get_entry(*id);
-            (
-                *id,
-                create_combo_variants(&entry.variants, &entry.variants_simp),
-            )
-        })
-        .collect()
-}
 
 pub fn create_combo_variants(
     trad_variants: &Variants,
@@ -138,14 +123,14 @@ pub trait RichDictLike: Sync + Send {
     fn get_ids(&self) -> Vec<EntryId>;
 }
 
-fn pick_variant(variant: &ComboVariant, script: Script) -> Variant {
+fn pick_variant(variant: &RichVariant, script: Script) -> Variant {
     match script {
         Script::Simplified => Variant {
             word: variant.word_simp.clone(),
             prs: variant.prs.clone(),
         },
         Script::Traditional => Variant {
-            word: variant.word_trad.clone(),
+            word: variant.word.clone(),
             prs: variant.prs.clone(),
         },
     }
@@ -176,49 +161,51 @@ impl RichDictLike for SqliteDb {
     }
 }
 
-pub fn pick_variants(variants: &ComboVariants, script: Script) -> Variants {
+pub fn pick_variants(variants: &RichVariants, script: Script) -> Variants {
     Variants(
         variants
+            .0
             .iter()
-            .map(|combo| pick_variant(combo, script))
+            .map(|variant| pick_variant(variant, script))
             .collect(),
     )
 }
 
-pub fn get_entry_id(variants_map: &VariantsMap, query: &str, script: Script) -> Option<EntryId> {
-    variants_map.iter().find_map(|(id, variants)| {
-        if pick_variants(variants, script)
-            .to_words_set()
-            .contains(query)
-        {
-            Some(*id)
-        } else {
-            None
-        }
-    })
+pub trait VariantMapLike {
+    fn get(&self, query: &str) -> Option<EntryId>;
 }
 
-pub fn get_entry_group(
-    variants_map: &VariantsMap,
-    dict: &dyn RichDictLike,
-    id: EntryId,
-) -> Vec<RichEntry> {
-    let query_word_set: HashSet<&str> = variants_map
-        .get(&id)
-        .unwrap()
-        .iter()
-        .map(|ComboVariant { word_trad, .. }| word_trad.as_str())
-        .collect();
+impl VariantMapLike for SqliteDb {
+    fn get(&self, query: &str) -> Option<EntryId> {
+        let conn = self.conn();
+        let mut stmt = conn
+            .prepare("SELECT entry_id FROM variant_map WHERE variant = ?")
+            .unwrap();
+        stmt.query_row([query], |row| row.get(0)).ok()
+    }
+}
+
+pub fn get_entry_id(
+    variant_map_trad: &dyn VariantMapLike,
+    variant_map_simp: &dyn VariantMapLike,
+    query: &str,
+    script: Script,
+) -> Option<EntryId> {
+    match script {
+        Script::Traditional => variant_map_trad.get(query),
+        Script::Simplified => variant_map_simp.get(query),
+    }
+}
+
+pub fn get_entry_group(dict: &dyn RichDictLike, id: EntryId) -> Vec<RichEntry> {
+    let entry = dict.get_entry(id);
+    let query_word_set: HashSet<&str> = entry.variants.to_words_set();
     sort_entry_group(
         dict.get_ids()
             .iter()
             .filter_map(|id| {
-                let current_word_set: HashSet<&str> = variants_map
-                    .get(&id)
-                    .unwrap()
-                    .iter()
-                    .map(|ComboVariant { word_trad, .. }| word_trad.as_str())
-                    .collect();
+                let entry = dict.get_entry(*id);
+                let current_word_set: HashSet<&str> = entry.variants.to_words_set();
                 if query_word_set
                     .intersection(&current_word_set)
                     .next()
@@ -248,18 +235,19 @@ pub(crate) fn get_entry_frequency(entry_id: EntryId) -> u8 {
     *WORD_FREQUENCIES.get(&entry_id).unwrap_or(&50)
 }
 
-fn get_max_frequency_count(variants: &ComboVariants) -> usize {
+fn get_max_frequency_count(variants: &RichVariants) -> usize {
     *variants
+        .0
         .iter()
         .max_by(|variant1, variant2| {
             LIHKG_FREQUENCIES
-                .get(&variant1.word_trad)
+                .get(&variant1.word)
                 .unwrap_or(&0)
-                .cmp(LIHKG_FREQUENCIES.get(&variant2.word_trad).unwrap_or(&0))
+                .cmp(LIHKG_FREQUENCIES.get(&variant2.word).unwrap_or(&0))
         })
         .map(|most_frequent_variant| {
             LIHKG_FREQUENCIES
-                .get(&most_frequent_variant.word_trad)
+                .get(&most_frequent_variant.word)
                 .unwrap_or(&0)
         })
         .unwrap_or(&0)
@@ -268,7 +256,6 @@ fn get_max_frequency_count(variants: &ComboVariants) -> usize {
 pub fn pr_search(
     pr_indices: &FstPrIndices,
     dict: &dyn RichDictLike,
-    variants_map: &VariantsMap,
     query: &str,
     script: Script,
     romanization: Romanization,
@@ -293,7 +280,6 @@ pub fn pr_search(
         query: &str,
         search: impl FnOnce(Levenshtein) -> BTreeSet<PrLocation>,
         dict: &dyn RichDictLike,
-        variants_map: &VariantsMap,
         script: Script,
         romanization: Romanization,
         ranks: &mut BTreeMap<EntryId, PrSearchRank>,
@@ -353,12 +339,12 @@ pub fn pr_search(
                         }
                     }
                 }
-                let frequency_count = get_max_frequency_count(variants_map.get(&entry_id).unwrap());
+                let frequency_count = get_max_frequency_count(&dict.get_entry(entry_id).variants);
                 let def_len = dict.get_entry(entry_id).defs.len();
                 let variant = pick_variant(
-                    variants_map
-                        .get(&entry_id)
-                        .unwrap()
+                    dict.get_entry(entry_id)
+                        .variants
+                        .0
                         .get(variant_index as usize)
                         .unwrap(),
                     script,
@@ -415,7 +401,6 @@ pub fn pr_search(
                     &query,
                     pr_indices.tone(),
                     dict,
-                    variants_map,
                     script,
                     romanization,
                     &mut ranks,
@@ -426,7 +411,6 @@ pub fn pr_search(
                     &query,
                     pr_indices.tone(),
                     dict,
-                    variants_map,
                     script,
                     romanization,
                     &mut ranks,
@@ -437,7 +421,6 @@ pub fn pr_search(
                     &query,
                     pr_indices.none(),
                     dict,
-                    variants_map,
                     script,
                     romanization,
                     &mut ranks,
@@ -448,7 +431,6 @@ pub fn pr_search(
                     &query,
                     pr_indices.none(),
                     dict,
-                    variants_map,
                     script,
                     romanization,
                     &mut ranks,
@@ -475,7 +457,6 @@ pub fn pr_search(
                     &query,
                     pr_indices.tone(),
                     dict,
-                    variants_map,
                     script,
                     romanization,
                     &mut ranks,
@@ -486,7 +467,6 @@ pub fn pr_search(
                     &query,
                     pr_indices.tone(),
                     dict,
-                    variants_map,
                     script,
                     romanization,
                     &mut ranks,
@@ -497,7 +477,6 @@ pub fn pr_search(
                     &query,
                     pr_indices.tone(),
                     dict,
-                    variants_map,
                     script,
                     romanization,
                     &mut ranks,
@@ -508,7 +487,6 @@ pub fn pr_search(
                     &query,
                     pr_indices.none(),
                     dict,
-                    variants_map,
                     script,
                     romanization,
                     &mut ranks,
@@ -519,7 +497,6 @@ pub fn pr_search(
                     &query,
                     pr_indices.tone(),
                     dict,
-                    variants_map,
                     script,
                     romanization,
                     &mut ranks,
@@ -530,7 +507,6 @@ pub fn pr_search(
                     &query,
                     pr_indices.none(),
                     dict,
-                    variants_map,
                     script,
                     romanization,
                     &mut ranks,
@@ -590,7 +566,7 @@ fn word_levenshtein(a: &Vec<&str>, b: &Vec<&str>) -> usize {
 }
 
 fn score_variant_query(
-    variant: &ComboVariant,
+    variant: &RichVariant,
     query_normalized: &str,
     query_script: Script,
     script: Script,
@@ -644,9 +620,10 @@ pub fn variant_search(
         });
     for id in entry_ids {
         let entry = dict.get_entry(id);
-        let variants = create_combo_variants(&entry.variants, &entry.variants_simp);
-        let frequency_count = get_max_frequency_count(&variants);
-        variants
+        let frequency_count = get_max_frequency_count(&entry.variants);
+        entry
+            .variants
+            .0
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
@@ -701,7 +678,6 @@ impl PartialOrd for EgSearchRank {
 }
 
 pub fn eg_search(
-    variants_map: &VariantsMap,
     dict: &dyn RichDictLike,
     query: &str,
     max_first_index_in_eg: usize,
@@ -725,7 +701,7 @@ pub fn eg_search(
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
 
-    variants_map.par_iter().for_each(|(entry_id, variants)| {
+    dict.get_ids().par_iter().for_each(|entry_id| {
         let entry = dict.get_entry(*entry_id);
         for (def_index, def) in entry.defs.iter().enumerate() {
             for (eg_index, eg) in def.egs.iter().enumerate() {
@@ -755,7 +731,8 @@ pub fn eg_search(
                                 def_len: entry.defs.len(),
                                 def_index,
                                 eg_index,
-                                variant: pick_variant(variants.first().unwrap(), script).word,
+                                variant: pick_variant(entry.variants.0.first().unwrap(), script)
+                                    .word,
                                 eg_length: line_len,
                                 matched_eg,
                             });
@@ -781,7 +758,6 @@ pub enum CombinedSearchRank {
 
 // Auto recognize the type of the query
 pub fn combined_search(
-    variants_map: &VariantsMap,
     pr_indices: Option<&FstPrIndices>,
     variant_index: &dyn VariantIndexLike,
     english_index: &dyn EnglishIndexLike,
@@ -808,11 +784,11 @@ pub fn combined_search(
     };
     let variants_ranks = variant_search(dict, variant_index, query, query_script);
     let pr_ranks = if let Some(pr_indices) = pr_indices {
-        pr_search(pr_indices, dict, variants_map, query, script, romanization)
+        pr_search(pr_indices, dict, query, script, romanization)
     } else {
         BinaryHeap::new()
     };
-    let english_results = english_search(english_index, dict, variants_map, query, script);
+    let english_results = english_search(english_index, dict, query, script);
 
     CombinedSearchRank::All(variants_ranks, pr_ranks, english_results)
 }
@@ -1451,7 +1427,6 @@ pub fn english_embedding_search(
 pub fn english_search(
     english_index: &dyn EnglishIndexLike,
     dict: &dyn RichDictLike,
-    variants_map: &VariantsMap,
     query: &str,
     script: Script,
 ) -> BinaryHeap<EnglishSearchRank> {
@@ -1472,14 +1447,13 @@ pub fn english_search(
                 let eng: Clause = def.eng.as_ref().unwrap().clone();
                 let eng = clause_to_string(&eng);
                 let matched_eng = match_eng_words(&eng, &query);
-                let frequency_count =
-                    get_max_frequency_count(&variants_map.get(&entry_id).unwrap());
+                let frequency_count = get_max_frequency_count(&dict.get_entry(entry_id).variants);
                 EnglishSearchRank {
                     entry_id,
                     def_len: entry.defs.len(),
                     def_index,
                     variant: pick_variant(
-                        variants_map.get(&entry_id).unwrap().first().unwrap(),
+                        dict.get_entry(entry_id).variants.0.first().unwrap(),
                         script,
                     )
                     .word,

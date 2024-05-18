@@ -53,25 +53,20 @@ fn index_entry(
     index_trad: &mut VariantIndex,
     index_simp: &mut VariantIndex,
 ) {
-    entry
-        .variants
-        .0
-        .iter()
-        .enumerate()
-        .for_each(|(i, variant)| {
-            let word_trad = crate::unicode::normalize(variant.word.as_str());
-            let word_simp = crate::unicode::normalize(entry.variants_simp[i].as_str());
-            for c in word_trad.chars() {
-                index_trad
-                    .entry(c)
-                    .or_insert_with(BTreeSet::new)
-                    .insert(entry.id);
-            }
-            for c in word_simp.chars() {
-                index_simp
-                    .entry(c)
-                    .or_insert_with(BTreeSet::new)
-                    .insert(entry.id);
-            }
-        });
+    entry.variants.0.iter().for_each(|variant| {
+        let word_trad = crate::unicode::normalize(variant.word.as_str());
+        let word_simp = crate::unicode::normalize(variant.word_simp.as_str());
+        for c in word_trad.chars() {
+            index_trad
+                .entry(c)
+                .or_insert_with(BTreeSet::new)
+                .insert(entry.id);
+        }
+        for c in word_simp.chars() {
+            index_simp
+                .entry(c)
+                .or_insert_with(BTreeSet::new)
+                .insert(entry.id);
+        }
+    });
 }

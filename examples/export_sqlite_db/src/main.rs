@@ -4,7 +4,7 @@ use wordshk_tools::{
     dict::EntryId,
     jyutping::Romanization,
     rich_dict::RichEntry,
-    search::{self, rich_dict_to_variants_map, RichDictLike, Script},
+    search::{self, RichDictLike, Script},
     sqlite_db::SqliteDb,
 };
 
@@ -39,7 +39,6 @@ fn export_sqlite_db(regenerate_api_from_csv: bool) {
 
 fn test_sqlite_search() {
     let dict = SqliteDb::new(&std::path::Path::new(APP_TMP_DIR).join("dict.db"));
-    let variants_map = rich_dict_to_variants_map(&dict);
     let start_time = Instant::now();
     let results = search::variant_search(&dict, &dict, "好", Script::Simplified);
     println!("{:?}", results);
@@ -66,7 +65,7 @@ fn test_sqlite_search() {
     println!("{:?}", start_time.elapsed());
 
     let start_time = Instant::now();
-    let results = search::english_search(&dict, &dict, &variants_map, "lucky", Script::Simplified);
+    let results = search::english_search(&dict, &dict, "lucky", Script::Simplified);
     println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 }

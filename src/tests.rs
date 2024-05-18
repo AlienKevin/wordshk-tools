@@ -1,3 +1,6 @@
+use crate::rich_dict::RichVariant;
+use crate::rich_dict::RichVariants;
+
 use super::dict::*;
 use super::jyutping::*;
 use super::parse::*;
@@ -1442,9 +1445,10 @@ fn test_to_lean_rich_dict() {
     {
         let id = 103022;
         let published = true;
-        let variants = Variants(vec![
-            Variant {
+        let variants = RichVariants(vec![
+            RichVariant {
                 word: "zip".to_string(),
+                word_simp: "zip".to_string(),
                 prs: LaxJyutPings(vec![
                     LaxJyutPing(vec![LaxJyutPingSegment::Standard(JyutPing {
                         initial: Some(JyutPingInitial::Z),
@@ -1455,8 +1459,9 @@ fn test_to_lean_rich_dict() {
                     LaxJyutPing(vec![LaxJyutPingSegment::Nonstandard("!".into())]),
                 ]),
             },
-            Variant {
+            RichVariant {
                 word: "jip".to_string(),
+                word_simp: "jip".to_string(),
                 prs: LaxJyutPings(vec![LaxJyutPing(vec![
                     LaxJyutPingSegment::Nonstandard("!".into()),
                     LaxJyutPingSegment::Standard(JyutPing {
@@ -1468,7 +1473,6 @@ fn test_to_lean_rich_dict() {
                 ])]),
             },
         ]);
-        let variants_simp = vec!["zip".to_string(), "jip".to_string()];
         let lean_variants = vec![
             LeanVariant {
                 word: "zip".into(),
@@ -1492,7 +1496,6 @@ fn test_to_lean_rich_dict() {
         let entry = rich_dict::RichEntry {
             id,
             variants,
-            variants_simp,
             poses: vec!["動詞".to_string(), "擬聲詞".to_string()],
             labels: vec![],
             sims: vec![],
@@ -1960,69 +1963,6 @@ fn test_get_simplified_rich_line() {
         assert_eq!(
             simp_rich_line,
             get_simplified_rich_line(&simp_line, &trad_rich_line)
-        );
-    }
-}
-
-#[test]
-fn test_get_simplified_variants() {
-    use rich_dict::get_simplified_variants;
-    {
-        let trad_variants = Variants(vec![
-            Variant {
-                word: "這位是乾隆皇帝的乾兒子".to_string(),
-                prs: LaxJyutPings(vec![LaxJyutPing(vec![LaxJyutPingSegment::Standard(
-                    JyutPing {
-                        initial: Some(JyutPingInitial::Z),
-                        nucleus: Some(JyutPingNucleus::E),
-                        coda: None,
-                        tone: Some(JyutPingTone::T3),
-                    },
-                )])]),
-            },
-            Variant {
-                word: "呢位係乾隆皇帝嘅養子".to_string(),
-                prs: LaxJyutPings(vec![LaxJyutPing(vec![LaxJyutPingSegment::Standard(
-                    JyutPing {
-                        initial: Some(JyutPingInitial::N),
-                        nucleus: Some(JyutPingNucleus::I),
-                        coda: None,
-                        tone: Some(JyutPingTone::T1),
-                    },
-                )])]),
-            },
-        ]);
-        let simp_variants = Variants(vec![
-            Variant {
-                word: "这位是乾隆皇帝的干儿子".to_string(),
-                prs: LaxJyutPings(vec![LaxJyutPing(vec![LaxJyutPingSegment::Standard(
-                    JyutPing {
-                        initial: Some(JyutPingInitial::Z),
-                        nucleus: Some(JyutPingNucleus::E),
-                        coda: None,
-                        tone: Some(JyutPingTone::T3),
-                    },
-                )])]),
-            },
-            Variant {
-                word: "呢位係乾隆皇帝嘅养子".to_string(),
-                prs: LaxJyutPings(vec![LaxJyutPing(vec![LaxJyutPingSegment::Standard(
-                    JyutPing {
-                        initial: Some(JyutPingInitial::N),
-                        nucleus: Some(JyutPingNucleus::I),
-                        coda: None,
-                        tone: Some(JyutPingTone::T1),
-                    },
-                )])]),
-            },
-        ]);
-        let simp_variant_strings = vec![
-            "这位是乾隆皇帝的干儿子".into(),
-            "呢位係乾隆皇帝嘅养子".into(),
-        ];
-        assert_eq!(
-            get_simplified_variants(&trad_variants, &simp_variant_strings),
-            simp_variants
         );
     }
 }
@@ -2496,11 +2436,9 @@ fn test_diff_prs() {
 
     assert_eq!(
         diff_prs("yun4 cyun4", "yun4 cyun4"),
-        vec![
-            MatchedSegment {
-                segment: "yun4 cyun4".to_string(),
-                matched: true,
-            },
-        ]
+        vec![MatchedSegment {
+            segment: "yun4 cyun4".to_string(),
+            matched: true,
+        },]
     );
 }
