@@ -12,7 +12,8 @@ const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
     // export_sqlite_db(true);
-    test_sqlite_search();
+    // test_sqlite_search();
+    show_pr_index_sizes();
 }
 
 fn export_sqlite_db(regenerate_api_from_csv: bool) {
@@ -68,4 +69,19 @@ fn test_sqlite_search() {
     let results = search::english_search(&dict, &dict, "lucky", Script::Simplified);
     println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
+}
+
+fn show_pr_index_sizes() {
+    let dict = SqliteDb::new(&std::path::Path::new(APP_TMP_DIR).join("dict.db"));
+    let pr_indices = wordshk_tools::pr_index::pr_indices_into_fst(
+        wordshk_tools::pr_index::generate_pr_indices(&dict, Romanization::Jyutping),
+    );
+    println!(
+        "pr_indices.fst_size_in_bytes: {}",
+        pr_indices.fst_size_in_bytes()
+    );
+    println!(
+        "pr_indices.locations_size_in_bytes: {}",
+        pr_indices.locations_size_in_bytes()
+    );
 }

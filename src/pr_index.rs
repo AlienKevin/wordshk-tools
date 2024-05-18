@@ -43,6 +43,16 @@ impl FstPrIndices {
         |query| self.search(&self.none, query)
     }
 
+    pub fn fst_size_in_bytes(&self) -> usize {
+        self.tone.as_fst().as_bytes().len() + self.none.as_fst().as_bytes().len()
+    }
+
+    pub fn locations_size_in_bytes(&self) -> usize {
+        self.locations.iter().fold(0, |acc, (k, v)| {
+            acc + std::mem::size_of_val(k) + v.len() * std::mem::size_of::<PrLocation>()
+        })
+    }
+
     fn search(&self, map: &Map<Vec<u8>>, query: Levenshtein) -> BTreeSet<PrLocation> {
         map.search(query)
             .into_stream()
