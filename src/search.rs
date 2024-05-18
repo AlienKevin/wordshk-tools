@@ -3,6 +3,7 @@ use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
 use crate::lihkg_frequencies::LIHKG_FREQUENCIES;
 use crate::pr_index::{FstPrIndices, PrLocation, MAX_DELETIONS};
 use crate::sqlite_db::SqliteDb;
+use crate::variant_index::VariantIndexLike;
 
 use super::charlist::CHARLIST;
 use super::dict::{Variant, Variants};
@@ -616,7 +617,7 @@ fn score_variant_query(
 
 pub fn variant_search(
     dict: &dyn RichDictLike,
-    variants_map: &VariantsMap,
+    variant_index: &dyn VariantIndexLike,
     query: &str,
     script: Script,
 ) -> BinaryHeap<VariantSearchRank> {
@@ -630,8 +631,21 @@ pub fn variant_search(
     } else {
         script
     };
-    variants_map.iter().for_each(|(id, variants)| {
-        let frequency_count = get_max_frequency_count(variants);
+
+    let entry_ids = query_normalized
+        .chars()
+        .fold(BTreeSet::new(), |mut entry_ids, c| {
+            entry_ids.extend(
+                variant_index
+                    .get(c, query_script)
+                    .unwrap_or(BTreeSet::new()),
+            );
+            entry_ids
+        });
+    for id in entry_ids {
+        let entry = dict.get_entry(id);
+        let variants = create_combo_variants(&entry.variants, &entry.variants_simp);
+        let frequency_count = get_max_frequency_count(&variants);
         variants
             .iter()
             .enumerate()
@@ -640,8 +654,8 @@ pub fn variant_search(
                     score_variant_query(variant, &query_normalized, query_script, script);
                 if occurrence_index < usize::MAX && length_diff <= 2 {
                     ranks.push(VariantSearchRank {
-                        id: *id,
-                        def_len: dict.get_entry(*id).defs.len(),
+                        id,
+                        def_len: dict.get_entry(id).defs.len(),
                         variant_index,
                         variant: pick_variant(variant, script).word,
                         occurrence_index,
@@ -651,7 +665,7 @@ pub fn variant_search(
                     });
                 }
             });
-    });
+    }
     ranks
 }
 
@@ -769,6 +783,7 @@ pub enum CombinedSearchRank {
 pub fn combined_search(
     variants_map: &VariantsMap,
     pr_indices: Option<&FstPrIndices>,
+    variant_index: &dyn VariantIndexLike,
     english_index: &dyn EnglishIndexLike,
     dict: &dyn RichDictLike,
     query: &str,
@@ -777,7 +792,7 @@ pub fn combined_search(
 ) -> CombinedSearchRank {
     // if the query has CJK characters, it can only be a variant
     if query.chars().any(unicode::is_cjk) {
-        return CombinedSearchRank::Variant(variant_search(dict, variants_map, query, script));
+        return CombinedSearchRank::Variant(variant_search(dict, variant_index, query, script));
     }
 
     // otherwise if the query doesn't have a very strong feature,
@@ -791,7 +806,7 @@ pub fn combined_search(
     } else {
         script
     };
-    let variants_ranks = variant_search(dict, variants_map, query, query_script);
+    let variants_ranks = variant_search(dict, variant_index, query, query_script);
     let pr_ranks = if let Some(pr_indices) = pr_indices {
         pr_search(pr_indices, dict, variants_map, query, script, romanization)
     } else {

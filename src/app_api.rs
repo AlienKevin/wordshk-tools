@@ -1,12 +1,16 @@
 use rkyv::{AlignedVec, Deserialize};
 
+use crate::dict::EntryId;
 use crate::jyutping::Romanization;
 use crate::pr_index::{generate_pr_indices, pr_indices_into_fst, FstPrIndices};
 use crate::rich_dict::{ArchivedRichDict, RichDictWrapper};
+use crate::search::Script;
+use crate::variant_index::generate_variant_index;
 
 use super::english_index::generate_english_index;
 use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, EnrichDictOptions, RichDict};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
@@ -64,6 +68,29 @@ impl Api {
         Ok(())
     }
 
+    fn insert_variant_index_data(
+        conn: &rusqlite::Connection,
+        c: char,
+        entry_ids: &BTreeSet<EntryId>,
+        script: Script,
+    ) -> rusqlite::Result<()> {
+        conn.execute(
+            match script {
+                Script::Traditional => {
+                    "INSERT INTO variant_index_trad (char, entry_ids_rkyv) VALUES (?, ?)"
+                }
+                Script::Simplified => {
+                    "INSERT INTO variant_index_simp (char, entry_ids_rkyv) VALUES (?, ?)"
+                }
+            },
+            rusqlite::params![
+                c.to_string(),
+                rkyv::to_bytes::<_, 1024>(entry_ids).unwrap().as_slice()
+            ],
+        )?;
+        Ok(())
+    }
+
     pub fn export_dict_as_sqlite_db(&self, db_path: &Path, version: &str) -> rusqlite::Result<()> {
         use rkyv::Deserialize;
 
@@ -80,6 +107,21 @@ impl Api {
             "CREATE TABLE english_index (
                 phrase TEXT PRIMARY KEY,
                 english_index_data_rkyv BLOB NOT NULL
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE variant_index_trad (
+                char TEXT PRIMARY KEY,
+                entry_ids_rkyv BLOB NOT NULL
+            )",
+            [],
+        )?;
+        conn.execute(
+            "CREATE TABLE variant_index_simp (
+                char TEXT PRIMARY KEY,
+                entry_ids_rkyv BLOB NOT NULL
             )",
             [],
         )?;
@@ -103,6 +145,14 @@ impl Api {
 
         for (phrase, english_index_data) in generate_english_index(unsafe { self.dict() }) {
             Self::insert_english_index_data(&conn, &phrase, &english_index_data)?;
+        }
+
+        let (index_trad, index_simp) = generate_variant_index(unsafe { self.dict() });
+        for (c, entry_ids) in index_trad {
+            Self::insert_variant_index_data(&conn, c, &entry_ids, Script::Traditional)?;
+        }
+        for (c, entry_ids) in index_simp {
+            Self::insert_variant_index_data(&conn, c, &entry_ids, Script::Simplified)?;
         }
 
         Ok(())

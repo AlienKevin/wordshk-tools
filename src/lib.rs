@@ -25,6 +25,7 @@ pub mod sqlite_db;
 #[cfg(test)]
 mod tests;
 pub mod unicode;
+pub mod variant_index;
 #[path = "../data/variant_to_us_english.rs"]
 mod variant_to_us_english;
 #[path = "../data/word_frequencies.rs"]

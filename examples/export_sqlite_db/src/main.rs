@@ -41,7 +41,27 @@ fn test_sqlite_search() {
     let dict = SqliteDb::new(&std::path::Path::new(APP_TMP_DIR).join("dict.db"));
     let variants_map = rich_dict_to_variants_map(&dict);
     let start_time = Instant::now();
-    let results = search::variant_search(&dict, &variants_map, "好", Script::Simplified);
+    let results = search::variant_search(&dict, &dict, "好", Script::Simplified);
+    println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
+
+    let start_time = Instant::now();
+    let results = search::variant_search(&dict, &dict, "苹", Script::Simplified);
+    println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
+
+    let start_time = Instant::now();
+    let results = search::variant_search(&dict, &dict, "苹", Script::Traditional);
+    println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
+
+    let start_time = Instant::now();
+    let results = search::variant_search(&dict, &dict, "蘋", Script::Simplified);
+    println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
+
+    let start_time = Instant::now();
+    let results = search::variant_search(&dict, &dict, "蘋", Script::Traditional);
     println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 
