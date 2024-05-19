@@ -18,14 +18,9 @@ impl VariantIndexLike for SqliteDb {
 
         let conn = self.conn();
         let mut stmt = conn
-            .prepare(match script {
-                Script::Traditional => {
-                    "SELECT entry_ids_rkyv FROM variant_index_trad WHERE char = ?"
-                }
-                Script::Simplified => {
-                    "SELECT entry_ids_rkyv FROM variant_index_simp WHERE char = ?"
-                }
-            })
+            .prepare(&format!(
+                "SELECT entry_ids_rkyv FROM variant_index_{script} WHERE char = ?"
+            ))
             .unwrap();
         let english_index_data_rkyv_bytes: Option<Vec<u8>> =
             stmt.query_row([c.to_string()], |row| row.get(0)).ok();

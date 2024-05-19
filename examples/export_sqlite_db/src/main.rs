@@ -11,9 +11,9 @@ use wordshk_tools::{
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    // export_sqlite_db(true);
+    export_sqlite_db(true);
     // test_sqlite_search();
-    show_pr_index_sizes();
+    // show_pr_index_sizes();
 }
 
 fn export_sqlite_db(regenerate_api_from_csv: bool) {

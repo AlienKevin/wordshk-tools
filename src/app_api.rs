@@ -59,11 +59,7 @@ impl Api {
         for variant in entry.variants.0.iter() {
             conn.execute(
                 &format!(
-                    "INSERT INTO variant_map_{} (variant, entry_id) VALUES (?, ?) ON CONFLICT(variant) DO NOTHING",
-                    match script {
-                        Script::Traditional => "trad",
-                        Script::Simplified => "simp",
-                    }
+                    "INSERT INTO variant_map_{script} (variant, entry_id) VALUES (?, ?) ON CONFLICT(variant) DO NOTHING"
                 ),
                 rusqlite::params![match script {
                     Script::Traditional => variant.word.as_str(),

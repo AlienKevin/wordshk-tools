@@ -15,6 +15,7 @@ use super::jyutping::{LaxJyutPings, Romanization};
 use super::rich_dict::RichEntry;
 use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
+use core::fmt;
 use fst::automaton::Levenshtein;
 use itertools::Itertools;
 use std::cmp::Ordering;
@@ -33,6 +34,15 @@ type Index = usize;
 pub enum Script {
     Simplified,
     Traditional,
+}
+
+impl fmt::Display for Script {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Script::Simplified => write!(f, "simp"),
+            Script::Traditional => write!(f, "trad"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -172,28 +182,18 @@ pub fn pick_variants(variants: &RichVariants, script: Script) -> Variants {
 }
 
 pub trait VariantMapLike {
-    fn get(&self, query: &str) -> Option<EntryId>;
+    fn get(&self, query: &str, script: Script) -> Option<EntryId>;
 }
 
 impl VariantMapLike for SqliteDb {
-    fn get(&self, query: &str) -> Option<EntryId> {
+    fn get(&self, query: &str, script: Script) -> Option<EntryId> {
         let conn = self.conn();
         let mut stmt = conn
-            .prepare("SELECT entry_id FROM variant_map WHERE variant = ?")
+            .prepare(&format!(
+                "SELECT entry_id FROM variant_map_{script} WHERE variant = ?"
+            ))
             .unwrap();
         stmt.query_row([query], |row| row.get(0)).ok()
-    }
-}
-
-pub fn get_entry_id(
-    variant_map_trad: &dyn VariantMapLike,
-    variant_map_simp: &dyn VariantMapLike,
-    query: &str,
-    script: Script,
-) -> Option<EntryId> {
-    match script {
-        Script::Traditional => variant_map_trad.get(query),
-        Script::Simplified => variant_map_simp.get(query),
     }
 }
 
