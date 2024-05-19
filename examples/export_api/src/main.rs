@@ -18,9 +18,7 @@ use wordshk_tools::{
         LaxJyutPings, Romanization,
     },
     rich_dict::{RichDict, RichLine, RubySegment},
-    search::{
-        eg_search, pr_search, rich_dict_to_variants_map, variant_search, EgSearchRank, Script,
-    },
+    search::{pr_search, rich_dict_to_variants_map, variant_search, Script},
     unicode::to_hk_safe_variant,
 };
 
@@ -738,43 +736,6 @@ fn test_variant_search() {
     let variants_map = rich_dict_to_variants_map(&api.dict());
     let results = variant_search(&variants_map, "苹果", Script::Traditional);
     println!("{:?}", results.len());
-}
-
-fn test_eg_search() {
-    use itertools::Itertools;
-
-    let api = Api::load(APP_TMP_DIR);
-
-    // simulate a mobile processor
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(4)
-        .build_global()
-        .unwrap();
-
-    let start_time = std::time::Instant::now();
-    let (query_found, results) = eg_search(&api.dict(), "嚟呢度", 10, Script::Traditional);
-    println!("Query found: {:?}", query_found);
-    println!(
-        "{}",
-        results
-            .iter()
-            .map(
-                |EgSearchRank {
-                     id,
-                     def_index,
-                     eg_index,
-                     eg_length,
-                 }| {
-                    api.dict()[id].defs[*def_index].egs[*eg_index]
-                        .yue
-                        .as_ref()
-                        .unwrap()
-                        .clone()
-                },
-            )
-            .join("\n")
-    );
-    println!("Search took {:?}", start_time.elapsed());
 }
 
 fn get_disyllabic_prs_shorter_than(characters: usize) {
