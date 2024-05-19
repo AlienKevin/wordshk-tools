@@ -114,6 +114,32 @@ impl Api {
         Ok(())
     }
 
+    fn insert_pr_index(
+        conn: &rusqlite::Connection,
+        dict: &ArchivedRichDict,
+        romanization: Romanization,
+    ) -> rusqlite::Result<()> {
+        let fst = pr_indices_into_fst(generate_pr_indices(dict, Romanization::Jyutping));
+        for (id, locations) in fst.locations {
+            conn.execute(
+                &format!("INSERT INTO pr_index_locations_{romanization} (id, locations_rkyv) VALUES (?, ?)"),
+                rusqlite::params![
+                    id,
+                    rkyv::to_bytes::<_, 1024>(&locations).unwrap().as_slice()
+                ],
+            )?;
+        }
+        conn.execute(
+            &format!("INSERT INTO pr_index_fsts_{romanization} (name, fst) VALUES (?, ?)"),
+            rusqlite::params!["none", fst.none.as_fst().as_bytes(),],
+        )?;
+        conn.execute(
+            &format!("INSERT INTO pr_index_fsts_{romanization} (name, fst) VALUES (?, ?)"),
+            rusqlite::params!["tone", fst.tone.as_fst().as_bytes(),],
+        )?;
+        Ok(())
+    }
+
     pub fn export_dict_as_sqlite_db(&self, db_path: &Path, version: &str) -> rusqlite::Result<()> {
         use rkyv::Deserialize;
 
@@ -145,6 +171,36 @@ impl Api {
             "CREATE TABLE variant_index_simp (
                 char TEXT PRIMARY KEY,
                 entry_ids_rkyv BLOB NOT NULL
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE pr_index_locations_jyutping (
+                id INTEGER PRIMARY KEY,
+                locations_rkyv BLOB NOT NULL
+            )",
+            [],
+        )?;
+        conn.execute(
+            "CREATE TABLE pr_index_fsts_jyutping (
+                name TEXT PRIMARY KEY,
+                fst BLOB NOT NULL
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE pr_index_locations_yale (
+                id INTEGER PRIMARY KEY,
+                locations_rkyv BLOB NOT NULL
+            )",
+            [],
+        )?;
+        conn.execute(
+            "CREATE TABLE pr_index_fsts_yale (
+                name TEXT PRIMARY KEY,
+                fst BLOB NOT NULL
             )",
             [],
         )?;
@@ -186,6 +242,9 @@ impl Api {
         for (phrase, english_index_data) in generate_english_index(unsafe { self.dict() }) {
             Self::insert_english_index_data(&conn, &phrase, &english_index_data)?;
         }
+
+        Self::insert_pr_index(&conn, unsafe { self.dict() }, Romanization::Jyutping)?;
+        Self::insert_pr_index(&conn, unsafe { self.dict() }, Romanization::Yale)?;
 
         let (index_trad, index_simp) = generate_variant_index(unsafe { self.dict() });
         for (c, entry_ids) in index_trad {

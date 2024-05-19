@@ -18,6 +18,21 @@ use std::fmt;
 pub type RichDict = BTreeMap<EntryId, RichEntry>;
 pub type ArchivedRichDict = ArchivedBTreeMap<EntryId, ArchivedRichEntry>;
 
+impl RichDictLike for ArchivedRichDict {
+    fn get_entry(&self, id: EntryId) -> RichEntry {
+        use rkyv::Deserialize;
+
+        self.get(&id)
+            .unwrap()
+            .deserialize(&mut rkyv::Infallible)
+            .unwrap()
+    }
+
+    fn get_ids(&self) -> Vec<EntryId> {
+        self.keys().map(|x| *x).collect()
+    }
+}
+
 #[derive(
     Debug,
     PartialEq,

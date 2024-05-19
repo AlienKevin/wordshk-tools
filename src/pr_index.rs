@@ -2,6 +2,7 @@ use crate::{
     dict::EntryId,
     jyutping::{remove_yale_tones, Romanization},
     search::RichDictLike,
+    sqlite_db::SqliteDb,
 };
 use fst::{automaton::Levenshtein, IntoStreamer, Map, MapBuilder};
 use serde::{Deserialize, Serialize};
@@ -28,33 +29,72 @@ impl PrIndices {
 }
 
 pub struct FstPrIndices {
-    tone: Map<Vec<u8>>,
-    none: Map<Vec<u8>>,
+    pub tone: Map<Vec<u8>>,
+    pub none: Map<Vec<u8>>,
 
-    locations: HashMap<u64, BTreeSet<PrLocation>>,
+    pub locations: HashMap<u64, BTreeSet<PrLocation>>,
 }
 
-impl FstPrIndices {
-    pub fn tone<'a>(&'a self) -> impl FnOnce(Levenshtein) -> BTreeSet<PrLocation> + 'a {
-        |query| self.search(&self.tone, query)
-    }
+pub trait FstPrIndicesLike {
+    fn search(
+        &self,
+        has_tone: bool,
+        query: Levenshtein,
+        romanization: Romanization,
+    ) -> BTreeSet<PrLocation>;
+}
 
-    pub fn none<'a>(&'a self) -> impl FnOnce(Levenshtein) -> BTreeSet<PrLocation> + 'a {
-        |query| self.search(&self.none, query)
-    }
+impl FstPrIndicesLike for SqliteDb {
+    fn search(
+        &self,
+        has_tone: bool,
+        query: Levenshtein,
+        romanization: Romanization,
+    ) -> BTreeSet<PrLocation> {
+        use rkyv::Deserialize;
 
-    pub fn fst_size_in_bytes(&self) -> usize {
-        self.tone.as_fst().as_bytes().len() + self.none.as_fst().as_bytes().len()
-    }
+        let conn = self.conn();
+        let mut stmt = conn
+            .prepare(&format!(
+                "SELECT fst FROM pr_index_fsts_{romanization} WHERE name = ?"
+            ))
+            .unwrap();
+        let fst_bytes: Vec<u8> = stmt
+            .query_row([if has_tone { "tone" } else { "none" }], |row| row.get(0))
+            .ok()
+            .unwrap();
+        let fst = Map::new(fst_bytes).unwrap();
 
-    pub fn locations_size_in_bytes(&self) -> usize {
-        self.locations.iter().fold(0, |acc, (k, v)| {
-            acc + std::mem::size_of_val(k) + v.len() * std::mem::size_of::<PrLocation>()
-        })
-    }
+        let mut stmt = conn
+            .prepare(&format!(
+                "SELECT locations_rkyv FROM pr_index_locations_{romanization} WHERE id = ?"
+            ))
+            .unwrap();
 
-    fn search(&self, map: &Map<Vec<u8>>, query: Levenshtein) -> BTreeSet<PrLocation> {
-        map.search(query)
+        fst.search(query)
+            .into_stream()
+            .into_values()
+            .into_iter()
+            .flat_map(|loc| -> BTreeSet<PrLocation> {
+                let locations_rkyv_bytes: Vec<u8> =
+                    stmt.query_row([loc], |row| row.get(0)).ok().unwrap();
+                unsafe { rkyv::archived_root::<BTreeSet<PrLocation>>(&locations_rkyv_bytes[..]) }
+                    .deserialize(&mut rkyv::Infallible)
+                    .unwrap()
+            })
+            .collect()
+    }
+}
+
+impl FstPrIndicesLike for FstPrIndices {
+    fn search(
+        &self,
+        has_tone: bool,
+        query: Levenshtein,
+        romanization: Romanization,
+    ) -> BTreeSet<PrLocation> {
+        if has_tone { &self.tone } else { &self.none }
+            .search(query)
             .into_stream()
             .into_values()
             .into_iter()
@@ -64,7 +104,34 @@ impl FstPrIndices {
     }
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+impl FstPrIndices {
+    pub fn fst_size_in_bytes(&self) -> usize {
+        self.tone.as_fst().as_bytes().len() + self.none.as_fst().as_bytes().len()
+    }
+
+    pub fn locations_size_in_bytes(&self) -> usize {
+        self.locations.iter().fold(0, |acc, (k, v)| {
+            acc + std::mem::size_of_val(k) + v.len() * std::mem::size_of::<PrLocation>()
+        })
+    }
+}
+
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+)]
+#[archive_attr(derive(PartialEq, Eq, PartialOrd, Ord))]
 pub struct PrLocation {
     #[serde(rename = "e")]
     pub entry_id: EntryId,

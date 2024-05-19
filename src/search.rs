@@ -1,7 +1,7 @@
 use crate::dict::{clause_to_string, Clause, EntryId};
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
 use crate::lihkg_frequencies::LIHKG_FREQUENCIES;
-use crate::pr_index::{FstPrIndices, PrLocation, MAX_DELETIONS};
+use crate::pr_index::{FstPrIndices, FstPrIndicesLike, PrLocation, MAX_DELETIONS};
 use crate::rich_dict::{RichVariant, RichVariants};
 use crate::sqlite_db::SqliteDb;
 use crate::variant_index::VariantIndexLike;
@@ -254,7 +254,7 @@ fn get_max_frequency_count(variants: &RichVariants) -> usize {
 }
 
 pub fn pr_search(
-    pr_indices: &FstPrIndices,
+    pr_indices: &dyn FstPrIndicesLike,
     dict: &dyn RichDictLike,
     query: &str,
     script: Script,
@@ -399,7 +399,7 @@ pub fn pr_search(
             if query.contains(TONES) && query.contains(' ') {
                 lookup_index(
                     &query,
-                    pr_indices.tone(),
+                    |query| pr_indices.search(true, query, romanization),
                     dict,
                     script,
                     romanization,
@@ -409,7 +409,7 @@ pub fn pr_search(
             } else if query.contains(TONES) {
                 lookup_index(
                     &query,
-                    pr_indices.tone(),
+                    |query| pr_indices.search(true, query, romanization),
                     dict,
                     script,
                     romanization,
@@ -419,7 +419,7 @@ pub fn pr_search(
             } else if query.contains(' ') {
                 lookup_index(
                     &query,
-                    pr_indices.none(),
+                    |query| pr_indices.search(false, query, romanization),
                     dict,
                     script,
                     romanization,
@@ -429,7 +429,7 @@ pub fn pr_search(
             } else {
                 lookup_index(
                     &query,
-                    pr_indices.none(),
+                    |query| pr_indices.search(false, query, romanization),
                     dict,
                     script,
                     romanization,
@@ -455,7 +455,7 @@ pub fn pr_search(
             if has_tone && query.contains(' ') {
                 lookup_index(
                     &query,
-                    pr_indices.tone(),
+                    |query| pr_indices.search(true, query, romanization),
                     dict,
                     script,
                     romanization,
@@ -465,7 +465,7 @@ pub fn pr_search(
             } else if has_tone {
                 lookup_index(
                     &query,
-                    pr_indices.tone(),
+                    |query| pr_indices.search(true, query, romanization),
                     dict,
                     script,
                     romanization,
@@ -475,7 +475,7 @@ pub fn pr_search(
             } else if query.contains(' ') {
                 lookup_index(
                     &query,
-                    pr_indices.tone(),
+                    |query| pr_indices.search(true, query, romanization),
                     dict,
                     script,
                     romanization,
@@ -485,7 +485,7 @@ pub fn pr_search(
 
                 lookup_index(
                     &query,
-                    pr_indices.none(),
+                    |query| pr_indices.search(false, query, romanization),
                     dict,
                     script,
                     romanization,
@@ -495,7 +495,7 @@ pub fn pr_search(
             } else {
                 lookup_index(
                     &query,
-                    pr_indices.tone(),
+                    |query| pr_indices.search(true, query, romanization),
                     dict,
                     script,
                     romanization,
@@ -505,7 +505,7 @@ pub fn pr_search(
 
                 lookup_index(
                     &query,
-                    pr_indices.none(),
+                    |query| pr_indices.search(false, query, romanization),
                     dict,
                     script,
                     romanization,

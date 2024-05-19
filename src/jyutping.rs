@@ -15,7 +15,25 @@ pub enum Romanization {
     Yale,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+impl fmt::Display for Romanization {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Romanization::Jyutping => write!(f, "jyutping"),
+            Romanization::Yale => write!(f, "yale"),
+        }
+    }
+}
+
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+)]
 pub struct LaxJyutPings(pub Vec<LaxJyutPing>);
 impl fmt::Display for LaxJyutPings {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -28,7 +46,16 @@ pub type JyutPings = Vec<JyutPing>;
 /// JyutPing encoding with initial, nucleus, coda, and tone
 ///
 /// Phonetics info based on: <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.148.6501&rep=rep1&type=pdf>
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+)]
 pub struct JyutPing {
     #[serde(rename = "i")]
     pub initial: Option<JyutPingInitial>,
@@ -185,7 +212,16 @@ impl JyutPing {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+)]
 pub struct LaxJyutPing(pub Vec<LaxJyutPingSegment>);
 
 impl fmt::Display for LaxJyutPing {
@@ -283,7 +319,16 @@ pub fn remove_yale_tones(s: &str) -> String {
         .to_string()
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
+)]
 pub enum LaxJyutPingSegment {
     #[serde(rename = "S")]
     Standard(JyutPing),
@@ -319,7 +364,17 @@ impl LaxJyutPingSegment {
 /// Eg: 's' in "sap6"
 ///
 #[derive(
-    strum::EnumString, strum::Display, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize
+    strum::EnumString,
+    strum::Display,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
 )]
 #[strum(ascii_case_insensitive)]
 #[strum(serialize_all = "lowercase")]
@@ -361,7 +416,17 @@ impl JyutPingInitial {
 /// Eg: 'a' in "sap6"
 ///
 #[derive(
-    strum::EnumString, strum::Display, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize
+    strum::EnumString,
+    strum::Display,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
 )]
 #[strum(ascii_case_insensitive)]
 #[strum(serialize_all = "lowercase")]
@@ -496,7 +561,17 @@ fn to_yale_rime(
 /// Eg: 'p' in "sap6"
 ///
 #[derive(
-    strum::EnumString, strum::Display, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize
+    strum::EnumString,
+    strum::Display,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
 )]
 #[strum(ascii_case_insensitive)]
 #[strum(serialize_all = "lowercase")]
@@ -517,7 +592,17 @@ pub enum JyutPingCoda {
 /// Eg: '6' in "sap6"
 ///
 #[derive(
-    strum::EnumString, strum::Display, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize
+    strum::EnumString,
+    strum::Display,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Deserialize,
+    rkyv::Serialize,
 )]
 pub enum JyutPingTone {
     #[strum(serialize = "1")]

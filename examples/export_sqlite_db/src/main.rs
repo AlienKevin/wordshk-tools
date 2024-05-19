@@ -69,6 +69,17 @@ fn test_sqlite_search() {
     let results = search::english_search(&dict, &dict, "lucky", Script::Simplified);
     println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
+
+    let start_time = Instant::now();
+    let results = search::pr_search(
+        &dict,
+        &dict,
+        "mingmei",
+        Script::Traditional,
+        Romanization::Jyutping,
+    );
+    println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
 }
 
 fn show_pr_index_sizes() {
