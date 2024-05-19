@@ -757,18 +757,18 @@ pub enum CombinedSearchRank {
 }
 
 // Auto recognize the type of the query
-pub fn combined_search(
-    pr_indices: Option<&FstPrIndices>,
-    variant_index: &dyn VariantIndexLike,
-    english_index: &dyn EnglishIndexLike,
-    dict: &dyn RichDictLike,
+pub fn combined_search<D>(
+    dict: &D,
     query: &str,
     script: Script,
     romanization: Romanization,
-) -> CombinedSearchRank {
+) -> CombinedSearchRank
+where
+    D: RichDictLike + VariantIndexLike + FstPrIndicesLike + EnglishIndexLike,
+{
     // if the query has CJK characters, it can only be a variant
     if query.chars().any(unicode::is_cjk) {
-        return CombinedSearchRank::Variant(variant_search(dict, variant_index, query, script));
+        return CombinedSearchRank::Variant(variant_search(dict, dict, query, script));
     }
 
     // otherwise if the query doesn't have a very strong feature,
@@ -782,13 +782,9 @@ pub fn combined_search(
     } else {
         script
     };
-    let variants_ranks = variant_search(dict, variant_index, query, query_script);
-    let pr_ranks = if let Some(pr_indices) = pr_indices {
-        pr_search(pr_indices, dict, query, script, romanization)
-    } else {
-        BinaryHeap::new()
-    };
-    let english_results = english_search(english_index, dict, query, script);
+    let variants_ranks = variant_search(dict, dict, query, query_script);
+    let pr_ranks = pr_search(dict, dict, query, script, romanization);
+    let english_results = english_search(dict, dict, query, script);
 
     CombinedSearchRank::All(variants_ranks, pr_ranks, english_results)
 }
