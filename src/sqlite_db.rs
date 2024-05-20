@@ -3,7 +3,7 @@ pub struct SqliteDb {
 }
 
 impl SqliteDb {
-    pub fn new<P>(db_path: &P) -> Self
+    pub fn new<P>(db_path: P) -> Self
     where
         P: AsRef<std::path::Path>,
     {

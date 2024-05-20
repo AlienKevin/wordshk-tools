@@ -19,8 +19,8 @@ use core::fmt;
 use fst::automaton::Levenshtein;
 use itertools::Itertools;
 use std::cmp::Ordering;
+use std::collections::BinaryHeap;
 use std::collections::{BTreeMap, BTreeSet};
-use std::collections::{BinaryHeap, HashSet};
 use strsim::{generic_levenshtein, levenshtein, normalized_levenshtein};
 
 /// Max score is 100
@@ -180,40 +180,6 @@ impl VariantMapLike for SqliteDb {
             .unwrap();
         stmt.query_row([query], |row| row.get(0)).ok()
     }
-}
-
-pub fn get_entry_group(dict: &dyn RichDictLike, id: EntryId) -> Vec<RichEntry> {
-    let entry = dict.get_entry(id);
-    let query_word_set: HashSet<&str> = entry.variants.to_words_set();
-    sort_entry_group(
-        dict.get_ids()
-            .iter()
-            .filter_map(|id| {
-                let entry = dict.get_entry(*id);
-                let current_word_set: HashSet<&str> = entry.variants.to_words_set();
-                if query_word_set
-                    .intersection(&current_word_set)
-                    .next()
-                    .is_some()
-                {
-                    Some(dict.get_entry(*id).clone())
-                } else {
-                    None
-                }
-            })
-            .collect(),
-    )
-}
-
-fn sort_entry_group(mut entry_group: Vec<RichEntry>) -> Vec<RichEntry> {
-    entry_group.sort_by(|a, b| {
-        get_entry_frequency(a.id)
-            .cmp(&get_entry_frequency(b.id))
-            .reverse()
-            .then(a.defs.len().cmp(&b.defs.len()).reverse())
-            .then(a.id.cmp(&b.id))
-    });
-    entry_group
 }
 
 pub(crate) fn get_entry_frequency(entry_id: EntryId) -> u8 {

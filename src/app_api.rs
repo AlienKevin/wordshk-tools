@@ -1,4 +1,5 @@
 use crate::dict::EntryId;
+use crate::entry_group_index::get_entry_group_ids;
 use crate::jyutping::Romanization;
 use crate::pr_index::{generate_pr_indices, pr_indices_into_fst};
 use crate::rich_dict::RichEntry;
@@ -9,7 +10,6 @@ use super::english_index::generate_english_index;
 use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, EnrichDictOptions, RichDict};
 use std::collections::BTreeSet;
-use std::path::Path;
 
 pub struct Api {
     dict: RichDict,
@@ -25,6 +25,21 @@ impl Api {
         conn.execute(
             "INSERT INTO rich_dict (id, entry) VALUES (?, ?)",
             rusqlite::params![entry.id, serde_json::to_string(entry).unwrap()],
+        )?;
+        Ok(())
+    }
+
+    fn insert_group_ids(
+        conn: &rusqlite::Connection,
+        dict: &RichDict,
+        entry_id: EntryId,
+    ) -> rusqlite::Result<()> {
+        conn.execute(
+            "INSERT INTO entry_group_index (entry_id, group_ids) VALUES (?, ?)",
+            rusqlite::params![
+                entry_id,
+                serde_json::to_string(&get_entry_group_ids(dict, entry_id)).unwrap()
+            ],
         )?;
         Ok(())
     }
@@ -105,9 +120,14 @@ impl Api {
         Ok(())
     }
 
-    pub fn export_dict_as_sqlite_db(&self, db_path: &Path, version: &str) -> rusqlite::Result<()> {
-        let conn = rusqlite::Connection::open(db_path)?;
-        conn.execute(
+    pub fn export_dict_as_sqlite_db<P>(&self, db_path: P, version: &str) -> rusqlite::Result<()>
+    where
+        P: AsRef<std::path::Path>,
+    {
+        let mut conn = rusqlite::Connection::open(db_path)?;
+        let tx = conn.transaction()?;
+
+        tx.execute(
             "CREATE TABLE rich_dict (
                 id INTEGER PRIMARY KEY,
                 entry TEXT NOT NULL
@@ -115,7 +135,7 @@ impl Api {
             [],
         )?;
 
-        conn.execute(
+        tx.execute(
             "CREATE TABLE english_index (
                 phrase TEXT PRIMARY KEY,
                 english_index_data TEXT NOT NULL
@@ -123,14 +143,14 @@ impl Api {
             [],
         )?;
 
-        conn.execute(
+        tx.execute(
             "CREATE TABLE variant_index_trad (
                 char TEXT PRIMARY KEY,
                 entry_ids TEXT NOT NULL
             )",
             [],
         )?;
-        conn.execute(
+        tx.execute(
             "CREATE TABLE variant_index_simp (
                 char TEXT PRIMARY KEY,
                 entry_ids TEXT NOT NULL
@@ -138,14 +158,14 @@ impl Api {
             [],
         )?;
 
-        conn.execute(
+        tx.execute(
             "CREATE TABLE pr_index_locations_jyutping (
                 id INTEGER PRIMARY KEY,
                 locations TEXT NOT NULL
             )",
             [],
         )?;
-        conn.execute(
+        tx.execute(
             "CREATE TABLE pr_index_fsts_jyutping (
                 name TEXT PRIMARY KEY,
                 fst BLOB NOT NULL
@@ -153,14 +173,14 @@ impl Api {
             [],
         )?;
 
-        conn.execute(
+        tx.execute(
             "CREATE TABLE pr_index_locations_yale (
                 id INTEGER PRIMARY KEY,
                 locations TEXT NOT NULL
             )",
             [],
         )?;
-        conn.execute(
+        tx.execute(
             "CREATE TABLE pr_index_fsts_yale (
                 name TEXT PRIMARY KEY,
                 fst BLOB NOT NULL
@@ -168,14 +188,22 @@ impl Api {
             [],
         )?;
 
-        conn.execute(
+        tx.execute(
+            "CREATE TABLE entry_group_index (
+                entry_id INTEGER PRIMARY KEY,
+                group_ids TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        tx.execute(
             "CREATE TABLE variant_map_trad (
                 variant TEXT PRIMARY KEY,
                 entry_id INTEGER NOT NULL
             )",
             [],
         )?;
-        conn.execute(
+        tx.execute(
             "CREATE TABLE variant_map_simp (
                 variant TEXT PRIMARY KEY,
                 entry_id INTEGER NOT NULL
@@ -184,38 +212,41 @@ impl Api {
         )?;
 
         // Keep track of dict version in a separate metadata table
-        conn.execute(
+        tx.execute(
             "CREATE TABLE rich_dict_metadata (
             key TEXT NOT NULL UNIQUE,
             value TEXT
         )",
             [],
         )?;
-        conn.execute(
+        tx.execute(
             "INSERT INTO rich_dict_metadata (key, value) VALUES ('version', ?)",
             rusqlite::params![version],
         )?;
 
         for entry in self.dict.values() {
-            Self::insert_rich_entry(&conn, entry)?;
-            Self::insert_variant(&conn, entry, Script::Simplified)?;
-            Self::insert_variant(&conn, entry, Script::Traditional)?;
+            Self::insert_rich_entry(&tx, entry)?;
+            Self::insert_variant(&tx, entry, Script::Simplified)?;
+            Self::insert_variant(&tx, entry, Script::Traditional)?;
+            Self::insert_group_ids(&tx, &self.dict, entry.id)?;
         }
 
         for (phrase, english_index_data) in generate_english_index(&self.dict) {
-            Self::insert_english_index_data(&conn, &phrase, &english_index_data)?;
+            Self::insert_english_index_data(&tx, &phrase, &english_index_data)?;
         }
 
-        Self::insert_pr_index(&conn, &self.dict, Romanization::Jyutping)?;
-        Self::insert_pr_index(&conn, &self.dict, Romanization::Yale)?;
+        Self::insert_pr_index(&tx, &self.dict, Romanization::Jyutping)?;
+        Self::insert_pr_index(&tx, &self.dict, Romanization::Yale)?;
 
         let (index_trad, index_simp) = generate_variant_index(&self.dict);
         for (c, entry_ids) in index_trad {
-            Self::insert_variant_index_data(&conn, c, &entry_ids, Script::Traditional)?;
+            Self::insert_variant_index_data(&tx, c, &entry_ids, Script::Traditional)?;
         }
         for (c, entry_ids) in index_simp {
-            Self::insert_variant_index_data(&conn, c, &entry_ids, Script::Simplified)?;
+            Self::insert_variant_index_data(&tx, c, &entry_ids, Script::Simplified)?;
         }
+
+        tx.commit()?;
 
         Ok(())
     }
