@@ -6,10 +6,22 @@ use crate::{
     dict::EntryId,
     rich_dict::{RichDict, RichEntry},
     search::{get_entry_frequency, RichDictLike},
+    sqlite_db::SqliteDb,
 };
 
 pub trait EntryGroupIndex {
     fn get_entry_group(&self, id: EntryId) -> Vec<EntryId>;
+}
+
+impl EntryGroupIndex for SqliteDb {
+    fn get_entry_group(&self, id: EntryId) -> Vec<EntryId> {
+        let conn = self.conn();
+        let mut stmt = conn
+            .prepare("SELECT group_ids FROM entry_group_index WHERE entry_id = ?")
+            .unwrap();
+        let group_ids: String = stmt.query_row(&[&id], |row| row.get(0)).unwrap();
+        serde_json::from_str(&group_ids).unwrap()
+    }
 }
 
 pub fn get_entry_group<D>(dict: &D, id: EntryId) -> Vec<RichEntry>
