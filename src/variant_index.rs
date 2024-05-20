@@ -20,9 +20,9 @@ impl VariantIndexLike for SqliteDb {
                 "SELECT entry_ids FROM variant_index_{script} WHERE char = ?"
             ))
             .unwrap();
-        let english_index_data_bytes: Option<Vec<u8>> =
+        let english_index_data_string: Option<String> =
             stmt.query_row([c.to_string()], |row| row.get(0)).ok();
-        english_index_data_bytes.map(|bytes| serde_json::from_slice(&bytes).unwrap())
+        english_index_data_string.map(|string| serde_json::from_str(&string).unwrap())
     }
 }
 

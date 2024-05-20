@@ -55,9 +55,9 @@ impl EnglishIndexLike for SqliteDb {
         let mut stmt = conn
             .prepare("SELECT english_index_data FROM english_index WHERE phrase = ?")
             .unwrap();
-        let english_index_data_bytes: Option<Vec<u8>> =
+        let english_index_data_string: Option<String> =
             stmt.query_row([phrase], |row| row.get(0)).ok();
-        english_index_data_bytes.map(|bytes| serde_json::from_slice(&bytes).unwrap())
+        english_index_data_string.map(|string| serde_json::from_str(&string).unwrap())
     }
 
     fn iter(&self) -> EnglishIndexLikeIterator {
