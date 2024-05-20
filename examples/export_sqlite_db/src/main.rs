@@ -11,24 +11,14 @@ use wordshk_tools::{
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    export_sqlite_db(true);
-    // test_sqlite_search();
+    // export_sqlite_db();
+    test_sqlite_search();
     // show_pr_index_sizes();
 }
 
-fn export_sqlite_db(regenerate_api_from_csv: bool) {
-    let api = if regenerate_api_from_csv {
-        std::fs::create_dir(APP_TMP_DIR).ok();
-        unsafe {
-            Api::new(
-                APP_TMP_DIR,
-                include_str!("../../wordshk.csv"),
-                Romanization::Jyutping,
-            )
-        }
-    } else {
-        unsafe { Api::load(APP_TMP_DIR, Romanization::Jyutping) }
-    };
+fn export_sqlite_db() {
+    std::fs::create_dir(APP_TMP_DIR).ok();
+    let api = Api::new(include_str!("../../wordshk.csv"));
 
     let dict_path = std::path::Path::new(APP_TMP_DIR).join("dict.db");
     if std::fs::metadata(&dict_path).is_ok() {
@@ -42,32 +32,37 @@ fn test_sqlite_search() {
     let dict = SqliteDb::new(&std::path::Path::new(APP_TMP_DIR).join("dict.db"));
     let start_time = Instant::now();
     let results = search::variant_search(&dict, &dict, "好", Script::Simplified);
-    println!("{:?}", results);
+    // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 
     let start_time = Instant::now();
     let results = search::variant_search(&dict, &dict, "苹", Script::Simplified);
-    println!("{:?}", results);
+    // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 
     let start_time = Instant::now();
     let results = search::variant_search(&dict, &dict, "苹", Script::Traditional);
-    println!("{:?}", results);
+    // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 
     let start_time = Instant::now();
     let results = search::variant_search(&dict, &dict, "蘋", Script::Simplified);
-    println!("{:?}", results);
+    // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 
     let start_time = Instant::now();
     let results = search::variant_search(&dict, &dict, "蘋", Script::Traditional);
-    println!("{:?}", results);
+    // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 
     let start_time = Instant::now();
     let results = search::english_search(&dict, &dict, "lucky", Script::Simplified);
-    println!("{:?}", results);
+    // println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
+
+    let start_time = Instant::now();
+    let results = search::english_search(&dict, &dict, "thank you", Script::Simplified);
+    // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 
     let start_time = Instant::now();
@@ -78,7 +73,18 @@ fn test_sqlite_search() {
         Script::Traditional,
         Romanization::Jyutping,
     );
-    println!("{:?}", results);
+    // println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
+
+    let start_time = Instant::now();
+    let results = search::pr_search(
+        &dict,
+        &dict,
+        "ming4mei4",
+        Script::Traditional,
+        Romanization::Jyutping,
+    );
+    // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 }
 

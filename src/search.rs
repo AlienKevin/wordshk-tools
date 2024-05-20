@@ -1,7 +1,7 @@
 use crate::dict::{clause_to_string, Clause, EntryId};
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
 use crate::lihkg_frequencies::LIHKG_FREQUENCIES;
-use crate::pr_index::{FstPrIndices, FstPrIndicesLike, PrLocation, MAX_DELETIONS};
+use crate::pr_index::{FstPrIndicesLike, PrLocation, MAX_DELETIONS};
 use crate::rich_dict::{RichVariant, RichVariants};
 use crate::sqlite_db::SqliteDb;
 use crate::variant_index::VariantIndexLike;
@@ -70,17 +70,7 @@ pub fn create_combo_variants(
         .collect()
 }
 
-#[derive(
-    Clone,
-    Eq,
-    PartialEq,
-    Debug,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Clone, Eq, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct MatchedSegment {
     pub segment: String,
     pub matched: bool,
@@ -148,17 +138,12 @@ fn pick_variant(variant: &RichVariant, script: Script) -> Variant {
 
 impl RichDictLike for SqliteDb {
     fn get_entry(&self, entry_id: EntryId) -> RichEntry {
-        use rkyv::Deserialize;
-
         let conn = self.conn();
         let mut stmt = conn
-            .prepare("SELECT entry_rkyv FROM rich_dict WHERE id = ?")
+            .prepare("SELECT entry FROM rich_dict WHERE id = ?")
             .unwrap();
-        let entry_rkyv_bytes: Vec<u8> = stmt.query_row([entry_id], |row| row.get(0)).unwrap();
-        let entry: RichEntry = unsafe { rkyv::archived_root::<RichEntry>(&entry_rkyv_bytes[..]) }
-            .deserialize(&mut rkyv::Infallible)
-            .unwrap();
-        entry
+        let entry_str: String = stmt.query_row([entry_id], |row| row.get(0)).unwrap();
+        serde_json::from_str(&entry_str).unwrap()
     }
 
     fn get_ids(&self) -> Vec<EntryId> {
@@ -1295,12 +1280,7 @@ pub fn english_embedding_search(
 
                     let entry = dict.get(&entry_id).unwrap();
                     let def = &entry.defs[def_index];
-                    let eng: Clause = def
-                        .eng
-                        .as_ref()
-                        .unwrap()
-                        .deserialize(&mut rkyv::Infallible)
-                        .unwrap();
+                    let eng: Clause = def.eng.as_ref().unwrap();
 
                     let eng = clause_to_string(&eng);
                     let matched_eng = vec![MatchedSegment {

@@ -6,6 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rkyv = { version = "0.7.43", features = ["alloc"] }
 wordshk_tools = { path = "../../" }
 rusqlite = "0.31.0"

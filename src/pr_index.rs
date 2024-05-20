@@ -51,8 +51,6 @@ impl FstPrIndicesLike for SqliteDb {
         query: Levenshtein,
         romanization: Romanization,
     ) -> BTreeSet<PrLocation> {
-        use rkyv::Deserialize;
-
         let conn = self.conn();
         let mut stmt = conn
             .prepare(&format!(
@@ -67,7 +65,7 @@ impl FstPrIndicesLike for SqliteDb {
 
         let mut stmt = conn
             .prepare(&format!(
-                "SELECT locations_rkyv FROM pr_index_locations_{romanization} WHERE id = ?"
+                "SELECT locations FROM pr_index_locations_{romanization} WHERE id = ?"
             ))
             .unwrap();
 
@@ -76,11 +74,8 @@ impl FstPrIndicesLike for SqliteDb {
             .into_values()
             .into_iter()
             .flat_map(|loc| -> BTreeSet<PrLocation> {
-                let locations_rkyv_bytes: Vec<u8> =
-                    stmt.query_row([loc], |row| row.get(0)).ok().unwrap();
-                unsafe { rkyv::archived_root::<BTreeSet<PrLocation>>(&locations_rkyv_bytes[..]) }
-                    .deserialize(&mut rkyv::Infallible)
-                    .unwrap()
+                let locations_text: String = stmt.query_row([loc], |row| row.get(0)).unwrap();
+                serde_json::from_str(&locations_text).unwrap()
             })
             .collect()
     }
@@ -116,22 +111,7 @@ impl FstPrIndices {
     }
 }
 
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    Hash,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
-#[archive_attr(derive(PartialEq, Eq, PartialOrd, Ord))]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct PrLocation {
     #[serde(rename = "e")]
     pub entry_id: EntryId,

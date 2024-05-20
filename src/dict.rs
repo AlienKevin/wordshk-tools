@@ -29,7 +29,7 @@ pub type EntryId = u32;
 ///
 /// \[defs\] a list of definitions for this word
 ///
-#[derive(Clone, Debug, PartialEq, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Entry {
     pub id: EntryId,
     pub variants: Variants,
@@ -43,16 +43,7 @@ pub struct Entry {
     pub published: bool,
 }
 
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Variants(pub Vec<Variant>);
 
 impl Variants {
@@ -65,16 +56,7 @@ impl Variants {
 }
 
 /// A variant of a \[word\] with \[prs\] (pronounciations)
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Variant {
     #[serde(rename = "w")]
     pub word: String,
@@ -89,16 +71,7 @@ pub struct Variant {
 ///
 /// \[Link\] a link to another entry
 ///
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SegmentType {
     #[serde(rename = "T")]
     Text,
@@ -157,7 +130,7 @@ pub fn clause_to_string(clause: &Clause) -> String {
 ///
 /// \[egs\] Example sentences usually with Jyutping pronunciations and English translations
 ///
-#[derive(Clone, Debug, PartialEq, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Def {
     pub yue: Clause,
     pub eng: Option<Clause>,
@@ -179,17 +152,7 @@ pub type AltClause = (AltLang, Clause);
 ///
 /// [ISO 639-2]: https://www.loc.gov/standards/iso639-2/php/code_list.php
 ///
-#[derive(
-    Debug,
-    PartialEq,
-    Clone,
-    Copy,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum AltLang {
     Jpn, // Japanese
     Kor, // Korean
@@ -222,7 +185,7 @@ impl AltLang {
 ///
 /// \[eng\] English example: Can we meet up?
 ///
-#[derive(Debug, Clone, PartialEq, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Eg {
     pub zho: Option<PrLine>,
     pub yue: Option<PrLine>,

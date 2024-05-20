@@ -1,5 +1,5 @@
 use crate::dict::EntryId;
-use crate::rich_dict::{ArchivedRichDict, ArchivedRichEntry};
+use crate::rich_dict::{RichDict, RichEntry};
 use crate::search::{get_entry_frequency, MatchedSegment};
 use crate::sqlite_db::SqliteDb;
 
@@ -7,7 +7,6 @@ use super::dict::clause_to_string;
 use super::unicode;
 use itertools::Itertools;
 use regex::Regex;
-use rkyv::Deserialize as _;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
@@ -52,19 +51,13 @@ impl Iterator for EnglishIndexLikeIterator {
 
 impl EnglishIndexLike for SqliteDb {
     fn get(&self, phrase: &str) -> Option<Vec<EnglishIndexData>> {
-        use rkyv::Deserialize;
-
         let conn = self.conn();
         let mut stmt = conn
-            .prepare("SELECT english_index_data_rkyv FROM english_index WHERE phrase = ?")
+            .prepare("SELECT english_index_data FROM english_index WHERE phrase = ?")
             .unwrap();
-        let english_index_data_rkyv_bytes: Option<Vec<u8>> =
+        let english_index_data_bytes: Option<Vec<u8>> =
             stmt.query_row([phrase], |row| row.get(0)).ok();
-        english_index_data_rkyv_bytes.map(|bytes| {
-            unsafe { rkyv::archived_root::<Vec<EnglishIndexData>>(&bytes[..]) }
-                .deserialize(&mut rkyv::Infallible)
-                .unwrap()
-        })
+        english_index_data_bytes.map(|bytes| serde_json::from_slice(&bytes).unwrap())
     }
 
     fn iter(&self) -> EnglishIndexLikeIterator {
@@ -84,7 +77,7 @@ impl EnglishIndexLike for SqliteDb {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct EnglishIndexData {
     #[serde(rename = "e")]
     pub entry_id: EntryId,
@@ -165,7 +158,7 @@ impl Eq for EnglishIndexData {}
 
 type Counter = HashMap<String, u32>;
 
-pub fn generate_english_index(dict: &ArchivedRichDict) -> EnglishIndex {
+pub fn generate_english_index(dict: &RichDict) -> EnglishIndex {
     let mut counter: Counter = HashMap::new();
     for (_, entry) in dict.iter() {
         let mut repeated_terms = HashSet::new();
@@ -261,7 +254,7 @@ fn score_for_term(term: &str, splitted_phrase: &[String], counter: &Counter) -> 
 /// Returns a normalized phrase with
 /// individual tokens
 pub fn split_entry_eng_defs_into_phrases(
-    entry: &ArchivedRichEntry,
+    entry: &RichEntry,
     normalize: fn(&str) -> String,
 ) -> Vec<(usize, Vec<String>)> {
     entry
@@ -270,7 +263,7 @@ pub fn split_entry_eng_defs_into_phrases(
         .enumerate()
         .filter_map(|(def_index, def)| {
             def.eng.as_ref().and_then(|eng| {
-                let phrases = clause_to_string(&eng.deserialize(&mut rkyv::Infallible).unwrap())
+                let phrases = clause_to_string(&eng)
                     // Split with semicolon
                     .split(';')
                     .filter_map(|s| process_phrase(&normalize(s)))
@@ -308,7 +301,7 @@ fn insert_to_index(term: &str, index_data: EnglishIndexData, index: &mut English
     }
 }
 
-fn index_entry(counter: &Counter, entry: &ArchivedRichEntry, index: &mut EnglishIndex) {
+fn index_entry(counter: &Counter, entry: &RichEntry, index: &mut EnglishIndex) {
     // Map of term to scores -- we need to postprocess them
     let mut scores: HashMap<String, Vec<f32>> = HashMap::new();
 

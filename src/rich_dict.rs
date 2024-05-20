@@ -8,7 +8,6 @@ use super::dict::{
 };
 use super::unicode;
 use itertools::Itertools;
-use rkyv::collections::ArchivedBTreeMap;
 use serde::Deserialize;
 use serde::Serialize;
 use std::cmp;
@@ -16,33 +15,17 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
 
 pub type RichDict = BTreeMap<EntryId, RichEntry>;
-pub type ArchivedRichDict = ArchivedBTreeMap<EntryId, ArchivedRichEntry>;
 
-impl RichDictLike for ArchivedRichDict {
+impl RichDictLike for RichDict {
     fn get_entry(&self, id: EntryId) -> RichEntry {
-        use rkyv::Deserialize;
-
-        self.get(&id)
-            .unwrap()
-            .deserialize(&mut rkyv::Infallible)
-            .unwrap()
+        self.get(&id).unwrap().clone()
     }
-
     fn get_ids(&self) -> Vec<EntryId> {
-        self.keys().map(|x| *x).collect()
+        self.keys().cloned().collect_vec()
     }
 }
 
-#[derive(
-    Debug,
-    PartialEq,
-    Clone,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct RichEntry {
     #[serde(rename = "i")]
     pub id: EntryId,
@@ -81,16 +64,7 @@ pub struct RichEntry {
     pub published: bool,
 }
 
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RichVariants(pub Vec<RichVariant>);
 
 impl RichVariants {
@@ -103,16 +77,7 @@ impl RichVariants {
 }
 
 /// A variant of a \[word\] with \[prs\] (pronounciations)
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RichVariant {
     #[serde(rename = "w")]
     pub word: String,
@@ -124,16 +89,7 @@ pub struct RichVariant {
     pub prs: LaxJyutPings,
 }
 
-#[derive(
-    Debug,
-    PartialEq,
-    Clone,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct RichDef {
     #[serde(rename = "y")]
     pub yue: Clause,
@@ -151,16 +107,7 @@ pub struct RichDef {
     pub egs: Vec<RichEg>,
 }
 
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RichEg {
     #[serde(rename = "z")]
     pub zho: Option<RichLine>,
@@ -178,16 +125,7 @@ pub struct RichEg {
     pub eng: Option<Line>,
 }
 
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum RichLine {
     #[serde(rename = "R")]
     Ruby(RubyLine),
@@ -222,16 +160,7 @@ impl fmt::Display for RichLine {
 pub type Text = (TextStyle, String);
 
 /// Text styles, can be bold or normal
-#[derive(
-    Debug,
-    PartialEq,
-    Clone,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum TextStyle {
     #[serde(rename = "B")]
     Bold,
@@ -249,16 +178,7 @@ pub type WordSegment = (SegmentType, Word);
 ///
 /// `vec![(TextStyle::Bold, "兩"), (TextStyle::Normal, "周")]`
 ///
-#[derive(
-    Debug,
-    PartialEq,
-    Clone,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Word(pub Vec<Text>);
 
 impl fmt::Display for Word {
@@ -282,16 +202,7 @@ impl fmt::Display for Word {
 /// * or a [Word] with its pronunciations
 /// * or a linked segment with a series of [Word]s
 /// and their pronunciations
-#[derive(
-    Debug,
-    PartialEq,
-    Clone,
-    Serialize,
-    Deserialize,
-    rkyv::Archive,
-    rkyv::Deserialize,
-    rkyv::Serialize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum RubySegment {
     #[serde(rename = "P")]
     Punc(String),

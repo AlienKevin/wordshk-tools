@@ -1,6 +1,6 @@
 use crate::{
     dict::EntryId,
-    rich_dict::{ArchivedRichDict, ArchivedRichEntry},
+    rich_dict::{RichDict, RichEntry},
     search::Script,
     sqlite_db::SqliteDb,
 };
@@ -14,25 +14,19 @@ pub trait VariantIndexLike: Sync + Send {
 
 impl VariantIndexLike for SqliteDb {
     fn get(&self, c: char, script: Script) -> Option<BTreeSet<EntryId>> {
-        use rkyv::Deserialize;
-
         let conn = self.conn();
         let mut stmt = conn
             .prepare(&format!(
-                "SELECT entry_ids_rkyv FROM variant_index_{script} WHERE char = ?"
+                "SELECT entry_ids FROM variant_index_{script} WHERE char = ?"
             ))
             .unwrap();
-        let english_index_data_rkyv_bytes: Option<Vec<u8>> =
+        let english_index_data_bytes: Option<Vec<u8>> =
             stmt.query_row([c.to_string()], |row| row.get(0)).ok();
-        english_index_data_rkyv_bytes.map(|bytes| {
-            unsafe { rkyv::archived_root::<BTreeSet<EntryId>>(&bytes[..]) }
-                .deserialize(&mut rkyv::Infallible)
-                .unwrap()
-        })
+        english_index_data_bytes.map(|bytes| serde_json::from_slice(&bytes).unwrap())
     }
 }
 
-pub fn generate_variant_index(dict: &ArchivedRichDict) -> (VariantIndex, VariantIndex) {
+pub fn generate_variant_index(dict: &RichDict) -> (VariantIndex, VariantIndex) {
     let mut index_trad = HashMap::new();
     let mut index_simp = HashMap::new();
 
@@ -43,11 +37,7 @@ pub fn generate_variant_index(dict: &ArchivedRichDict) -> (VariantIndex, Variant
     (index_trad, index_simp)
 }
 
-fn index_entry(
-    entry: &ArchivedRichEntry,
-    index_trad: &mut VariantIndex,
-    index_simp: &mut VariantIndex,
-) {
+fn index_entry(entry: &RichEntry, index_trad: &mut VariantIndex, index_simp: &mut VariantIndex) {
     entry.variants.0.iter().for_each(|variant| {
         let word_trad = crate::unicode::normalize(variant.word.as_str());
         let word_simp = crate::unicode::normalize(variant.word_simp.as_str());
