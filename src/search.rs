@@ -580,7 +580,7 @@ pub fn variant_search(
             .for_each(|(variant_index, variant)| {
                 let (occurrence_index, length_diff, matched_variant) =
                     score_variant_query(variant, &query_normalized, query_script, script);
-                if occurrence_index < usize::MAX && length_diff <= 2 {
+                if occurrence_index < usize::MAX {
                     ranks.push(VariantSearchRank {
                         id,
                         def_len: dict.get_entry(id).defs.len(),

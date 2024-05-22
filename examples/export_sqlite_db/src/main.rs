@@ -56,6 +56,11 @@ fn test_sqlite_search() {
     println!("{:?}", start_time.elapsed());
 
     let start_time = Instant::now();
+    let results = search::variant_search(&dict, &dict, "医返", Script::Simplified);
+    // println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
+
+    let start_time = Instant::now();
     let results = search::english_search(&dict, &dict, "lucky", Script::Simplified);
     // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
