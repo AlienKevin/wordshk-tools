@@ -100,7 +100,7 @@ impl Api {
         dict: &RichDict,
         romanization: Romanization,
     ) -> rusqlite::Result<()> {
-        let fst = pr_indices_into_fst(generate_pr_indices(dict, Romanization::Jyutping));
+        let fst = pr_indices_into_fst(generate_pr_indices(dict, romanization));
         for (id, locations) in fst.locations {
             conn.execute(
                 &format!(
