@@ -11,7 +11,7 @@ use std::{
     hash::Hash,
 };
 
-pub const MAX_DELETIONS: usize = 1;
+pub const MAX_DELETIONS: usize = 2;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct PrIndices {

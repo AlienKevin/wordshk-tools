@@ -253,7 +253,7 @@ pub fn pr_search(
             let jyutping = jyutping.to_string();
             let pr_variant = pr_variant_generator(&jyutping);
             let distance = levenshtein(&query, &pr_variant);
-            if distance <= 1 {
+            if distance <= MAX_DELETIONS {
                 let matched_pr = match romanization {
                     Romanization::Jyutping => diff_prs(query, &jyutping),
                     Romanization::Yale => {
