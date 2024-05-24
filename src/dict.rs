@@ -29,7 +29,7 @@ pub type EntryId = u32;
 ///
 /// \[defs\] a list of definitions for this word
 ///
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
     pub id: EntryId,
     pub variants: Variants,
@@ -130,7 +130,7 @@ pub fn clause_to_string(clause: &Clause) -> String {
 ///
 /// \[egs\] Example sentences usually with Jyutping pronunciations and English translations
 ///
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Def {
     pub yue: Clause,
     pub eng: Option<Clause>,
@@ -185,7 +185,7 @@ impl AltLang {
 ///
 /// \[eng\] English example: Can we meet up?
 ///
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Eg {
     pub zho: Option<PrLine>,
     pub yue: Option<PrLine>,
