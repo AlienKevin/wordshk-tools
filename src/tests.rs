@@ -1,3 +1,4 @@
+use crate::rich_dict::MandarinVariants;
 use crate::rich_dict::RichVariant;
 use crate::rich_dict::RichVariants;
 
@@ -1502,6 +1503,7 @@ fn test_to_lean_rich_dict() {
             sims_simp: vec![],
             ants: vec![],
             ants_simp: vec![],
+            mandarin_variants: MandarinVariants::default(),
             refs: vec![],
             imgs: vec![],
             defs: vec![rich_dict::RichDef {
@@ -1524,6 +1526,7 @@ fn test_to_lean_rich_dict() {
             sims_simp: vec![],
             ants: vec![],
             ants_simp: vec![],
+            mandarin_variants: MandarinVariants::default(),
             defs: vec![LeanDef {
                 yue: simple_clause("表現不屑而發出嘅聲音"),
                 yue_simp: simple_clause("表现不屑而发出嘅声音"),

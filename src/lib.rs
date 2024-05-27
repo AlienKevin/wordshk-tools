@@ -16,6 +16,8 @@ pub mod jyutping;
 pub mod lean_rich_dict;
 #[path = "../data/lihkg_frequencies.rs"]
 mod lihkg_frequencies;
+#[path = "../data/mandarin_variants.rs"]
+mod mandarin_variants;
 pub mod parse;
 pub mod pr_index;
 pub mod rich_dict;

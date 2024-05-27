@@ -11,8 +11,8 @@ use wordshk_tools::{
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    // export_sqlite_db();
-    test_sqlite_search();
+    export_sqlite_db();
+    // test_sqlite_search();
     // show_pr_index_sizes();
 }
 
@@ -24,7 +24,7 @@ fn export_sqlite_db() {
     if std::fs::metadata(&dict_path).is_ok() {
         std::fs::remove_file(&dict_path).unwrap();
     }
-    api.export_dict_as_sqlite_db(&dict_path, "3.2.4+27")
+    api.export_dict_as_sqlite_db(&dict_path, "3.2.5+28")
         .unwrap();
 }
 

@@ -1,4 +1,4 @@
-use crate::rich_dict::RichVariants;
+use crate::rich_dict::{MandarinVariants, RichVariants};
 use crate::search::Script;
 
 use super::dict::{AltClause, Clause, EntryId, Line, Segment};
@@ -17,6 +17,7 @@ pub struct LeanRichEntry {
     pub sims_simp: Vec<String>,
     pub ants: Vec<Segment>,
     pub ants_simp: Vec<String>,
+    pub mandarin_variants: MandarinVariants,
     pub defs: Vec<LeanDef>,
     pub published: bool,
 }
@@ -57,6 +58,7 @@ pub fn to_lean_rich_entry(entry: &RichEntry) -> LeanRichEntry {
         sims_simp: entry.sims_simp.clone(),
         ants: entry.ants.clone(),
         ants_simp: entry.ants_simp.clone(),
+        mandarin_variants: entry.mandarin_variants.clone(),
         defs: entry.defs.iter().map(to_lean_def).collect(),
         published: entry.published,
     }

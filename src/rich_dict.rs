@@ -1,4 +1,5 @@
 use crate::jyutping::LaxJyutPings;
+use crate::mandarin_variants::MANDARIN_VARIANTS;
 use crate::search::RichDictLike;
 
 use super::charlist::CHARLIST;
@@ -51,6 +52,9 @@ pub struct RichEntry {
     #[serde(rename = "as")]
     pub ants_simp: Vec<String>,
 
+    #[serde(rename = "m")]
+    pub mandarin_variants: MandarinVariants,
+
     #[serde(skip)]
     pub refs: Vec<String>,
 
@@ -73,6 +77,24 @@ impl RichVariants {
     }
     pub fn to_words_set(&self) -> HashSet<&str> {
         self.0.iter().map(|variant| &variant.word[..]).collect()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MandarinVariant {
+    #[serde(rename = "ws")]
+    pub word_simp: String,
+
+    #[serde(rename = "d")]
+    pub def_indices: Vec<usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MandarinVariants(pub Vec<MandarinVariant>);
+
+impl Default for MandarinVariants {
+    fn default() -> Self {
+        MandarinVariants(vec![])
     }
 }
 
@@ -724,6 +746,10 @@ pub fn enrich_dict(dict: &Dict, options: &EnrichDictOptions) -> RichDict {
             let sims_simp = get_simplified_sims_or_ants(&line_to_strings(&sims));
             let ants = enrich_sims_or_ants(&entry.ants, dict, options);
             let ants_simp = get_simplified_sims_or_ants(&line_to_strings(&ants));
+            let mandarin_variants = MANDARIN_VARIANTS
+                .get(&id)
+                .map(|mandarin_variants| mandarin_variants.clone())
+                .unwrap_or(MandarinVariants(vec![]));
             (
                 *id,
                 RichEntry {
@@ -735,6 +761,7 @@ pub fn enrich_dict(dict: &Dict, options: &EnrichDictOptions) -> RichDict {
                     sims_simp,
                     ants,
                     ants_simp,
+                    mandarin_variants,
                     refs: entry.refs.clone(),
                     imgs: entry.imgs.clone(),
                     defs: rich_defs,
