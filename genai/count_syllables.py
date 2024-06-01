@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 # Load the data from dict.json
-with open('dict.json', 'r') as file:
+with open('../dict.json', 'r') as file:
     data = json.load(file)
 
 syllable_counts = defaultdict(int)

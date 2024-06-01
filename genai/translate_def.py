@@ -98,7 +98,7 @@ def extract_yue_variants_and_defs(data):
 
 if __name__ == '__main__':
     # Load the data from dict.json
-    with open('dict.json', 'r') as file:
+    with open('../dict.json', 'r') as file:
         data = json.load(file)
 
     # Extract variants and definitions using the predefined function
