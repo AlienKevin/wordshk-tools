@@ -12,10 +12,10 @@ def textsize(text, font):
 
 # Custom Dataset class
 class ChineseCharacterDataset(Dataset):
-    def __init__(self, characters, char_labels, jyutping_labels, font_path, transform=None):
+    def __init__(self, characters, char_labels, jyutpings, font_path, transform=None):
         self.characters = characters
         self.char_labels = char_labels
-        self.jyutping_labels = jyutping_labels
+        self.jyutpings = jyutpings
         self.font = ImageFont.truetype(font_path, size=64)
         self.transform = transform
 
@@ -28,8 +28,9 @@ class ChineseCharacterDataset(Dataset):
         if self.transform:
             image = self.transform(image)
         char_label = self.char_labels[idx]
-        jyutping_label = self.jyutping_labels[idx]  # Should be a binary vector
-        return image, character, char_label, jyutping_label
+        jyutping_list = self.jyutpings[idx]  # Should be a list
+        jyutping_str = ','.join(jyutping_list)  # Concatenate jyutpings with ','
+        return image, character, char_label, jyutping_str
 
     def render_character(self, character):
         # Create a blank image with white background
@@ -51,19 +52,11 @@ def get_dataset():
     characters = list(char_jyutpings.keys())
 
     char_labels = np.array(range(len(characters)))
-    jyutping_labels = []
+    jyutpings = []
     
-    all_jyutpings = set()
-    for char, jyutpings in char_jyutpings.items():
-        all_jyutpings.update(jyutpings.keys())
-    all_jyutpings = sorted(list(all_jyutpings))
-    
-    for char, jyutpings in char_jyutpings.items():
-        jyutping_vector = [0] * len(all_jyutpings)
-        for jyutping, _ in jyutpings.items():
-            jyutping_vector[all_jyutpings.index(jyutping)] = 1
-        jyutping_labels.append(jyutping_vector)
-    jyutping_labels = np.array(jyutping_labels)
+    for char, jyutping_dict in char_jyutpings.items():
+        jyutping_list = list(jyutping_dict.keys())
+        jyutpings.append(jyutping_list)
 
     # Font path
     font_path = 'ChironHeiHK-R.ttf'
@@ -75,10 +68,9 @@ def get_dataset():
     ])
 
     # Dataset and DataLoader
-    dataset = ChineseCharacterDataset(characters, char_labels, jyutping_labels, font_path, transform=transform)
+    dataset = ChineseCharacterDataset(characters, char_labels, jyutpings, font_path, transform=transform)
     dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
 
     num_char_classes = len(np.unique(char_labels))  # Adjust according to your dataset
-    num_jyutping_classes = jyutping_labels.shape[1]  # Number of Jyutping classes
 
-    return (dataloader, num_char_classes, num_jyutping_classes)
+    return (dataloader, num_char_classes)

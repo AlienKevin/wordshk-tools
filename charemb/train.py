@@ -38,7 +38,7 @@ def train(model, dataloader, optimizer, criterion_char, num_epochs=10):
     torch.save(best_model, 'charemb.pth')
 
 if __name__ == '__main__':
-    (dataloader, num_char_classes, num_jyutping_classes) = get_dataset()
+    (dataloader, num_char_classes) = get_dataset()
 
     # Initialize model, loss functions, and optimizer
     model = MultiTaskCNN(num_char_classes)

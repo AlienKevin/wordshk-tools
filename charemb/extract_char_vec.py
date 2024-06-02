@@ -1,11 +1,10 @@
 import torch
 from model import MultiTaskCNN
 from dataset import get_dataset
-from cluster import plot_embeddings
 
 if __name__ == '__main__':
     # Load the dataset
-    dataloader, num_char_classes, num_jyutping_classes = get_dataset()
+    dataloader, num_char_classes = get_dataset()
 
     # Load the model
     model = MultiTaskCNN(num_char_classes)

@@ -29,7 +29,7 @@ if __name__ == '__main__':
     sample_text = "你好，世界！"  # Example text in Cantonese
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
-    dataloader, num_char_classes, num_jyutping_classes = get_dataset()
+    dataloader, num_char_classes = get_dataset()
 
     all_embeddings = {}
     for inputs, characters, char_labels, jyutping_labels in tqdm(dataloader):
