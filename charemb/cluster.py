@@ -11,7 +11,7 @@ from matplotlib import font_manager as fm
 dataloader, num_char_classes, num_jyutping_classes = get_dataset()
 
 # Load the model
-model = MultiTaskCNN(num_char_classes, num_jyutping_classes)
+model = MultiTaskCNN(num_char_classes)
 model.load_state_dict(torch.load('charemb.pth'))
 model.eval()
 
