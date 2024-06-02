@@ -13,6 +13,10 @@ dataloader, num_char_classes = get_dataset()
 
 combined_vecs = {}
 
+def normalize(vec):
+    norm = torch.norm(vec)
+    return vec / norm if norm != 0 else vec
+
 for inputs, characters, char_labels, jyutpings in tqdm(dataloader):
     for i, char in enumerate(characters):
         # Get BERT and character vectors
@@ -33,11 +37,14 @@ for inputs, characters, char_labels, jyutpings in tqdm(dataloader):
         whisper_vec = torch.zeros_like(bert_vec)
         for jyutping in jyutping_list:
             if jyutping in whisper_vecs:
-                whisper_vec += whisper_vecs[jyutping]
+                whisper_vec += normalize(whisper_vecs[jyutping])
             else:
                 print(f"Warning: Whisper vector for jyutping '{jyutping}' not found.")
         # Combine the vectors by adding them
-        combined_vec = bert_vec + char_vec + whisper_vec
+        bert_vec = normalize(bert_vec)
+        char_vec = normalize(char_vec)
+        whisper_vec = normalize(whisper_vec)
+        combined_vec = normalize(whisper_vec)
         combined_vecs[char] = combined_vec
 
 # Save the combined vectors

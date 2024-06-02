@@ -23,5 +23,5 @@ if __name__ == '__main__':
             embeddings.extend(embs)
             labels.extend(characters)
 
-    embeddings_dict = {label: embedding.cpu() for label, embedding in zip(labels, embeddings)}
+    embeddings_dict = {label: embedding.cpu().unsqueeze(0) for label, embedding in zip(labels, embeddings)}
     torch.save(embeddings_dict, 'char_vecs.pt')
