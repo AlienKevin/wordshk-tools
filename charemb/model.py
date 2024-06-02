@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 
 # Define the CNN architecture
@@ -17,10 +16,10 @@ class MultiTaskCNN(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
         self.fc = nn.Sequential(
-            nn.Linear(128 * 8 * 8, 256),
+            nn.Linear(128 * 8 * 8, 768),
             nn.ReLU(inplace=True)
         )
-        self.char_head = nn.Linear(256, num_char_classes)
+        self.char_head = nn.Linear(768, num_char_classes)
 
     def forward(self, x):
         x = self.features(x)
