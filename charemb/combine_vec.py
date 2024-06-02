@@ -3,6 +3,8 @@ from dataset import get_dataset
 from tqdm import tqdm
 from cluster import plot_embeddings
 import json
+from sklearn.decomposition import PCA
+import numpy as np
 
 # Check for MPS device
 device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
@@ -12,6 +14,45 @@ print(f'Using device: {device}')
 bert_vecs = torch.load('bert_vecs.pt', map_location=device)
 char_vecs = torch.load('char_vecs.pt', map_location=device)
 whisper_vecs = torch.load('whisper_vecs.pt', map_location=device)
+
+# https://github.com/vyraun/Half-Size/blob/6391b59ef808721c1bb9dc71c4f7845409e4c1ad/algo.py#L27
+def post_processing_algorithm(vecs, n_components):
+    # PCA to get Top Components
+    pca =  PCA(n_components = n_components)
+    vecs = vecs - np.mean(vecs)
+    pca.fit(vecs)
+    U1 = pca.components_
+
+    z = []
+
+    # Removing Projections on Top Components
+    for x in vecs:
+        for u in U1[0:7]:
+            x = x - np.dot(u.transpose(),x) * u
+        z.append(x)
+
+    z = np.asarray(z)
+    return z
+
+def reduce_dimension_pca(vec_dict, n_components=768, target_n_components=300):
+    vecs = torch.stack(list(vec_dict.values())).cpu().squeeze().numpy()
+
+    vecs = post_processing_algorithm(vecs, n_components)
+
+    # PCA Dim Reduction
+    pca =  PCA(n_components = target_n_components)
+    # vecs = vecs - torch.mean(vecs)
+    vecs = pca.fit_transform(vecs)
+
+    vecs = post_processing_algorithm(vecs, target_n_components)
+
+    reduced_vec_dict = {char: torch.tensor(vec, device=device).unsqueeze(0) for char, vec in zip(vec_dict.keys(), vecs)}
+    return reduced_vec_dict
+
+
+bert_vecs = reduce_dimension_pca(bert_vecs)
+char_vecs = reduce_dimension_pca(char_vecs)
+whisper_vecs = reduce_dimension_pca(whisper_vecs)
 
 # Load the dataset
 dataloader, num_char_classes = get_dataset()
@@ -87,7 +128,7 @@ def get_vecs(character, bert_vecs, char_vecs, whisper_vecs):
 
 
 # Training loop
-for epoch in range(3):  # Number of epochs can be adjusted
+for epoch in range(10):  # Number of epochs can be adjusted
     for m_char, c_char in train_data:
         optimizer.zero_grad()
         with torch.no_grad():
