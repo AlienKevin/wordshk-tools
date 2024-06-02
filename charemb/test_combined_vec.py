@@ -31,8 +31,8 @@ def find_k_nearest_neighbors(character, vec_type, k=5):
     return neighbors
 
 if __name__ == '__main__':
-    character = '轟'
-    jyutping = 'gwang1'
+    character = '佢'
+    jyutping = 'keoi5'
     k = 5
     vec_types = ['bert', 'char', 'whisper', 'combined']
     
