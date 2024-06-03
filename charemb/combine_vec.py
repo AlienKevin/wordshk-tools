@@ -3,8 +3,39 @@ from dataset import get_dataset
 from tqdm import tqdm
 from cluster import plot_embeddings
 import json
-import numpy as np
 from umap import UMAP
+import pandas as pd
+import torch.nn as nn
+import torch.optim as optim
+
+# Load mistakes.csv
+mistakes_df = pd.read_csv('mistakes.csv')
+
+# Prepare training data
+train_data = set()
+for _, row in mistakes_df.iterrows():
+    mistake_word, correct_words = row['mistake'], row['correct'].split(' ')
+    for correct_word in correct_words:
+        if len(mistake_word) == len(correct_word):
+            for m_char, c_char in zip(mistake_word, correct_word):
+                if m_char != c_char:
+                    train_data.add((m_char, c_char))
+                    train_data.add((c_char, m_char))
+
+with open('variants.txt', 'r') as f:
+    for line in f.readlines():
+        variants = line.split(' ')
+        for variant1 in variants:
+            for variant2 in variants:
+                if variant1 != variant2:
+                    for char1, char2 in zip(variant1, variant2):
+                        if char1 != char2:
+                            train_data.add((char1, char2))
+                            train_data.add((char2, char1))
+
+
+print(f'Training with {len(train_data)} unique character pairs')
+
 
 # Check for MPS device
 device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
@@ -36,24 +67,6 @@ combined_vecs = {}
 def normalize(vec):
     norm = torch.norm(vec)
     return vec / norm if norm != 0 else vec
-
-import pandas as pd
-import torch.nn as nn
-import torch.optim as optim
-
-# Load mistakes.csv
-mistakes_df = pd.read_csv('mistakes.csv')
-
-# Prepare training data
-train_data = []
-for _, row in mistakes_df.iterrows():
-    mistake_word, correct_words = row['mistake'], row['correct'].split(' ')
-    for correct_word in correct_words:
-        if len(mistake_word) == len(correct_word):
-            for m_char, c_char in zip(mistake_word, correct_word):
-                if m_char != c_char:
-                    train_data.append((m_char, c_char))
-                    train_data.append((c_char, m_char))
 
 # Define the attention model
 class AttentionModel(nn.Module):
