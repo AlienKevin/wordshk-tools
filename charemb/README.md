@@ -54,31 +54,31 @@ Syllable: jeon3, Distance: 1.281834315828724
 
 ## 7th hidden state
 The 5 nearest neighbors of 'keoi5' using whisper vectors are:
-Character: keoi5, Distance: 0.0
-Character: keoi2, Distance: 0.6566742170460379
-Character: geoi5, Distance: 0.8227106657157974
-Character: geoi2, Distance: 0.8380710795280678
-Character: keoi6, Distance: 0.8862982381238846
+Syllable: keoi5, Distance: 0.0
+Syllable: keoi2, Distance: 0.6566742170460379
+Syllable: geoi5, Distance: 0.8227106657157974
+Syllable: geoi2, Distance: 0.8380710795280678
+Syllable: keoi6, Distance: 0.8862982381238846
 
 The 5 nearest neighbors of 'jyut6' using whisper vectors are:
-Character: jyut6, Distance: 0.0
-Character: jyu2, Distance: 0.9117301120386097
-Character: jyu5, Distance: 1.0089712067849979
-Character: jyu4, Distance: 1.038537990872722
-Character: hyut3, Distance: 1.1714609445638449
+Syllable: jyut6, Distance: 0.0
+Syllable: jyu2, Distance: 0.9117301120386097
+Syllable: jyu5, Distance: 1.0089712067849979
+Syllable: jyu4, Distance: 1.038537990872722
+Syllable: hyut3, Distance: 1.1714609445638449
 
-Character: fuk1, Distance: 0.0
-Character: buk1, Distance: 0.6241482004960793
-Character: luk1, Distance: 0.7350499876089589
-Character: guk1, Distance: 0.8152087663969698
-Character: ok1, Distance: 0.8842324760370319
+Syllable: fuk1, Distance: 0.0
+Syllable: buk1, Distance: 0.6241482004960793
+Syllable: luk1, Distance: 0.7350499876089589
+Syllable: guk1, Distance: 0.8152087663969698
+Syllable: ok1, Distance: 0.8842324760370319
 
 The 5 nearest neighbors of 'aa3' using whisper vectors are:
-Character: aa3, Distance: 0.0
-Character: baa2, Distance: 0.6227931693463127
-Character: baa6, Distance: 0.6697158310333903
-Character: baa3, Distance: 0.683484252354505
-Character: haa2, Distance: 0.7045972387202214
+Syllable: aa3, Distance: 0.0
+Syllable: baa2, Distance: 0.6227931693463127
+Syllable: baa6, Distance: 0.6697158310333903
+Syllable: baa3, Distance: 0.683484252354505
+Syllable: haa2, Distance: 0.7045972387202214
 
 The 5 nearest neighbors of 'coeng4' using whisper vectors are:
 Syllable: coeng4, Distance: 0.0
@@ -96,43 +96,43 @@ Syllable: zit6, Distance: 1.043847420820422
 
 ## 2nd hidden state
 The 5 nearest neighbors of 'keoi5' using whisper vectors are:
-Character: keoi5, Distance: 0.0
-Character: kau2, Distance: 0.40294873334251774
-Character: kaau6, Distance: 0.4063356001980079
-Character: kwaak2, Distance: 0.40778212324152546
-Character: tau6, Distance: 0.4186114333460934
+Syllable: keoi5, Distance: 0.0
+Syllable: kau2, Distance: 0.40294873334251774
+Syllable: kaau6, Distance: 0.4063356001980079
+Syllable: kwaak2, Distance: 0.40778212324152546
+Syllable: tau6, Distance: 0.4186114333460934
 
 The 5 nearest neighbors of 'jyut6' using whisper vectors are:
-Character: jyut6, Distance: 0.0
-Character: jyun6, Distance: 0.5085588138531338
-Character: jyu2, Distance: 0.5263076181686136
-Character: jyun4, Distance: 0.5567829620938213
-Character: wi2, Distance: 0.5751458454747049
+Syllable: jyut6, Distance: 0.0
+Syllable: jyun6, Distance: 0.5085588138531338
+Syllable: jyu2, Distance: 0.5263076181686136
+Syllable: jyun4, Distance: 0.5567829620938213
+Syllable: wi2, Distance: 0.5751458454747049
 
 The 5 nearest neighbors of 'fuk1' using whisper vectors are:
-Character: fuk1, Distance: 0.0
-Character: luk1, Distance: 0.27873941979974354
-Character: suk1, Distance: 0.315374438943056
-Character: fuk3, Distance: 0.3221104077778525
-Character: buk1, Distance: 0.3281795280657402
+Syllable: fuk1, Distance: 0.0
+Syllable: luk1, Distance: 0.27873941979974354
+Syllable: suk1, Distance: 0.315374438943056
+Syllable: fuk3, Distance: 0.3221104077778525
+Syllable: buk1, Distance: 0.3281795280657402
 
 The 5 nearest neighbors of 'aa3' using whisper vectors are:
-Character: aa3, Distance: 0.0
-Character: baa3, Distance: 0.24625503151658315
-Character: kaa2, Distance: 0.27284514667066984
-Character: paam2, Distance: 0.28947381171410574
-Character: haau2, Distance: 0.29125453722885136
+Syllable: aa3, Distance: 0.0
+Syllable: baa3, Distance: 0.24625503151658315
+Syllable: kaa2, Distance: 0.27284514667066984
+Syllable: paam2, Distance: 0.28947381171410574
+Syllable: haau2, Distance: 0.29125453722885136
 
 The 5 nearest neighbors of 'coeng4' using whisper vectors are:
-Character: coeng4, Distance: 0.0
-Character: kaang5, Distance: 0.34965944069618204
-Character: zoeng4, Distance: 0.364207471062257
-Character: ceoi4, Distance: 0.37761272059222284
-Character: tan4, Distance: 0.3794890348541911
+Syllable: coeng4, Distance: 0.0
+Syllable: kaang5, Distance: 0.34965944069618204
+Syllable: zoeng4, Distance: 0.364207471062257
+Syllable: ceoi4, Distance: 0.37761272059222284
+Syllable: tan4, Distance: 0.3794890348541911
 
 The 5 nearest neighbors of 'ziu2' using whisper vectors are:
-Character: ziu2, Distance: 0.0
-Character: ziu5, Distance: 0.13087654237414817
-Character: wun6, Distance: 0.4467742183526337
-Character: jeon3, Distance: 0.45725448752761394
-Character: ngam2, Distance: 0.5295742534432546
+Syllable: ziu2, Distance: 0.0
+Syllable: ziu5, Distance: 0.13087654237414817
+Syllable: wun6, Distance: 0.4467742183526337
+Syllable: jeon3, Distance: 0.45725448752761394
+Syllable: ngam2, Distance: 0.5295742534432546
