@@ -1,8 +1,9 @@
 from transformers import WhisperProcessor, WhisperModel
 import torch
-from dataset import get_dataset
 from cluster import plot_embeddings
 from tqdm import tqdm
+import json
+from utils import normalize
 
 # Load the Whisper model and processor
 model_name = 'alvanlii/whisper-small-cantonese'
@@ -25,6 +26,13 @@ def extract_whisper_embeddings(audio, model, processor, device='cpu'):
     embeddings = outputs.last_hidden_state.mean(dim=1)  # Mean pooling
     return embeddings
 
+with open('../data/char_jyutpings/charlist_processed.json', 'r') as f:
+    char_jyutpings = json.load(f)
+
+def get_jyutpings(char):
+    return char_jyutpings.get(char, [])
+
+
 if __name__ == '__main__':
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
@@ -32,17 +40,29 @@ if __name__ == '__main__':
     from pydub import AudioSegment
 
     audio_dir = Path('jyutping_female')
-    all_embeddings = {}
+    vecs = {}
 
-    for audio_file in tqdm(list(audio_dir.glob('*.mp3'))):
+    for audio_file in tqdm(sorted(audio_dir.glob('*.mp3'))):
         jyutping_syllable = audio_file.stem
         audio = AudioSegment.from_mp3(audio_file).get_array_of_samples()
         embeddings = extract_whisper_embeddings(audio, model, processor, device)
-        all_embeddings[jyutping_syllable] = embeddings.cpu()
+        vecs[jyutping_syllable] = embeddings.cpu()
 
-    torch.save(all_embeddings, 'whisper_vecs.pt')
+    torch.save(vecs, 'whisper_vecs.pt')
+    labels = list(vecs.keys())
+    embeddings = torch.cat(list(vecs.values())).numpy()
+    plot_embeddings(embeddings, labels)
 
-    labels = list(all_embeddings.keys())
-    embeddings = torch.cat(list(all_embeddings.values())).numpy()
-
+    char_vecs = {}
+    for char in sorted(char_jyutpings.keys()):
+        char_vec = [torch.zeros_like(next(iter(vecs.values())))] # have at least one element for torch.stack
+        jyutpings = get_jyutpings(char)
+        for jyutping in jyutpings:
+            if jyutping in vecs:
+                char_vec.append(normalize(vecs[jyutping]))
+        char_vecs[char] = torch.mean(torch.stack(char_vec), dim=0)
+    
+    torch.save(char_vecs, 'whisper_char_vecs.pt')
+    labels = list(char_vecs.keys())
+    embeddings = torch.cat(list(char_vecs.values())).numpy()
     plot_embeddings(embeddings, labels)
