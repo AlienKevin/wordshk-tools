@@ -1,7 +1,8 @@
 from torch.utils.data import DataLoader, Dataset
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import torchvision.transforms as transforms
 import numpy as np
+import json
 
 # https://stackoverflow.com/a/77749307/6798201
 def textsize(text, font):
@@ -16,7 +17,7 @@ class ChineseCharacterDataset(Dataset):
         self.characters = characters
         self.char_labels = char_labels
         self.jyutpings = jyutpings
-        self.font = ImageFont.truetype(font_path, size=64)
+        self.font = ImageFont.truetype(font_path, size=60)
         self.transform = transform
 
     def __len__(self):
@@ -33,17 +34,33 @@ class ChineseCharacterDataset(Dataset):
         return image, character, char_label, jyutping_str
 
     def render_character(self, character):
+        # FIXME: Too many hard coded values (which are probably font-specific)
         # Create a blank image with white background
-        image = Image.new('L', (64, 64), color='white')
+        image = Image.new('L', (64, 80), color='white')
         draw = ImageDraw.Draw(image)
         # Calculate width and height of the character to center it
         width, height = textsize(text=character, font=self.font)
         # Position the character at the center of the image
-        draw.text(((64 - width) / 2, (64 - height) / 2), character, fill='black', font=self.font)
+        # draw.text((0, 0), character, fill='black', font=self.font)
+        draw.text(((64 - width) / 2, (80 - height) / 2), character, fill='black', font=self.font)
+
+        # Crop the image to 64x64 from the bottom - on my computer/font, the rendered
+        # character is reported to be ~80pixels tall, although actually it's
+        # mostly square-ish, so we need to crop away the top part
+        image = image.crop((0, 16, 64, 80))
+
+        # Distort the image a bit randomly
+        image = image.rotate(np.random.randint(-10, 10), resample=Image.BICUBIC, fillcolor='white')
+
+        # Add some noise, as random dots on the image
+        image = Image.fromarray(np.where(np.random.rand(64, 64) < 0.03, 0, image))
+
+        # Slightly blur the image
+        image = image.filter(ImageFilter.GaussianBlur(radius=1))
+
         return image
 
 
-import json
 
 def get_dataset():
     with open('../data/char_jyutpings/charlist_processed.json', 'r') as f:
