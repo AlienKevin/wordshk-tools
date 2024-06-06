@@ -48,4 +48,4 @@ if __name__ == '__main__':
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
     # Train the model
-    train(model, dataloader, optimizer, criterion_char, num_epochs=80)
+    train(model, dataloader, optimizer, criterion_char, num_epochs=120)

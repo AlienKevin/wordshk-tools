@@ -19,7 +19,8 @@ if __name__ == '__main__':
         for inputs, characters, char_labels, _ in dataloader:
             features = model.features(inputs)
             features = features.view(features.size(0), -1)
-            embs = model.fc(features)
+            embs = model.fc1(features)
+            embs = model.fc2(embs)
             embeddings.extend(embs)
             labels.extend(characters)
 
