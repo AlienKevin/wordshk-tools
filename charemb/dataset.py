@@ -61,19 +61,26 @@ class ChineseCharacterDataset(Dataset):
         return image
 
 
-
-def get_dataset():
-    with open('../data/char_jyutpings/charlist_processed.json', 'r') as f:
-        char_jyutpings = json.load(f)
-
-    characters = list(char_jyutpings.keys())
+# FIXME: expanded charset (traditional + simplified characters) has placeholder jyutping annotations
+def get_dataset(expanded_charset=False):
+    if expanded_charset:
+        with open('wordshk_chars_expanded.txt', 'r', encoding='utf-8') as file:
+            characters = file.read().splitlines()
+    else:
+        with open('../data/char_jyutpings/charlist_processed.json', 'r') as f:
+            char_jyutpings = json.load(f)
+        characters = list(char_jyutpings.keys())
 
     char_labels = np.array(range(len(characters)))
+
     jyutpings = []
-    
-    for char, jyutping_dict in char_jyutpings.items():
-        jyutping_list = list(jyutping_dict.keys())
-        jyutpings.append(jyutping_list)
+    if expanded_charset:
+        for _ in characters:
+            jyutpings.append([])
+    else:
+        for char, jyutping_dict in char_jyutpings.items():
+            jyutping_list = list(jyutping_dict.keys())
+            jyutpings.append(jyutping_list)
 
     # Font path
     font_path = 'ChironHeiHK-R.ttf'

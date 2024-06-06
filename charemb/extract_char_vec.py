@@ -4,7 +4,7 @@ from dataset import get_dataset
 
 if __name__ == '__main__':
     # Load the dataset
-    dataloader, num_char_classes = get_dataset()
+    dataloader, num_char_classes = get_dataset(expanded_charset=True)
 
     # Load the model
     model = MultiTaskCNN(num_char_classes)
