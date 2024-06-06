@@ -21,6 +21,7 @@ if __name__ == '__main__':
             features = features.view(features.size(0), -1)
             embs = model.fc1(features)
             embs = model.fc2(embs)
+            embs = torch.nn.functional.normalize(embs)
             embeddings.extend(embs)
             labels.extend(characters)
 
