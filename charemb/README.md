@@ -5,7 +5,6 @@
 | mistakes.csv  | https://words.hk/faiman/view/711/, https://words.hk/faiman/view/789/ |
 | ChironHeiHK-R.ttf | https://github.com/chiron-fonts/chiron-hei-hk/blob/e5e52b31363dc830c24f6d16fe8682ff29a7bf85/TTF/ChironHeiHK-R.ttf |
 | jyutping_female | words.hk |
-| gb2312.txt | https://github.com/beifeng600/nlp_storeroom/blob/master/dict/zh/character%20set/GB2312%E6%B1%89%E5%AD%97%E8%A1%A8_6763.txt |
 
 # Compare Whisper Layers
 

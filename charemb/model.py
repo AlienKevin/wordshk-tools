@@ -28,6 +28,11 @@ class MultiTaskCNN(nn.Module):
             nn.ReLU(inplace=True)
         )
         self.char_head = nn.Linear(768, num_char_classes)
+        self.cangjie_head1 = nn.Linear(768, 27)
+        self.cangjie_head2 = nn.Linear(768, 27)
+        self.cangjie_head3 = nn.Linear(768, 27)
+        self.cangjie_head4 = nn.Linear(768, 27)
+        self.cangjie_head5 = nn.Linear(768, 27)
 
     def forward(self, x):
         x = self.features(x)
@@ -36,4 +41,9 @@ class MultiTaskCNN(nn.Module):
         x = self.fc2(x)
         x = self.fc3(x)
         char_out = self.char_head(x)
-        return char_out
+        cj1 = self.cangjie_head1(x)
+        cj2 = self.cangjie_head2(x)
+        cj3 = self.cangjie_head3(x)
+        cj4 = self.cangjie_head4(x)
+        cj5 = self.cangjie_head5(x)
+        return char_out, cj1, cj2, cj3, cj4, cj5

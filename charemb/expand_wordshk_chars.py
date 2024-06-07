@@ -11,12 +11,12 @@ with open('wordshk_chars.txt', 'r', encoding='utf-8') as file:
 simplified_chars = [converter.convert(char) for char in traditional_chars]
 
 
-# Read GB2312 characters from gb2312.txt
-with open('gb2312.txt', 'r', encoding='utf-8') as file:
-    gb2312_chars = file.read().splitlines()
+# Read CASIA characters from casia_charset.txt
+with open('casia_charset.txt', 'r', encoding='utf-8') as file:
+    casia_charset_chars = file.read().splitlines()
 
-# Union the original traditional characters, simplified characters, and GB2312 characters
-expanded_chars = set(traditional_chars + simplified_chars + gb2312_chars)
+# Union the original traditional characters, simplified characters, and CASIA characters
+expanded_chars = set(traditional_chars + simplified_chars + casia_charset_chars)
 
 # Write the expanded characters to wordshk_chars_expanded.txt
 with open('wordshk_chars_expanded.txt', 'w', encoding='utf-8') as file:

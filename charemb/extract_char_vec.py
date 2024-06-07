@@ -4,10 +4,10 @@ from dataset import get_dataset
 
 if __name__ == '__main__':
     # Load the dataset
-    dataloader, num_char_classes = get_dataset(expanded_charset=True)
+    dataloader, num_char_classes = get_dataset(expanded_charset=True, augmented=False)
 
     # Load the model
-    model = MultiTaskCNN(num_char_classes)
+    model = MultiTaskCNN(num_char_classes, fc_width=20)
     model.load_state_dict(torch.load('charemb.pth'))
     model.eval()
 
@@ -16,7 +16,7 @@ if __name__ == '__main__':
     labels = []
 
     with torch.no_grad():
-        for inputs, characters, char_labels, _ in dataloader:
+        for inputs, characters, char_labels, _, _ in dataloader:
             features = model.features(inputs)
             features = features.view(features.size(0), -1)
             embs = model.fc1(features)
