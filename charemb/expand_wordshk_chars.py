@@ -7,9 +7,9 @@ converter = opencc.OpenCC('t2s')
 with open('wordshk_chars.txt', 'r', encoding='utf-8') as file:
     traditional_chars = file.read().splitlines()
 
-# Convert traditional characters to simplified characters
-simplified_chars = [converter.convert(char) for char in traditional_chars]
-
+# # Convert traditional characters to simplified characters
+# simplified_chars = [converter.convert(char) for char in traditional_chars]
+simplified_chars = []
 
 # Read CASIA characters from casia_charset.txt
 with open('casia_charset.txt', 'r', encoding='utf-8') as file:
