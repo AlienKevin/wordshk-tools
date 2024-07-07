@@ -1,9 +1,19 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
+import hashlib
+import subprocess
+import os
+
+def extract_line(line):
+    res = ''
+    for (_seg_type, seg) in line:
+        res += seg
+
+    return res
 
 def extract_egs(data):
-    egs = set()
+    egs = {}
     for entry in data.values():
         variants = entry.get('variants', [])
         variants = [variant.get('w', '') for variant in variants]
@@ -12,10 +22,20 @@ def extract_egs(data):
             for eg in definition.get('egs', []):
                 zho = eg.get('zho', None)
                 yue = eg.get('yue', None)
-                if zho is not None and len(zho) == 2 and zho[1] is not None:
-                    egs.add(zho[1])
-                if yue is not None and len(yue) == 2 and yue[1] is not None:
-                    egs.add(yue[1])
+                if zho is not None:
+                    pr = None
+                    if len(zho) == 2 and zho[1] is not None:
+                        pr = zho[1]
+                    sent = extract_line(zho[0])
+                    if sent not in egs or egs[sent] is None:
+                        egs[sent] = pr
+                if yue is not None:
+                    pr = None
+                    if len(yue) == 2 and yue[1] is not None:
+                        pr = yue[1]
+                    sent = extract_line(yue[0])
+                    if sent not in egs or egs[sent] is None:
+                        egs[sent] = pr
     return egs
 
 
@@ -27,20 +47,24 @@ if __name__ == '__main__':
     egs = extract_egs(data)
     print(f'Number of egs: {len(egs)}')
 
-    import os
+    # with open('egs.txt', 'w') as file:
+    #     for eg in egs.items():
+    #         file.write(f'{eg[0]}: {eg[1]}\n')
+
     if not os.path.exists('audio'):
         os.makedirs('audio')
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         def process_eg(eg):
-            import hashlib
-            import subprocess
-            sha256_hash = hashlib.sha256(eg.encode()).hexdigest()
+            sent, pr = eg
+            if pr is None:
+                pr = sent
+            sha256_hash = hashlib.sha256(sent.encode()).hexdigest()
             audio_file_path = f"audio/{sha256_hash}.m4a"
             if not os.path.exists(audio_file_path):
                 # Set macOS system default voice to Chinese (Hong Kong) Siri Voice 2 (Female)
-                command = f'say "{eg.replace('"', '')}" -o {audio_file_path}'
+                command = f'say "{pr.replace('"', '')}" -o {audio_file_path}'
                 subprocess.run(command, shell=True)
             return None
 
-        list(tqdm(executor.map(process_eg, egs), total=len(egs)))
+        list(tqdm(executor.map(process_eg, egs.items()), total=len(egs)))
