@@ -4,7 +4,10 @@ use crate::{
     search::RichDictLike,
     sqlite_db::SqliteDb,
 };
-use fst::{automaton::Levenshtein, IntoStreamer, Map, MapBuilder};
+use fst::{
+    automaton::{Automaton, Levenshtein, Str},
+    IntoStreamer, Map, MapBuilder,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
@@ -35,22 +38,22 @@ pub struct FstPrIndices {
     pub locations: HashMap<u64, BTreeSet<PrLocation>>,
 }
 
+pub enum FstSearchResult {
+    Levenshtein(BTreeSet<PrLocation>),
+    Prefix(BTreeSet<PrLocation>),
+}
+
 pub trait FstPrIndicesLike {
     fn search(
         &self,
         has_tone: bool,
-        query: Levenshtein,
+        query_no_space: &str,
         romanization: Romanization,
-    ) -> BTreeSet<PrLocation>;
+    ) -> FstSearchResult;
 }
 
 impl FstPrIndicesLike for SqliteDb {
-    fn search(
-        &self,
-        has_tone: bool,
-        query: Levenshtein,
-        romanization: Romanization,
-    ) -> BTreeSet<PrLocation> {
+    fn search(&self, has_tone: bool, query: &str, romanization: Romanization) -> FstSearchResult {
         let conn = self.conn();
         let mut stmt = conn
             .prepare(&format!(
@@ -69,7 +72,16 @@ impl FstPrIndicesLike for SqliteDb {
             ))
             .unwrap();
 
-        fst.search(query)
+        let query_no_space = query.replace(' ', "");
+
+        let prefix_automaton = Str::new(&query_no_space).starts_with();
+
+        let max_deletions = (query_no_space.chars().count() - 1).min(MAX_DELETIONS);
+        let levenshtein_automaton =
+            Levenshtein::new(&query_no_space, max_deletions as u32).unwrap();
+
+        let prefix_results: BTreeSet<PrLocation> = fst
+            .search(prefix_automaton)
             .into_stream()
             .into_values()
             .into_iter()
@@ -77,25 +89,61 @@ impl FstPrIndicesLike for SqliteDb {
                 let locations_text: String = stmt.query_row([loc], |row| row.get(0)).unwrap();
                 serde_json::from_str(&locations_text).unwrap()
             })
-            .collect()
+            .collect();
+
+        if prefix_results.is_empty() {
+            FstSearchResult::Levenshtein(
+                fst.search(levenshtein_automaton)
+                    .into_stream()
+                    .into_values()
+                    .into_iter()
+                    .flat_map(|loc| -> BTreeSet<PrLocation> {
+                        let locations_text: String =
+                            stmt.query_row([loc], |row| row.get(0)).unwrap();
+                        serde_json::from_str(&locations_text).unwrap()
+                    })
+                    .collect(),
+            )
+        } else {
+            FstSearchResult::Prefix(prefix_results)
+        }
     }
 }
 
 impl FstPrIndicesLike for FstPrIndices {
-    fn search(
-        &self,
-        has_tone: bool,
-        query: Levenshtein,
-        romanization: Romanization,
-    ) -> BTreeSet<PrLocation> {
-        if has_tone { &self.tone } else { &self.none }
-            .search(query)
+    fn search(&self, has_tone: bool, query: &str, romanization: Romanization) -> FstSearchResult {
+        let fst = if has_tone { &self.tone } else { &self.none };
+
+        let query_no_space = query.replace(' ', "");
+
+        let prefix_automaton = Str::new(&query_no_space).starts_with();
+
+        let max_deletions = (query_no_space.chars().count() - 1).min(MAX_DELETIONS);
+        let levenshtein_automaton =
+            Levenshtein::new(&query_no_space, max_deletions as u32).unwrap();
+
+        let prefix_results: BTreeSet<PrLocation> = fst
+            .search(prefix_automaton)
             .into_stream()
             .into_values()
             .into_iter()
             .flat_map(|loc| &self.locations[&loc])
             .cloned()
-            .collect()
+            .collect();
+
+        if prefix_results.is_empty() {
+            FstSearchResult::Levenshtein(
+                fst.search(levenshtein_automaton)
+                    .into_stream()
+                    .into_values()
+                    .into_iter()
+                    .flat_map(|loc| &self.locations[&loc])
+                    .cloned()
+                    .collect(),
+            )
+        } else {
+            FstSearchResult::Prefix(prefix_results)
+        }
     }
 }
 

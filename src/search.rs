@@ -1,7 +1,7 @@
 use crate::dict::{clause_to_string, Clause, EntryId};
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
 use crate::lihkg_frequencies::LIHKG_FREQUENCIES;
-use crate::pr_index::{FstPrIndicesLike, PrLocation, MAX_DELETIONS};
+use crate::pr_index::{FstPrIndicesLike, FstSearchResult, PrLocation, MAX_DELETIONS};
 use crate::rich_dict::{RichVariant, RichVariants};
 use crate::sqlite_db::SqliteDb;
 use crate::variant_index::VariantIndexLike;
@@ -16,7 +16,6 @@ use super::rich_dict::RichEntry;
 use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
 use core::fmt;
-use fst::automaton::Levenshtein;
 use itertools::Itertools;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
@@ -229,114 +228,132 @@ pub fn pr_search(
 
     fn lookup_index(
         query: &str,
-        search: impl FnOnce(Levenshtein) -> BTreeSet<PrLocation>,
+        search: impl FnOnce(&str) -> FstSearchResult,
         dict: &dyn RichDictLike,
         script: Script,
         romanization: Romanization,
         ranks: &mut BTreeMap<EntryId, PrSearchRank>,
         pr_variant_generator: fn(&str) -> String,
     ) {
-        let query_no_space = query.replace(' ', "");
-        let max_deletions = (query_no_space.chars().count() - 1).min(MAX_DELETIONS);
-        let lev = Levenshtein::new(&query_no_space, max_deletions as u32).unwrap();
+        let search_result = search(query);
 
-        for PrLocation {
-            entry_id,
-            variant_index,
-            pr_index,
-        } in search(lev)
-        {
-            let jyutping: &LaxJyutPing = &dict.get_entry(entry_id).variants.0
-                [variant_index as Index]
-                .prs
-                .0[pr_index as Index];
-            let jyutping = jyutping.to_string();
-            let pr_variant = pr_variant_generator(&jyutping);
-            let distance = levenshtein(&query, &pr_variant);
-            if distance <= MAX_DELETIONS {
-                let matched_pr = match romanization {
-                    Romanization::Jyutping => diff_prs(query, &jyutping),
-                    Romanization::Yale => {
-                        use unicode_normalization::UnicodeNormalization;
-                        let yale = to_yale(&jyutping).nfd().collect::<String>();
-                        let query = query.nfd().collect::<String>();
-                        diff_prs(&query, &yale)
-                    }
-                };
-                let mut at_initial = true;
-                let mut num_matched_initial_chars = 0;
-                let mut num_matched_final_chars = 0;
-                static VOWELS: [char; 5] = ['a', 'e', 'i', 'o', 'u'];
-                for MatchedSegment { segment, matched } in &matched_pr {
-                    for c in segment.chars() {
-                        match c {
-                            ' ' => {
-                                at_initial = true;
+        match &search_result {
+            FstSearchResult::Prefix(result) | FstSearchResult::Levenshtein(result) => {
+                for &PrLocation {
+                    entry_id,
+                    variant_index,
+                    pr_index,
+                } in result
+                {
+                    let jyutping: &LaxJyutPing = &dict.get_entry(entry_id).variants.0
+                        [variant_index as Index]
+                        .prs
+                        .0[pr_index as Index];
+                    let jyutping = jyutping.to_string();
+                    let pr_variant = pr_variant_generator(&jyutping);
+                    let distance = match search_result {
+                        FstSearchResult::Prefix(_) => {
+                            if pr_variant.starts_with(query) {
+                                pr_variant.chars().count() - query.chars().count()
+                            } else {
+                                usize::MAX
                             }
-                            _ if VOWELS.contains(&c) => {
-                                at_initial = false;
-                            }
-                            _ if at_initial && *matched => {
-                                num_matched_initial_chars += 1;
-                            }
-                            _ if !at_initial
-                                && *matched
-                                && !VOWELS.contains(&c)
-                                && c.is_ascii_alphabetic() =>
-                            {
-                                num_matched_final_chars += 1;
-                            }
-                            _ => {}
                         }
-                    }
-                }
-                let frequency_count = get_max_frequency_count(&dict.get_entry(entry_id).variants);
-                let def_len = dict.get_entry(entry_id).defs.len();
-                let variant = pick_variant(
-                    dict.get_entry(entry_id)
-                        .variants
-                        .0
-                        .get(variant_index as usize)
-                        .unwrap(),
-                    script,
-                )
-                .word;
-                let score = MAX_SCORE - distance;
-                match ranks.entry(entry_id) {
-                    std::collections::btree_map::Entry::Occupied(mut rank) => {
-                        let rank = rank.get_mut();
-                        if score > rank.score {
-                            rank.score = score;
-                            rank.variant_indices =
-                                vec![(variant_index as Index, pr_index as Index)];
-                            rank.variants = vec![variant];
-                            rank.jyutping = jyutping;
-                            rank.matched_pr = matched_pr;
-                            rank.num_matched_initial_chars = num_matched_initial_chars;
-                            rank.num_matched_final_chars = num_matched_final_chars;
-                            rank.frequency_count = frequency_count;
-                        } else if score == rank.score
-                            && jyutping == rank.jyutping
-                            && !rank.variants.contains(&variant)
-                        {
-                            rank.variant_indices
-                                .push((variant_index as Index, pr_index as Index));
-                            rank.variants.push(variant);
+                        FstSearchResult::Levenshtein(_) => levenshtein(&query, &pr_variant),
+                    };
+                    if match search_result {
+                        FstSearchResult::Prefix(_) => distance <= usize::MAX,
+                        FstSearchResult::Levenshtein(_) => distance <= MAX_DELETIONS,
+                    } {
+                        let matched_pr = match romanization {
+                            Romanization::Jyutping => diff_prs(query, &jyutping),
+                            Romanization::Yale => {
+                                use unicode_normalization::UnicodeNormalization;
+                                let yale = to_yale(&jyutping).nfd().collect::<String>();
+                                let query = query.nfd().collect::<String>();
+                                diff_prs(&query, &yale)
+                            }
+                        };
+                        let mut at_initial = true;
+                        let mut num_matched_initial_chars = 0;
+                        let mut num_matched_final_chars = 0;
+                        static VOWELS: [char; 5] = ['a', 'e', 'i', 'o', 'u'];
+                        for MatchedSegment { segment, matched } in &matched_pr {
+                            for c in segment.chars() {
+                                match c {
+                                    ' ' => {
+                                        at_initial = true;
+                                    }
+                                    _ if VOWELS.contains(&c) => {
+                                        at_initial = false;
+                                    }
+                                    _ if at_initial && *matched => {
+                                        num_matched_initial_chars += 1;
+                                    }
+                                    _ if !at_initial
+                                        && *matched
+                                        && !VOWELS.contains(&c)
+                                        && c.is_ascii_alphabetic() =>
+                                    {
+                                        num_matched_final_chars += 1;
+                                    }
+                                    _ => {}
+                                }
+                            }
                         }
-                    }
-                    std::collections::btree_map::Entry::Vacant(rank) => {
-                        rank.insert(PrSearchRank {
-                            id: entry_id,
-                            def_len,
-                            variant_indices: vec![(variant_index as Index, pr_index as Index)],
-                            variants: vec![variant],
-                            jyutping,
-                            matched_pr,
-                            num_matched_initial_chars,
-                            num_matched_final_chars,
-                            score,
-                            frequency_count,
-                        });
+                        let frequency_count =
+                            get_max_frequency_count(&dict.get_entry(entry_id).variants);
+                        let def_len = dict.get_entry(entry_id).defs.len();
+                        let variant = pick_variant(
+                            dict.get_entry(entry_id)
+                                .variants
+                                .0
+                                .get(variant_index as usize)
+                                .unwrap(),
+                            script,
+                        )
+                        .word;
+                        let score = MAX_SCORE - distance;
+                        match ranks.entry(entry_id) {
+                            std::collections::btree_map::Entry::Occupied(mut rank) => {
+                                let rank = rank.get_mut();
+                                if score > rank.score {
+                                    rank.score = score;
+                                    rank.variant_indices =
+                                        vec![(variant_index as Index, pr_index as Index)];
+                                    rank.variants = vec![variant];
+                                    rank.jyutping = jyutping;
+                                    rank.matched_pr = matched_pr;
+                                    rank.num_matched_initial_chars = num_matched_initial_chars;
+                                    rank.num_matched_final_chars = num_matched_final_chars;
+                                    rank.frequency_count = frequency_count;
+                                } else if score == rank.score
+                                    && jyutping == rank.jyutping
+                                    && !rank.variants.contains(&variant)
+                                {
+                                    rank.variant_indices
+                                        .push((variant_index as Index, pr_index as Index));
+                                    rank.variants.push(variant);
+                                }
+                            }
+                            std::collections::btree_map::Entry::Vacant(rank) => {
+                                rank.insert(PrSearchRank {
+                                    id: entry_id,
+                                    def_len,
+                                    variant_indices: vec![(
+                                        variant_index as Index,
+                                        pr_index as Index,
+                                    )],
+                                    variants: vec![variant],
+                                    jyutping,
+                                    matched_pr,
+                                    num_matched_initial_chars,
+                                    num_matched_final_chars,
+                                    score,
+                                    frequency_count,
+                                });
+                            }
+                        }
                     }
                 }
             }
