@@ -548,7 +548,7 @@ pub fn pr_search(
                         FstSearchResult::Levenshtein(_) => levenshtein(&query, &pr_variant),
                     };
                     if match search_result {
-                        FstSearchResult::Prefix(_) => distance <= usize::MAX,
+                        FstSearchResult::Prefix(_) => distance < usize::MAX,
                         FstSearchResult::Levenshtein(_) => distance <= MAX_DELETIONS,
                     } {
                         let matched_pr = match search_result {
