@@ -551,7 +551,19 @@ pub fn pr_search(
                         FstSearchResult::Prefix(_) => distance <= usize::MAX,
                         FstSearchResult::Levenshtein(_) => distance <= MAX_DELETIONS,
                     } {
-                        let matched_pr = diff_prs(&query, &pr_variant);
+                        let matched_pr = match search_result {
+                            FstSearchResult::Prefix(_) => vec![
+                                MatchedSegment {
+                                    segment: query.to_string(),
+                                    matched: true,
+                                },
+                                MatchedSegment {
+                                    segment: pr_variant.strip_prefix(&query).unwrap().to_string(),
+                                    matched: false,
+                                },
+                            ],
+                            FstSearchResult::Levenshtein(_) => diff_prs(&query, &pr_variant),
+                        };
 
                         let matched_pr = apply_insertions(pr_variant_insertions, matched_pr);
 
