@@ -53,6 +53,11 @@ if __name__ == '__main__':
 
     if not os.path.exists('audio'):
         os.makedirs('audio')
+    else:
+        # Get all existing .m4a audios in audio/ and remove them from egs
+        existing_audios = {f.split('.')[0] for f in os.listdir('audio') if f.endswith('.m4a')}
+        egs = {k: v for k, v in egs.items() if hashlib.sha256(k.encode()).hexdigest() not in existing_audios}
+        print(f'Number of audios already present: {len(existing_audios)}')
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         def process_eg(eg):
