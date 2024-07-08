@@ -264,18 +264,29 @@ mod test_regex_remove {
             ]
         );
     }
+
+    #[test]
+    fn test_regex_remove_unicode() {
+        let input = "你😊好世界";
+        let pattern = "😊";
+        let (result, insertions) = super::regex_remove(input, pattern);
+        assert_eq!(result, "你好世界");
+        assert_eq!(insertions, vec![(1, "😊".to_string())]);
+    }
 }
 
 fn insert_multiple(input: &str, mut insertions: Vec<(usize, String)>) -> String {
     // Sort insertions by index
     insertions.sort_by_key(|&(index, _)| index);
 
+    let input_chars: Vec<char> = input.chars().collect();
+
     let mut result = String::new();
     let mut last_index = 0;
 
     for (index, insert_str) in insertions {
         // Push the part of the input string before the current index
-        result.push_str(&input[last_index..index]);
+        result.push_str(&input_chars[last_index..index].iter().collect::<String>());
         // Push the insertion string
         result.push_str(&insert_str);
         // Update the last index
@@ -283,7 +294,7 @@ fn insert_multiple(input: &str, mut insertions: Vec<(usize, String)>) -> String 
     }
 
     // Push the remaining part of the input string
-    result.push_str(&input[last_index..]);
+    result.push_str(&input_chars[last_index..].iter().collect::<String>());
 
     result
 }
@@ -300,6 +311,14 @@ mod test_insert_multiple {
         ];
         let result = super::insert_multiple(input, insertions);
         assert_eq!(result, "hello1 world2");
+    }
+
+    #[test]
+    fn test_insert_multiple_unicode() {
+        let input = "你😊好世界";
+        let insertions = vec![(3, "🌍".to_string()), (5, "🌍".to_string())];
+        let result = super::insert_multiple(input, insertions);
+        assert_eq!(result, "你😊好🌍世界🌍");
     }
 }
 
