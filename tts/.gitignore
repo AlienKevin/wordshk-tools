@@ -1,3 +1,4 @@
 audio/
 audio_splitted/
 audio_compressed/
+__pycache__/
