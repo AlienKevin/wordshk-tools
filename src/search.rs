@@ -17,10 +17,12 @@ use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
 use core::fmt;
 use itertools::Itertools;
+use regex::Regex;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::{BTreeMap, BTreeSet};
 use strsim::{generic_levenshtein, levenshtein, normalized_levenshtein};
+use unicode_normalization::UnicodeNormalization;
 
 /// Max score is 100
 type Score = usize;
@@ -203,6 +205,217 @@ fn get_max_frequency_count(variants: &RichVariants) -> usize {
         .unwrap_or(&0)
 }
 
+fn regex_remove(input: &str, pattern: &str) -> (String, Vec<(usize, String)>) {
+    let re = Regex::new(pattern).unwrap();
+    let mut removed_substrings = Vec::new();
+
+    // Convert the input string to a vector of characters for proper Unicode handling
+    let input_chars: Vec<char> = input.chars().collect();
+
+    for mat in re.find_iter(input) {
+        let start = input[..mat.start()].chars().count();
+        let end = input[..mat.end()].chars().count();
+        let matched_str: String = input_chars[start..end].iter().collect();
+
+        // Store the removal details
+        removed_substrings.push((start, matched_str.clone()));
+    }
+
+    let result_string = re.replace_all(input, "").to_string();
+
+    (result_string, removed_substrings)
+}
+
+#[cfg(test)]
+mod test_regex_remove {
+    #[test]
+    fn test_regex_remove_space() {
+        let input = "hello world";
+        let pattern = " ";
+        let (result, insertions) = super::regex_remove(input, pattern);
+        assert_eq!(result, "helloworld");
+        assert_eq!(insertions, vec![(5, " ".to_string())]);
+    }
+
+    #[test]
+    fn test_regex_remove_tone() {
+        let input = "hello1 world2";
+        let pattern = "[123456]";
+        let (result, insertions) = super::regex_remove(input, pattern);
+        assert_eq!(result, "hello world");
+        assert_eq!(
+            insertions,
+            vec![(5, "1".to_string()), (12, "2".to_string())]
+        );
+    }
+
+    #[test]
+    fn test_regex_remove_space_and_tone() {
+        let input = "hello1 world2";
+        let pattern = "[123456 ]";
+        let (result, insertions) = super::regex_remove(input, pattern);
+        assert_eq!(result, "helloworld");
+        assert_eq!(
+            insertions,
+            vec![
+                (5, "1".to_string()),
+                (6, " ".to_string()),
+                (12, "2".to_string())
+            ]
+        );
+    }
+}
+
+fn insert_multiple(input: &str, mut insertions: Vec<(usize, String)>) -> String {
+    // Sort insertions by index
+    insertions.sort_by_key(|&(index, _)| index);
+
+    let mut result = String::new();
+    let mut last_index = 0;
+
+    for (index, insert_str) in insertions {
+        // Push the part of the input string before the current index
+        result.push_str(&input[last_index..index]);
+        // Push the insertion string
+        result.push_str(&insert_str);
+        // Update the last index
+        last_index = index;
+    }
+
+    // Push the remaining part of the input string
+    result.push_str(&input[last_index..]);
+
+    result
+}
+
+#[cfg(test)]
+mod test_insert_multiple {
+    #[test]
+    fn test_insert_multiple() {
+        let input = "helloworld";
+        let insertions = vec![
+            (5, "1".to_string()),
+            (5, " ".to_string()),
+            (10, "2".to_string()),
+        ];
+        let result = super::insert_multiple(input, insertions);
+        assert_eq!(result, "hello1 world2");
+    }
+}
+
+fn apply_insertions(
+    pr_variant_insertions: Vec<(usize, String)>,
+    matched_pr: Vec<MatchedSegment>,
+) -> Vec<MatchedSegment> {
+    let mut insertions_grouped_by_segments: BTreeMap<usize, Vec<(usize, String)>> = BTreeMap::new();
+
+    let mut offset = 0;
+
+    for (segment_index, MatchedSegment { segment, .. }) in matched_pr.iter().enumerate() {
+        let segment_chars: Vec<char> = segment.chars().collect();
+        let segment_len = segment_chars.len();
+
+        for (insertion_index, insertion_string) in pr_variant_insertions.iter() {
+            if *insertion_index >= offset && *insertion_index <= offset + segment_len {
+                let insertion = (insertion_index - offset, insertion_string.clone());
+                insertions_grouped_by_segments
+                    .entry(segment_index)
+                    .and_modify(|entry| entry.push(insertion.clone()))
+                    .or_insert(vec![insertion]);
+                offset += insertion_string.chars().count();
+                continue;
+            }
+        }
+        offset += segment_len;
+    }
+
+    let mut result_matched_pr = vec![];
+    for (segment_index, MatchedSegment { segment, matched }) in matched_pr.iter().enumerate() {
+        let new_segment =
+            if let Some(insertions) = insertions_grouped_by_segments.get(&segment_index) {
+                insert_multiple(segment, insertions.clone())
+            } else {
+                segment.to_string()
+            };
+        result_matched_pr.push(MatchedSegment {
+            segment: new_segment,
+            matched: *matched,
+        });
+    }
+
+    result_matched_pr
+}
+
+#[cfg(test)]
+mod test_apply_insertions {
+    #[test]
+    fn test_apply_insertions_edge() {
+        let pr_variant_insertions = vec![
+            (5, "1".to_string()),
+            (6, " ".to_string()),
+            (12, "2".to_string()),
+        ];
+        let matched_pr = vec![
+            super::MatchedSegment {
+                segment: "hello".to_string(),
+                matched: true,
+            },
+            super::MatchedSegment {
+                segment: "world".to_string(),
+                matched: false,
+            },
+        ];
+        let result = super::apply_insertions(pr_variant_insertions, matched_pr);
+        assert_eq!(
+            result,
+            vec![
+                super::MatchedSegment {
+                    segment: "hello1 ".to_string(),
+                    matched: true
+                },
+                super::MatchedSegment {
+                    segment: "world2".to_string(),
+                    matched: false
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_apply_insertions_middle() {
+        let pr_variant_insertions = vec![
+            (2, "1".to_string()),
+            (6, "2".to_string()),
+            (7, " ".to_string()),
+            (10, "3".to_string()),
+        ];
+        let matched_pr = vec![
+            super::MatchedSegment {
+                segment: "hello".to_string(),
+                matched: true,
+            },
+            super::MatchedSegment {
+                segment: "world".to_string(),
+                matched: false,
+            },
+        ];
+        let result = super::apply_insertions(pr_variant_insertions, matched_pr);
+        assert_eq!(
+            result,
+            vec![
+                super::MatchedSegment {
+                    segment: "he1llo2 ".to_string(),
+                    matched: true
+                },
+                super::MatchedSegment {
+                    segment: "wo3rld".to_string(),
+                    matched: false
+                },
+            ]
+        );
+    }
+}
+
 pub fn pr_search(
     pr_indices: &dyn FstPrIndicesLike,
     dict: &dyn RichDictLike,
@@ -224,6 +437,8 @@ pub fn pr_search(
             .into_iter()
             .map(|jyutping| jyutping.to_yale())
             .join(" ")
+            .nfd()
+            .collect::<String>()
     }
 
     fn lookup_index(
@@ -233,9 +448,9 @@ pub fn pr_search(
         script: Script,
         romanization: Romanization,
         ranks: &mut BTreeMap<EntryId, PrSearchRank>,
-        pr_variant_generator: fn(&str) -> String,
+        pr_variant_generator: fn(&str) -> (String, Vec<(usize, String)>),
     ) {
-        let search_result = search(query);
+        let search_result = search(&query);
 
         match &search_result {
             FstSearchResult::Prefix(result) | FstSearchResult::Levenshtein(result) => {
@@ -245,15 +460,18 @@ pub fn pr_search(
                     pr_index,
                 } in result
                 {
+                    // Decompose tone marks for Yale
+                    let query = query.nfd().collect::<String>();
+
                     let jyutping: &LaxJyutPing = &dict.get_entry(entry_id).variants.0
                         [variant_index as Index]
                         .prs
                         .0[pr_index as Index];
                     let jyutping = jyutping.to_string();
-                    let pr_variant = pr_variant_generator(&jyutping);
+                    let (pr_variant, pr_variant_insertions) = pr_variant_generator(&jyutping);
                     let distance = match search_result {
                         FstSearchResult::Prefix(_) => {
-                            if pr_variant.starts_with(query) {
+                            if pr_variant.starts_with(&query) {
                                 pr_variant.chars().count() - query.chars().count()
                             } else {
                                 usize::MAX
@@ -265,15 +483,10 @@ pub fn pr_search(
                         FstSearchResult::Prefix(_) => distance <= usize::MAX,
                         FstSearchResult::Levenshtein(_) => distance <= MAX_DELETIONS,
                     } {
-                        let matched_pr = match romanization {
-                            Romanization::Jyutping => diff_prs(query, &jyutping),
-                            Romanization::Yale => {
-                                use unicode_normalization::UnicodeNormalization;
-                                let yale = to_yale(&jyutping).nfd().collect::<String>();
-                                let query = query.nfd().collect::<String>();
-                                diff_prs(&query, &yale)
-                            }
-                        };
+                        let matched_pr = diff_prs(&query, &pr_variant);
+
+                        let matched_pr = apply_insertions(pr_variant_insertions, matched_pr);
+
                         let mut at_initial = true;
                         let mut num_matched_initial_chars = 0;
                         let mut num_matched_final_chars = 0;
@@ -360,9 +573,13 @@ pub fn pr_search(
         }
     }
 
+    const SPACE_REGEX: &'static str = " ";
+
     match romanization {
         Romanization::Jyutping => {
             const TONES: [char; 6] = ['1', '2', '3', '4', '5', '6'];
+            const TONE_REGEX: &'static str = "[123456]";
+            const TONE_AND_SPACE_REGEX: &'static str = "[123456 ]";
 
             if query.contains(TONES) && query.contains(' ') {
                 lookup_index(
@@ -372,7 +589,7 @@ pub fn pr_search(
                     script,
                     romanization,
                     &mut ranks,
-                    |s| s.to_string(),
+                    |s| (s.to_string(), vec![]),
                 );
             } else if query.contains(TONES) {
                 lookup_index(
@@ -382,7 +599,7 @@ pub fn pr_search(
                     script,
                     romanization,
                     &mut ranks,
-                    |s| s.replace(' ', ""),
+                    |s| regex_remove(s, SPACE_REGEX),
                 );
             } else if query.contains(' ') {
                 lookup_index(
@@ -392,7 +609,7 @@ pub fn pr_search(
                     script,
                     romanization,
                     &mut ranks,
-                    |s| s.replace(TONES, ""),
+                    |s| regex_remove(s, TONE_REGEX),
                 );
             } else {
                 lookup_index(
@@ -402,21 +619,13 @@ pub fn pr_search(
                     script,
                     romanization,
                     &mut ranks,
-                    |s| s.replace(TONES, "").replace(' ', ""),
+                    |s| regex_remove(s, TONE_AND_SPACE_REGEX),
                 );
             }
         }
         Romanization::Yale => {
-            fn to_yale_no_tones(s: &str) -> String {
-                parse_jyutpings(s)
-                    .unwrap()
-                    .into_iter()
-                    .map(|mut jyutping| {
-                        jyutping.tone = None;
-                        jyutping.to_yale_no_diacritics()
-                    })
-                    .join(" ")
-            }
+            const TONE_REGEX: &'static str = "[\u{0300}\u{0301}\u{0304}]|h\\b";
+            const TONE_AND_SPACE_REGEX: &'static str = "[\u{0300}\u{0301}\u{0304} ]|h\\b";
 
             let has_tone = remove_yale_diacritics(&query) != query;
 
@@ -428,7 +637,7 @@ pub fn pr_search(
                     script,
                     romanization,
                     &mut ranks,
-                    to_yale,
+                    |s| (to_yale(s), vec![]),
                 );
             } else if has_tone {
                 lookup_index(
@@ -438,7 +647,7 @@ pub fn pr_search(
                     script,
                     romanization,
                     &mut ranks,
-                    |s| to_yale(s).replace(' ', ""),
+                    |s| regex_remove(&to_yale(s), SPACE_REGEX),
                 );
             } else if query.contains(' ') {
                 lookup_index(
@@ -448,7 +657,7 @@ pub fn pr_search(
                     script,
                     romanization,
                     &mut ranks,
-                    to_yale,
+                    |s| (to_yale(s), vec![]),
                 );
 
                 lookup_index(
@@ -458,7 +667,7 @@ pub fn pr_search(
                     script,
                     romanization,
                     &mut ranks,
-                    to_yale_no_tones,
+                    |s| regex_remove(&to_yale(s), &TONE_REGEX),
                 );
             } else {
                 lookup_index(
@@ -468,7 +677,7 @@ pub fn pr_search(
                     script,
                     romanization,
                     &mut ranks,
-                    |s| to_yale(s).replace(' ', ""),
+                    |s| regex_remove(&to_yale(s), SPACE_REGEX),
                 );
 
                 lookup_index(
@@ -478,7 +687,7 @@ pub fn pr_search(
                     script,
                     romanization,
                     &mut ranks,
-                    |s| to_yale_no_tones(s).replace(' ', ""),
+                    |s| regex_remove(&to_yale(s), &TONE_AND_SPACE_REGEX),
                 );
             }
         }
