@@ -331,16 +331,41 @@ fn apply_insertions(
 
     let mut result_matched_pr = vec![];
     for (segment_index, MatchedSegment { segment, matched }) in matched_pr.iter().enumerate() {
-        let new_segment =
-            if let Some(insertions) = insertions_grouped_by_segments.get(&segment_index) {
-                insert_multiple(segment, insertions.clone())
+        if let Some(insertions) = insertions_grouped_by_segments.get(&segment_index) {
+            if *matched {
+                let mut last_index = 0;
+                let segment_chars: Vec<char> = segment.chars().collect();
+                for (insertion_index, insertion_string) in insertions {
+                    if *insertion_index > last_index {
+                        result_matched_pr.push(MatchedSegment {
+                            segment: segment_chars[last_index..*insertion_index].iter().collect(),
+                            matched: true,
+                        });
+                    }
+                    result_matched_pr.push(MatchedSegment {
+                        segment: insertion_string.clone(),
+                        matched: false,
+                    });
+                    last_index = *insertion_index;
+                }
+                if last_index < segment_chars.len() {
+                    result_matched_pr.push(MatchedSegment {
+                        segment: segment_chars[last_index..].iter().collect(),
+                        matched: true,
+                    });
+                }
             } else {
-                segment.to_string()
-            };
-        result_matched_pr.push(MatchedSegment {
-            segment: new_segment,
-            matched: *matched,
-        });
+                result_matched_pr.push(MatchedSegment {
+                    segment: insert_multiple(segment, insertions.clone()),
+                    matched: *matched,
+                });
+            }
+        } else {
+            result_matched_pr.push(MatchedSegment {
+                segment: segment.to_string(),
+                matched: *matched,
+            });
+        };
     }
 
     result_matched_pr
@@ -370,8 +395,16 @@ mod test_apply_insertions {
             result,
             vec![
                 super::MatchedSegment {
-                    segment: "hello1 ".to_string(),
+                    segment: "hello".to_string(),
                     matched: true
+                },
+                super::MatchedSegment {
+                    segment: "1".to_string(),
+                    matched: false
+                },
+                super::MatchedSegment {
+                    segment: " ".to_string(),
+                    matched: false
                 },
                 super::MatchedSegment {
                     segment: "world2".to_string(),
@@ -404,8 +437,24 @@ mod test_apply_insertions {
             result,
             vec![
                 super::MatchedSegment {
-                    segment: "he1llo2 ".to_string(),
+                    segment: "he".to_string(),
                     matched: true
+                },
+                super::MatchedSegment {
+                    segment: "1".to_string(),
+                    matched: false
+                },
+                super::MatchedSegment {
+                    segment: "llo".to_string(),
+                    matched: true
+                },
+                super::MatchedSegment {
+                    segment: "2".to_string(),
+                    matched: false
+                },
+                super::MatchedSegment {
+                    segment: " ".to_string(),
+                    matched: false
                 },
                 super::MatchedSegment {
                     segment: "wo3rld".to_string(),
