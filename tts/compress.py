@@ -1,5 +1,6 @@
 import os
 import subprocess
+from tqdm import tqdm
 
 audio_compressed_dir = 'audio_compressed'
 if not os.path.exists(audio_compressed_dir):
@@ -12,7 +13,9 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
     for filename in os.listdir('audio'):
         if filename.endswith(".m4a") and not os.path.exists(os.path.join(audio_compressed_dir, filename)):
             input_file_path = os.path.join('audio', filename)
-            output_file_path = os.path.join(audio_compressed_dir, filename)
-            command = f'ffmpeg -i {input_file_path} -c:a libfdk_aac -vbr 1 {output_file_path}'
-            futures.append(executor.submit(lambda cmd: subprocess.run(cmd, shell=True), command))
-    concurrent.futures.wait(futures)
+            output_file_path = os.path.join(audio_compressed_dir, os.path.splitext(filename)[0] + '.mp3')
+            command = f'ffmpeg -i {input_file_path} -codec:a libmp3lame -qscale:a 2 {output_file_path}'
+            futures.append(executor.submit(lambda cmd: subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL), command))
+    
+    for _ in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Compressing audio files"):
+        pass
