@@ -1,22 +1,8 @@
 import oss2
-from get_sts_auth import get_sts_auth
+from get_bucket import get_bucket
 from tqdm import tqdm
 
-# yourEndpoint填写Bucket所在地域对应的Endpoint。以华东1（杭州）为例，Endpoint填写为https://oss-cn-hangzhou.aliyuncs.com。
-region='cn-shanghai'
-endpoint = f'https://oss-{region}.aliyuncs.com'
-# 填写Bucket名称，例如examplebucket。
-bucket_name = 'wordshk-eg-pr-siri-female'
-role_arn = 'acs:ram::1945506368897984:role/oss'
-
-sts_auth = get_sts_auth(region, role_arn)
-
-# 使用临时访问凭证中的认证信息初始化StsAuth实例。
-auth = oss2.StsAuth(sts_auth['access_key_id'],
-                    sts_auth['access_key_secret'],
-                    sts_auth['security_token'])
-
-bucket = oss2.Bucket(auth, endpoint, bucket_name)
+bucket = get_bucket()
 
 # List and delete .m4a files
 def clear_files():
