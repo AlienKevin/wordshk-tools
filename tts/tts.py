@@ -12,6 +12,9 @@ def extract_line(line):
 
     return res
 
+def normalize(sent):
+    return sent.replace(' ', '')
+
 def extract_egs(data):
     egs = {}
     for entry in data.values():
@@ -28,14 +31,14 @@ def extract_egs(data):
                         pr = zho[1]
                     sent = extract_line(zho[0])
                     if sent not in egs or egs[sent] is None:
-                        egs[sent] = pr
+                        egs[normalize(sent)] = pr
                 if yue is not None:
                     pr = None
                     if len(yue) == 2 and yue[1] is not None:
                         pr = yue[1]
                     sent = extract_line(yue[0])
                     if sent not in egs or egs[sent] is None:
-                        egs[sent] = pr
+                        egs[normalize(sent)] = pr
     return egs
 
 
