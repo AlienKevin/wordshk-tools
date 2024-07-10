@@ -24,7 +24,7 @@ fn export_sqlite_db() {
     if std::fs::metadata(&dict_path).is_ok() {
         std::fs::remove_file(&dict_path).unwrap();
     }
-    api.export_dict_as_sqlite_db(&dict_path, "3.2.5+28")
+    api.export_dict_as_sqlite_db(&dict_path, "3.3.0+28")
         .unwrap();
 }
 
