@@ -5,6 +5,8 @@
 | mistakes.csv  | https://words.hk/faiman/view/711/, https://words.hk/faiman/view/789/ |
 | ChironHeiHK-R.ttf | https://github.com/chiron-fonts/chiron-hei-hk/blob/e5e52b31363dc830c24f6d16fe8682ff29a7bf85/TTF/ChironHeiHK-R.ttf |
 | jyutping_female | words.hk |
+| HKSCS2016.json | https://www.ogcio.gov.hk/tc/our_work/business/tech_promotion/ccli/hkscs/doc/HKSCS2016.json |
+| big5-2003.txt | https://www.csie.ntu.edu.tw/~piaip/utf8/big5/big5-2003.txt |
 
 # Compare Whisper Layers
 
