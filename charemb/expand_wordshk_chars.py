@@ -1,15 +1,11 @@
 import opencc
 import re
 import json
-import os
 
-cjk_chars_pattern = '\u4e00-\u9fff\u3400-\u4dbf\U00020000-\U0002a6df\U0002a700-\U0002ebef\U00030000-\U000323af\U0002ebf0-\U0002ee5f\ufa0e\ufa0f\ufa11\ufa13\ufa14\ufa1f\ufa21\ufa23\ufa24\ufa27\ufa28\ufa29\u3006\u3007'
+cjk_chars_pattern = '\u4e00-\u9fff\u3400-\u4dbf\U00020000-\U0002a6df\U0002a700-\U0002ebef\U00030000-\U000323af\U0002ebf0-\U0002ee5f\ufa0e\ufa0f\ufa11\ufa13\ufa14\ufa1f\ufa21\ufa23\ufa24\ufa27\ufa28\ufa29\u3007'
 
-# Regex pattern to match Ideographic, Radical, or CJK Stroke characters
 cjk_regex = re.compile(
     '['
-    '\u2E80-\u2EFF' # all cjk radicals
-    '\u31C0-\u31EF' # all cjk strokes
     f'{cjk_chars_pattern}'
     ']'
 )
