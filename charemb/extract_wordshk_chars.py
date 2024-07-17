@@ -8,12 +8,32 @@ with open('../dict.json', 'r') as file:
 
 def extract_chars(data):
     chars = set()
-    for entry in data.values():
-        variants = entry.get('variants', [])
-        variants = set(variant.get('w', '') for variant in variants)
-        for variant in variants:
-            chars.update(set(variant))
-    return chars
+
+    def extract_text(obj):
+        if isinstance(obj, dict):
+            for value in obj.values():
+                yield from extract_text(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                yield from extract_text(item)
+        elif isinstance(obj, str):
+            yield obj
+
+    for text in extract_text(data):
+        chars.update(text)
+
+    with open('../data/char_jyutpings/charlist.json', 'r') as file:
+        charlist_data = json.load(file)
+        chars.update(charlist_data.keys())
+    
+    with open('../data/hk_variant_map_safe.tsv', 'r') as file:
+        for line in file:
+            columns = line.strip().split('\t')
+            assert len(columns) == 2
+            chars.update(columns[0])
+            chars.update(columns[1])
+
+    return sorted(list(chars))
 
 if __name__ == '__main__':
     chars = extract_chars(data)
