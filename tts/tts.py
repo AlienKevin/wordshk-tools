@@ -182,9 +182,10 @@ if __name__ == '__main__':
         os.makedirs('audio')
     else:
         # Get all existing .mp3 audios in audio/ and remove them from egs
-        existing_audios = {f.split('.')[0] for f in os.listdir('audio') if f.endswith('.mp3')}
-        sents = {k: v for k, v in sents.items() if normalize(k) not in existing_audios}
+        existing_audios = {os.path.splitext(f)[0] for f in os.listdir('audio') if f.endswith('.mp3')}
+        sents = {k: v for k, v in sents.items() if normalize_file_name(normalize(k)) not in existing_audios}
         print(f'Number of audios already present: {len(existing_audios)}')
+        print(f'{len(sents)} sentences left to process')
 
     with ThreadPoolExecutor(max_workers=16) as executor:
         def process_sent(sent):
