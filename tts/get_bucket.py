@@ -6,7 +6,7 @@ def get_bucket():
     region='cn-shanghai'
     endpoint = f'https://oss-{region}.aliyuncs.com'
     # 填写Bucket名称，例如examplebucket。
-    bucket_name = 'wordshk-eg-pr-siri-female'
+    bucket_name = 'wordshk-pr-hiujin'
     role_arn = 'acs:ram::1945506368897984:role/oss'
 
     sts_auth = get_sts_auth(region, role_arn)
