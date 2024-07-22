@@ -8,6 +8,7 @@ from boto3 import Session
 from contextlib import closing
 import os
 from constants import polly_jyutping_syllables
+import hashlib
 
 
 # Create a session using the credentials stored in environment variables
@@ -125,12 +126,7 @@ def polly_tts(ssml, output_path):
 
 
 def normalize_file_name(sent):
-    # Aliyun OSS Object的命名规范如下：
-    # 使用UTF-8编码。
-    # 长度必须在1~1023字节之间。
-    # 不能以正斜线（/）或者反斜线（\）开头。
-    # 区分大小写。
-    return sent.replace('/', '／').replace('\\', '＼').replace(':', '：')
+    return hashlib.sha256(sent.encode()).hexdigest()
 
 
 def process_sent_for_pr(sent):

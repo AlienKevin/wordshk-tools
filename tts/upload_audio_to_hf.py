@@ -17,8 +17,8 @@ def collect_audios_to_dataset(sents, audio_folder):
                 if text in normalized_sents:
                     sent = normalized_sents[text]
                     if sent != text:
-                        print(f"Before normalize: {text}")
-                        print(f"After normalize: {sent}")
+                        print(f"Before normalize: {sent}")
+                        print(f"After normalize: {text}")
                     text = sent
                 else:
                     print(f"Cannot find a matching sentence for the audio file: {file}")
@@ -46,5 +46,5 @@ if __name__ == "__main__":
     sents = extract_defs_and_egs(data)
 
     dataset = collect_audios_to_dataset(sents, audio_folder)
-    
+
     upload_audio_to_hf(dataset)
