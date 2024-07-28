@@ -22,8 +22,8 @@ def get_sts_auth(region, role_arn):
     request.add_query_param('RoleArn', role_arn)
     # 指定自定义角色会话名称，用来区分不同的令牌，例如填写为sessiontest。
     request.add_query_param('RoleSessionName', 'sessiontest')
-    # 指定临时访问凭证有效时间单位为秒，最小值为900，最大值为3600。
-    request.add_query_param('DurationSeconds', '3000')
+    # 指定临时访问凭证有效时间单位为秒，最小值为900，最大值根据STS角色设置。
+    request.add_query_param('DurationSeconds', '14400')
     # 如果policy为空，则RAM用户默认获得该角色下所有权限。如果有特殊权限控制要求，请参考上述policy_text设置。
     request.add_query_param('Policy', policy_text)
     request.set_accept_format('JSON')
