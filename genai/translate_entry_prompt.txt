@@ -1,0 +1,43 @@
+You are an expert translator proficient in Cantonese, English, and Mandarin. Your task is to translate a Cantonese dictionary entry into Mandarin while referencing its English definitions. Output the translation in JSON format. You should translate the variants, definitions, and examples into Mandarin as spoken in mainland China. However, always output in the Traditional Chinese script. Make sure to translate any Hong Kong style phrases into mainland style. For instance, 觀音兵 should be translated as 舔狗.
+
+EXAMPLE INPUT ENTRY:
+{"yueVariants": ["地心吸力"], "yueDef": "星球（通常指地球）對其他物質嘅引力、吸力", "engDef": "gravity (usu. gravity of the Earth)", "egs": [{"yue": "月球嘅地心吸力只係地球嘅六分一。", "eng": "The gravity of the moon is only about one sixth of that of the Earth."}]}
+
+EXAMPLE JSON TRANSLATION:
+{"zhoVariants": ["地心引力"], "zhoDef": "星球（通常指地球）對其他物質的引力、吸力", "zhoEgs": ["月球的地心引力只有地球的六分一。"]}"
+
+EXAMPLE INPUT ENTRY:
+{"yueVariants": ["𠽤", "撠"], "yueDef": "揢 (kak1)；阻", "engDef": "to be or get stuck; to become lodged in", "egs": [{"yue": "𠽤手𠽤腳", "eng": "to get in the way; to be a nuissance/hindrance"}, {"yue": "玩Pilates嗰陣要着呢啲防滑襪，咁你就可以𠽤實啲儀器，咁當你上身做啲動作嘅時候，你個人會穩定啲嘞。", "eng": "When doing Pilates, you should wear these non-slip socks so that you can lock onto the equipment securely. This way, when your upper body is performing movements, you will be more stable."}]}
+
+EXAMPLE JSON TRANSLATION:
+{"zhoVariants": ["卡", "絆", "鎖"], "zhoDef": "卡住；絆腳；鎖住", "zhoEgs": ["礙手礙腳", "玩普拉提時要穿這樣的防滑襪，這樣你就可以鎖住儀器，那麼當你上身做動作的時候，你人就會穩定一些啦。"]}
+
+EXAMPLE INPUT ENTRY:
+{"yueVariants": ["聊天"], "yueDef": "傾計", "engDef": "to chat", "egs": [{"yue": "聊天室", "eng": "chatroom"}, {"zho": "我跟同學聊天。", "yue": "我同同學傾偈。", "eng": "I chat with a classmate."}]}
+
+EXAMPLE JSON TRANSLATION:
+{"zhoVariants": ["聊天"], "zhoDef": "聊天", "zhoEgs": ["聊天室", "我跟同學聊天。"]}
+
+EXAMPLE INPUT ENTRY:
+{"yueVariants": ["jetso"], "yueDef": "「着數」一詞嘅仿英文講法", "engDef": "advantage; gain; pseudo-English form of 着數 zoek6 sou3", "egs": [{"yue": "幫你手有咩 jetso 先？", "eng": "What"s in it for me if I help you?"}]}
+
+EXAMPLE JSON TRANSLATION:
+{"zhoVariants": ["好處", "甜頭"], "zhoDef": "「着數」一詞的仿英文講法", "zhoEgs": ["幫你忙有啥好處？"]}
+
+EXAMPLE INPUT ENTRY:
+{"yueVariants": ["天婦羅"], "yueDef": "一種日本料理；由蔬菜或海鮮蘸粉再經油炸而成（量詞：嚿／塊）", "engDef": "Tempura; a Japanese dish that usually consists of seafood and vegetables that have been coated in a thin batter and deep fried", "egs": []}
+
+EXAMPLE JSON TRANSLATION:
+{"zhoVariants": ["天婦羅"], "zhoDef": "一種日本料理；由蔬菜或海鮮蘸粉再經油炸而成（量詞：嚿／塊）", "zhoEgs": []}
+
+EXAMPLE INPUT ENTRY:
+{"yueVariants": ["enjoy"], "yueDef": "享受", "engDef": "to enjoy", "egs": [{"yue": "佢enjoy唔到喺件事度。", "eng": "He cannot enjoy it."}, {"yue": "今晚我好enjoy。", "eng": "I enjoyed the event tonight."}]}
+
+EXAMPLE JSON TRANSLATION:
+{"zhoVariants": ["享受"], "zhoDef": "享受", "zhoEgs": ["他不能在這件事裡享受其中。"今晚我好享受。"]}
+
+EXAMPLE INPUT ENTRY:
+{"yueVariants": ["勝瓜"], "yueDef": "絲瓜嘅委婉語。「絲」(si1)音近「輸」(syu1)：圓住唇嚟讀「絲」字，就會得到相同發音。於是有人避諱改做「勝」字，同「輸」相對。（參見：通勝）", "engDef": "euphemism of \"angel luffa\"", "egs": []}
+
+EXAMPLE JSON TRANSLATION:
+{"zhoVariants": ["勝瓜"], "yueDef": "絲瓜的委婉語。「絲」(si1)音近「輸」(syu1)：圓著嘴唇來讀「絲」字，就會得到相同發音。於是有人避諱改做「勝」字，和「輸」相對。（參見：通勝）", "zhoEgs": []}
