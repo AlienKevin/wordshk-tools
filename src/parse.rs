@@ -446,18 +446,22 @@ pub fn parse_pr_line(name: &str) -> impl lip::Parser<Output = PrLine, State = ()
 ///     zho: Some((vec![(Text, "後邊".into())], Some("hau6 bin6".into()))),
 ///     yue: Some((vec![(Link, "後便".into())], Some("hau6 bin6".into()))),
 ///     eng: Some(vec![(Text, "back side".into())]),
+///     lzh: None,
 /// }
 /// # );
 /// ```
 ///
 pub fn parse_eg<'a>() -> impl lip::Parser<'a, Output = Eg, State = ()> {
-    succeed!(|zho, yue, eng| Eg { zho, yue, eng })
+    succeed!(|zho, yue, eng, lzh| Eg { zho, yue, eng, lzh })
         .skip(token("<eg>"))
         .skip(parse_br())
         .keep(optional(parse_pr_line("zho").skip(optional(parse_br()))))
         .keep(optional(parse_pr_line("yue").skip(optional(parse_br()))))
         // only a single line is accepted in eg
         .keep(optional(parse_named_line("eng")))
+        .skip(optional(parse_br()))
+        // Very rare Classical Chinese line
+        .keep(optional(parse_pr_line("lzh")))
         .skip(optional(parse_br()))
 }
 
@@ -494,11 +498,13 @@ pub fn parse_eg<'a>() -> impl lip::Parser<'a, Output = Eg, State = ()> {
 ///             zho: None,
 ///             yue: Some((vec![(Link, "開便".into())], Some("hoi1 bin6".into()))),
 ///             eng: Some(vec![(Text, "outside".into())]),
+///             lzh: None,
 ///         },
 ///         Eg {
 ///             zho: None,
 ///             yue: Some((vec![(Link, "呢便".into())], Some("nei1 bin6".into()))),
 ///             eng: Some(vec![(Text, "this side".into())]),
+///             lzh: None,
 ///         },
 ///     ],
 /// }
@@ -597,6 +603,7 @@ pub fn parse_simple_def<'a>() -> impl lip::Parser<'a, Output = Def, State = ()> 
 ///                 zho: None,
 ///                 yue: Some((vec![(Link, "兄弟".into())], Some("hing1 dai6".into()))),
 ///                 eng: Some(vec![(Text, "brothers".into())]),
+///                 lzh: None,
 ///             }
 ///         ],
 ///     },

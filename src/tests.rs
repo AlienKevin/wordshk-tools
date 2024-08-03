@@ -236,6 +236,7 @@ eng:Stop tsking!",
                 Some("nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!".to_string()),
             )),
             eng: Some(simple_line("Stop tsking!")),
+            lzh: None,
         },
     );
     assert_succeed(
@@ -246,6 +247,7 @@ yue:佢今日心神恍惚，時時做錯嘢，好似有心事喎。 (keoi5 gam1 
             zho: None,
             yue: Some((simple_line("佢今日心神恍惚，時時做錯嘢，好似有心事喎。"), Some("keoi5 gam1 jat6 sam1 san4 fong2 fat1, si4 si4 zou6 co3 je5, hou2 ci5 jau5 sam1 si6 wo3.".to_string()))),
             eng: None,
+            lzh: None,
         },
     );
     assert_succeed(
@@ -257,8 +259,45 @@ eng:refugee camp",
             zho: None,
             yue: Some((vec![link("難民營")], Some("naan6 man4 jing4".to_string()))),
             eng: Some(simple_line("refugee camp")),
+            lzh: None,
         },
-    )
+    );
+    assert_succeed(
+        parse_eg(),
+        "<eg>
+yue:噉唔係好開心咩？ (gam2 m4 hai6 hou2 hoi1 sam1 me1?)
+eng:Isn't that pleasant?
+lzh:不亦樂乎？ (bat1 jik6 lok6 fu4?)",
+        Eg {
+            zho: None,
+            yue: Some((
+                simple_line("噉唔係好開心咩？"),
+                Some("gam2 m4 hai6 hou2 hoi1 sam1 me1?".to_string()),
+            )),
+            eng: Some(simple_line("Isn't that pleasant?")),
+            lzh: Some((
+                simple_line("不亦樂乎？"),
+                Some("bat1 jik6 lok6 fu4?".to_string()),
+            )),
+        },
+    );
+    assert_succeed(
+        parse_eg(),
+        "<eg>
+eng:Vanillas and orchids on the shore; sandbank are fragrant and verdant.
+lzh:岸芷汀蘭，郁郁青青。 (ngon6 zi2 ting4 laan4, juk1 juk1 cing1 cing1.)",
+        Eg {
+            zho: None,
+            yue: None,
+            eng: Some(simple_line(
+                "Vanillas and orchids on the shore; sandbank are fragrant and verdant.",
+            )),
+            lzh: Some((
+                simple_line("岸芷汀蘭，郁郁青青。"),
+                Some("ngon6 zi2 ting4 laan4, juk1 juk1 cing1 cing1.".to_string()),
+            )),
+        },
+    );
 }
 
 #[test]
@@ -381,6 +420,7 @@ eng:Stop tsking!",
                     Some("nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!".to_string()),
                 )),
                 eng: Some(simple_line("Stop tsking!")),
+                lzh: None,
             }],
         },
     );
@@ -400,7 +440,8 @@ eng:Gentlemen observe chess match with respectful silence. Spectators are not al
             egs: vec![Eg {
                 zho: None,
                 yue: Some((simple_line("觀棋不語真君子，旁觀者不得𪘲牙聳䚗（依牙鬆鋼）。"), Some("gun1 kei4 bat1 jyu5 zan1 gwan1 zi2，pong4 gun1 ze2 bat1 dak1 ji1 ngaa4 sung1 gong3.".to_string()))),
-eng: Some(simple_line("Gentlemen observe chess match with respectful silence. Spectators are not allowed to disturb the competitors.")),
+                eng: Some(simple_line("Gentlemen observe chess match with respectful silence. Spectators are not allowed to disturb the competitors.")),
+                lzh: None,
             }],
         }
         )
@@ -450,6 +491,7 @@ eng:Stop tsking!",
                     Some("nei5 ho2 m4 ho2 ji5 m4 hou2 sing4 jat6 zip4 aa3, haa2!".to_string()),
                 )),
                 eng: Some(simple_line("Stop tsking!")),
+                lzh: None,
             }],
         }],
     );
@@ -491,6 +533,7 @@ eng:B grade"#,
                     Some("jyut6 dang2 / jyut6 kap1".to_string()),
                 )),
                 eng: Some(simple_line("B grade")),
+                lzh: None,
             }],
         }],
     );
@@ -529,6 +572,7 @@ vec!(text(r#"The sexagenary cycle is often used for counting years in the Chines
             Some("jyut6 dang2 / jyut6 kap1".to_string()),
         )),
         eng: Some(simple_line("B grade")),
+        lzh: None,
     }],
 }]);
 }
@@ -593,6 +637,7 @@ eng:Stop tsking!",
                             ),
                         )),
                         eng: Some(simple_line("Stop tsking!")),
+                        lzh: None,
                     }],
                 }],
                 published: true,

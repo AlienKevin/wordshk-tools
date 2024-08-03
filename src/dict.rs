@@ -185,11 +185,14 @@ impl AltLang {
 ///
 /// \[eng\] English example: Can we meet up?
 ///
+/// \[lzh\] Classical Chinese example with optional Jyutping pronunciation: 不亦樂乎？ (bat1 jik6 lok6 fu4?)
+///
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Eg {
     pub zho: Option<PrLine>,
     pub yue: Option<PrLine>,
     pub eng: Option<Line>,
+    pub lzh: Option<PrLine>,
 }
 
 /// An example sentence with optional Jyutping pronunciation
