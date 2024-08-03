@@ -7,7 +7,7 @@ bucket = get_bucket()
 def upload_audios():
     uploaded_count = 0
     reupload_queue = []
-    cutoff_time = time.time() - 100 * 60 * 60  # Only upload files modified within 1 hours ago
+    cutoff_time = time.time() - 1 * 60 * 60  # Only upload files modified within 1 hours ago
     for file in tqdm(os.listdir('audio')):
         file_path = os.path.join('audio', file)
         if os.path.getmtime(file_path) > cutoff_time and file.endswith('.mp3'):
