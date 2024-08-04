@@ -116,9 +116,6 @@ if __name__ == '__main__':
     # Extract variants and definitions using the predefined function
     extracted_entries = extract_yue_variants_and_defs(data)
 
-    print(len(extracted_entries))
-    exit(0)
-
     # print('Example parsed entry:')
     # for entry in extracted_entries:
     #     if entry['id'] in [69809, 79604, 102346, 70006, 121119, 109367, 8775, 105340, 90930, 5445]:

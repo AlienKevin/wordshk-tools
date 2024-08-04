@@ -33,7 +33,7 @@ def segment_words(sentence):
                 response_format={
                     'type': 'json_object'
                 },
-                max_tokens=256,
+                max_tokens=1024,
                 temperature=1.1,
                 stream=False
             )
