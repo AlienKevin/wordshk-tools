@@ -7,11 +7,11 @@ from spacy.vocab import Vocab
 V = Vocab()
 
 # Load the tokenized data
-with open('hkcancor_pos_tagged.jsonl', 'r', encoding='utf-8') as file:
+with open('outputs/hkcancor_pos_tagged.jsonl', 'r', encoding='utf-8') as file:
     data = [json.loads(line) for line in file]
 
 # Load the error data
-with open('hkcancor_pos_tagged_errors.jsonl', 'r', encoding='utf-8') as error_file:
+with open('outputs/hkcancor_pos_tagged_errors.jsonl', 'r', encoding='utf-8') as error_file:
     error_data = [json.loads(line) for line in error_file]
 
 # Extract references from error data

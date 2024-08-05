@@ -1,7 +1,7 @@
 import json
 
 # Read the error data
-with open('hkcancor_pos_tagged_errors.jsonl', 'r', encoding='utf-8') as error_file:
+with open('outputs/hkcancor_pos_tagged_errors.jsonl', 'r', encoding='utf-8') as error_file:
     error_data = [json.loads(line) for line in error_file]
 
 import difflib

@@ -95,7 +95,7 @@ def generate_prompt():
     word_segmentation_prompt = f"You are an expert at Cantonese word segmentation. Output the segmented words as JSON arrays. ALWAYS preserve typos, fragmented chunks, and punctuations in the original sentence.\n\n{in_context_prompt}"
 
     # Write the updated word segmentation prompt to the file
-    with open('word_segmentation_prompt.txt', 'w', encoding='utf-8') as f:
+    with open('data/word_segmentation_prompt.txt', 'w', encoding='utf-8') as f:
         f.write(word_segmentation_prompt)
     
     return word_segmentation_prompt, testing_samples
@@ -103,7 +103,7 @@ def generate_prompt():
 if __name__ == "__main__":
     word_segmentation_prompt, testing_samples = generate_prompt()
     testing_samples = testing_samples
-    with open('hkcancor_segmented.jsonl', 'w', encoding='utf-8') as file, open('hkcancor_errors.jsonl', 'w', encoding='utf-8') as error_file:
+    with open('outputs/hkcancor_segmented.jsonl', 'w', encoding='utf-8') as file, open('outputs/hkcancor_errors.jsonl', 'w', encoding='utf-8') as error_file:
         lock = Lock()
         def process_sample(sample):
             input_sentence = "".join(sample)

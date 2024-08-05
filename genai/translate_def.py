@@ -13,7 +13,7 @@ with open('deepseek_api_key.txt', 'r') as file:
 
 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
-with open('translate_def_prompt_v2.json', 'r') as file:
+with open('outputs/translate_def_prompt_v2.json', 'r') as file:
     prompt = json.load(file)
 
 def translate(variant, yue_def, eng_def):
@@ -41,7 +41,7 @@ def translate(variant, yue_def, eng_def):
 
 
 cantonese_ids = set()
-with open('mandarin_variants.tsv', 'r') as file:
+with open('data/mandarin_variants_v1.tsv', 'r') as file:
     for line in file:
         id = line.split('\t')[0]
         cantonese_ids.add(int(id))
@@ -49,13 +49,13 @@ print(f'Number of Cantonese phrases: {len(cantonese_ids)}')
 
 # idiom.json from: https://github.com/mapull/chinese-dictionary/blob/main/idiom/idiom.json
 mandarin_words = set()
-with open('idiom.json', 'r') as file:
+with open('data/idiom.json', 'r') as file:
     idioms = json.load(file)
     for idiom in idioms:
         mandarin_words.add(idiom['word'])
 
 # word.json from: https://github.com/mapull/chinese-dictionary/blob/main/word/word.json
-with open('word.json', 'r') as file:
+with open('data/word.json', 'r') as file:
     words = json.load(file)
     for word in words:
         mandarin_words.add(word['word'])
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     extracted_entries = extract_yue_variants_and_defs(data)
 
     with ThreadPoolExecutor(max_workers=10) as executor:
-        with open('results.jsonl', 'w+') as file:
+        with open('outputs/results.jsonl', 'w+') as file:
             lock = Lock()
             def process_entry(entry):
                 result = {"id": entry['id'],

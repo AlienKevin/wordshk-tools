@@ -7,13 +7,25 @@ from threading import Lock
 import random
 import pycantonese
 import re
+import argparse
 
 random.seed(42)
 
-with open('deepseek_api_key.txt', 'r') as file:
-    api_key = file.read().strip()
+parser = argparse.ArgumentParser(description="POS Tagging with OpenAI API")
+parser.add_argument('--model', type=str, choices=['deepseek-chat', 'gpt4o', 'gpt4o-mini'], required=True, help='Model to use for POS tagging')
+parser.add_argument('--sample_size', type=int, default=100, help='Number of samples to test')
+args = parser.parse_args()
 
-client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+if args.model == 'deepseek-chat':
+    base_url = "https://api.deepseek.com"
+    with open('deepseek_api_key.txt', 'r') as file:
+        api_key = file.read().strip()
+elif args.model in ['gpt4o', 'gpt4o-mini']:
+    base_url = "https://api.openai.com"
+    with open('openai_api_key.txt', 'r') as file:
+        api_key = file.read().strip()
+
+client = OpenAI(api_key=api_key, base_url=base_url)
 
 valid_pos_tags = {"ADJ", "ADP", "ADV", "AUX", "CCONJ", "DET", "INTJ", "NOUN", "NUM", "PART", "PRON", "PROPN", "PUNCT", "SCONJ", "SYM", "VERB", "X"}
 
@@ -22,7 +34,7 @@ def segment_words(sentence):
     while True:
         try:
             response = client.chat.completions.create(
-                model="deepseek-chat",
+                model=args.model,
                 messages=[{
                             "role": "system",
                             "content": pos_prompt
@@ -119,14 +131,15 @@ X: other
 {in_context_prompt}"""
 
     # Write the updated word segmentation prompt to the file
-    with open('pos_prompt.txt', 'w', encoding='utf-8') as f:
+    with open('data/pos_prompt.txt', 'w', encoding='utf-8') as f:
         f.write(pos_prompt)
     
     return pos_prompt, testing_samples
 
 if __name__ == "__main__":
     pos_prompt, testing_samples = generate_prompt()
-    with open('hkcancor_pos_tagged.jsonl', 'w', encoding='utf-8') as file, open('hkcancor_pos_tagged_errors.jsonl', 'w', encoding='utf-8') as error_file:
+    testing_samples = testing_samples[:args.sample_size]
+    with open(f'outputs/hkcancor_pos_tagged_{args.model}.jsonl', 'w', encoding='utf-8') as file, open(f'outputs/hkcancor_pos_tagged_errors_{args.model}.jsonl', 'w', encoding='utf-8') as error_file:
         lock = Lock()
         def process_sample(sample):
             input_sentence = "".join([word for word, pos in sample])

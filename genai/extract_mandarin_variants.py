@@ -46,7 +46,7 @@ def verify_translation_format(file_path):
     return cantonese_phrases
 
 # Specify the path to the results.jsonl file
-results_file_path = 'results.jsonl'
+results_file_path = 'outputs/results.jsonl'
 cantonese_phrases = verify_translation_format(results_file_path)
 
 print(f'Number of Cantonese phrases: {len(cantonese_phrases)}')

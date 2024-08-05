@@ -1,4 +1,5 @@
 models/
 llama.cpp/
 deepseek_api_key.txt
+openai_api_key.txt
 sensenova_api_key.csv

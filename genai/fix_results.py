@@ -6,7 +6,7 @@ MAX_SAMPLE_FIXES = 100
 
 # Read the JSONL file line by line and store the data in a list
 sample_fixes = []
-with open("sample_fixes.jsonl", "r") as f:
+with open("outputs/sample_fixes.jsonl", "r") as f:
     for line in f:
         sample_fixes.append(json.loads(line))
 

@@ -13,8 +13,8 @@ def process_entries(input_file, output_file):
             outfile.write(json.dumps(entry, ensure_ascii=False) + '\n')
 
 # Specify the input and output file paths
-input_file_path = 'entry_results.jsonl'
-output_file_path = 'mandarin_entries.jsonl'
+input_file_path = 'outputs/entry_results.jsonl'
+output_file_path = 'outputs/mandarin_entries.jsonl'
 
 # Process the entries
 process_entries(input_file_path, output_file_path)

@@ -12,7 +12,7 @@ with open('deepseek_api_key.txt', 'r') as file:
 
 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
-with open('translate_entry_prompt.txt', 'r') as file:
+with open('data/translate_entry_prompt.txt', 'r') as file:
     prompt = file.read()
 
 def translate(entry):
@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
     existing_entries = set()
     try:
-        with open('entry_results.jsonl', 'r') as file:
+        with open('outputs/entry_results.jsonl', 'r') as file:
             for line in file:
                 existing_entry = json.loads(line)
                 existing_entries.add((existing_entry['id'], existing_entry['defIndex']))
@@ -135,7 +135,7 @@ if __name__ == '__main__':
     extracted_entries = [entry for entry in extracted_entries if (entry['id'], entry['defIndex']) not in existing_entries]
 
     with ThreadPoolExecutor(max_workers=100) as executor:
-        with open('entry_results.jsonl', 'a+') as file:
+        with open('outputs/entry_results.jsonl', 'a+') as file:
             lock = Lock()
             def process_entry(entry):
                 translation = translate(entry)
