@@ -4,6 +4,9 @@ import json
 with open('outputs/hkcancor_pos_tagged_errors.jsonl', 'r', encoding='utf-8') as error_file:
     error_data = [json.loads(line) for line in error_file]
 
+with open('outputs/hkcancor_pos_tagged.jsonl', 'r', encoding='utf-8') as file:
+    data = [json.loads(line) for line in file]
+
 import difflib
 
 red = lambda text: f"\033[38;2;255;0;0m{text}\033[38;2;255;255;255m"
@@ -42,3 +45,17 @@ for entry in error_data:
     diff = get_edits_string(reference_sentence, hypothesis_sentence)
     
     print(diff)
+
+for entry in data:
+    if any(e['reference'] == entry['reference'] for e in error_data) or entry['reference'] == entry['hypothesis']:
+        continue
+    else:
+        reference_tokens = [f"{token}:{pos}" for token, pos in entry['reference']]
+        hypothesis_tokens = [f"{token}:{pos}" for token, pos in entry['hypothesis']]
+        
+        reference_sentence = " ".join(reference_tokens)
+        hypothesis_sentence = " ".join(hypothesis_tokens)
+        
+        diff = get_edits_string(reference_sentence, hypothesis_sentence)
+        
+        print(diff)
