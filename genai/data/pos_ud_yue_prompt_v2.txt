@@ -1,223 +1,4 @@
-from openai import OpenAI
-from concurrent.futures import ThreadPoolExecutor
-from tqdm import tqdm
-import time
-import json
-from threading import Lock
-import random
-import pycantonese
-import re
-import argparse
-
-random.seed(42)
-
-parser = argparse.ArgumentParser(description="POS Tagging with OpenAI API")
-parser.add_argument('--model', type=str, choices=['deepseek-chat', 'gpt4o', 'gpt4o-mini'], required=True, help='Model to use for POS tagging')
-parser.add_argument('--sample_size', type=int, default=100, help='Number of samples to test')
-parser.add_argument('--prompt_version', type=str, choices=['v1', 'v2'], required=True, help='Prompt version to use for POS tagging')
-parser.add_argument('--prompt_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to use for POS tagging')
-parser.add_argument('--eval_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to use for evaluation')
-args = parser.parse_args()
-
-if args.model == 'deepseek-chat':
-    base_url = "https://api.deepseek.com"
-    with open('deepseek_api_key.txt', 'r') as file:
-        api_key = file.read().strip()
-elif args.model in ['gpt4o', 'gpt4o-mini']:
-    base_url = "https://api.openai.com"
-    with open('openai_api_key.txt', 'r') as file:
-        api_key = file.read().strip()
-
-client = OpenAI(api_key=api_key, base_url=base_url)
-
-valid_pos_tags = {"ADJ", "ADP", "ADV", "AUX", "CCONJ", "DET", "INTJ", "NOUN", "NUM", "PART", "PRON", "PROPN", "PUNCT", "SCONJ", "SYM", "VERB", "X"}
-
-def segment_words(sentence):
-    attempts = 0
-    while True:
-        try:
-            response = client.chat.completions.create(
-                model=args.model,
-                messages=[{
-                            "role": "system",
-                            "content": pos_prompt
-                          },
-                          {
-                            "role": "user",
-                            "content": sentence
-                          }],
-                response_format={
-                    'type': 'json_object'
-                },
-                max_tokens=2048,
-                temperature=1.1,
-                stream=False
-            )
-            result = response.choices[0].message.content
-            try:
-                result_json = json.loads(result)
-            except json.JSONDecodeError as e:
-                raise Exception(f"Failed to parse JSON response: {str(e)}")
-            if "pos_tagged_words" in result_json and isinstance(result_json["pos_tagged_words"], list) and \
-                all(isinstance(item, list) and len(item) == 2 and (all(isinstance(sub_item, str) for sub_item in item)) for item in result_json["pos_tagged_words"]):
-                concatenated_words = "".join([word for word, pos in result_json["pos_tagged_words"]])
-                if concatenated_words == sentence:
-                    for word, pos in result_json["pos_tagged_words"]:
-                        if pos not in valid_pos_tags:
-                            raise Exception(f"Invalid POS tag '{pos}' in the result")
-                    return result_json["pos_tagged_words"]
-                else:
-                    raise Exception(f"Segmentation result does not match the input sentence")
-            else:
-                raise Exception(f"Invalid segmentation result format")
-        except Exception as e:
-            time.sleep(1)
-            attempts += 1
-            if attempts >= 3:
-                return {'error': str(e), 'result': result}
-
-
-def load_hkcancor():
-    # Load HKCanCor data
-    hkcancor_data = pycantonese.hkcancor()
-
-    # Gather all word segmented utterances
-    utterances = [[(token.word, pycantonese.pos_tagging.hkcancor_to_ud(token.pos)) for token in utterance] for utterance in hkcancor_data.tokens(by_utterances=True)]
-
-    return utterances
-
-
-def split_hkcancor():
-    utterances = load_hkcancor()
-
-    latin_fragmented_utterances = []
-    latin_complete_utterances = []
-    non_latin_utterances = []
-
-    for utterance in utterances:
-        if any(re.search(r'[a-zA-Z0-9]', char) for (word, pos) in utterance for char in word):
-            if ''.join(word for word, pos in utterance).count('"') % 2 != 0:
-                latin_fragmented_utterances.append(utterance)
-            else:
-                latin_complete_utterances.append(utterance)
-        else:
-            non_latin_utterances.append(utterance)
-
-    # Sample 3 random latin_complete_utterances, 3 random latin_fragmented_utterances, and 4 random non_latin_utterances for in_context_samples
-    random.shuffle(latin_complete_utterances)
-    random.shuffle(latin_fragmented_utterances)
-    random.shuffle(non_latin_utterances)
-    in_context_samples = latin_complete_utterances[:3] + latin_fragmented_utterances[:3] + non_latin_utterances[:4]
-    random.shuffle(in_context_samples)
-    
-    return in_context_samples
-
-
-def upos_id_to_str(upos_id):
-    names=[
-        "NOUN",
-        "PUNCT",
-        "ADP",
-        "NUM",
-        "SYM",
-        "SCONJ",
-        "ADJ",
-        "PART",
-        "DET",
-        "CCONJ",
-        "PROPN",
-        "PRON",
-        "X",
-        "X",
-        "ADV",
-        "INTJ",
-        "VERB",
-        "AUX",
-    ]
-    return names[upos_id]
-
-
-def load_ud_yue():
-    from datasets import load_dataset
-
-    # Load the universal_dependencies dataset from Hugging Face
-    dataset = load_dataset('universal_dependencies', 'yue_hk', trust_remote_code=True)
-
-    # Gather all word segmented utterances
-    utterances = [[(token, upos_id_to_str(pos)) for token, pos in zip(sentence['tokens'], sentence['upos'])] for sentence in dataset['test']]
-
-    return utterances
-
-
-def split_ud_yue():
-    import random
-
-    utterances = load_ud_yue()
-
-    # Shuffle the utterances to ensure randomness
-    random.shuffle(utterances)
-
-    # Sample 10 random utterances for in_context_samples
-    in_context_samples = utterances[:10]
-
-    # The rest of the utterances will be used as testing_samples
-    testing_samples = utterances[10:]
-
-    return in_context_samples
-
-
-def generate_prompt_v1(prompt_dataset):
-    if prompt_dataset == 'hkcancor':
-        in_context_samples = split_hkcancor()
-    elif prompt_dataset == 'ud_yue':
-        in_context_samples = split_ud_yue()
-    
-    # Format in-context samples for the prompt
-    in_context_prompt = "\n\n".join([
-        f'EXAMPLE INPUT SENTENCE:\n{"".join([word for word, pos in sample])}\n\nEXAMPLE JSON OUTPUT:\n{json.dumps({"pos_tagged_words": [[word, pos] for word, pos in sample]}, ensure_ascii=False)}'
-        for sample in in_context_samples
-    ])
-
-    # Update the word segmentation prompt with in-context samples
-    pos_prompt = f"""You are an expert at Cantonese word segmentation and POS tagging. Output the segmented words with their parts of speech as JSON arrays. ALWAYS preserve typos, fragmented chunks, and punctuations in the original sentence. Output the parts of speech in the Universal Dependencies v2 tagset with 17 tags:
-ADJ: adjective
-ADP: adposition
-ADV: adverb
-AUX: auxiliary
-CCONJ: coordinating conjunction
-DET: determiner
-INTJ: interjection
-NOUN: noun
-NUM: numeral
-PART: particle
-PRON: pronoun
-PROPN: proper noun
-PUNCT: punctuation
-SCONJ: subordinating conjunction
-SYM: symbol
-VERB: verb
-X: other
-
-{in_context_prompt}"""
-    
-    return pos_prompt
-
-
-
-def generate_prompt_v2(prompt_dataset):
-    if prompt_dataset == 'hkcancor':
-        in_context_samples = split_hkcancor()
-    elif prompt_dataset == 'ud_yue':
-        in_context_samples = split_ud_yue()
-    
-    # Format in-context samples for the prompt
-    in_context_prompt = "\n\n".join([
-        f'EXAMPLE INPUT SENTENCE:\n{"".join([word for word, pos in sample])}\n\nEXAMPLE JSON OUTPUT:\n{json.dumps({"pos_tagged_words": [[word, pos] for word, pos in sample]}, ensure_ascii=False)}'
-        for sample in in_context_samples
-    ])
-
-    # Update the word segmentation prompt with in-context samples
-    pos_prompt = f"""You are an expert at Cantonese word segmentation and POS tagging. Output the segmented words with their parts of speech as JSON arrays. ALWAYS preserve typos, fragmented chunks, and punctuations in the original sentence. Output the parts of speech in the Universal Dependencies v2 tagset with 17 tags:
+You are an expert at Cantonese word segmentation and POS tagging. Output the segmented words with their parts of speech as JSON arrays. ALWAYS preserve typos, fragmented chunks, and punctuations in the original sentence. Output the parts of speech in the Universal Dependencies v2 tagset with 17 tags:
 
 
 ADJ: Adjectives are words that typically modify nouns and specify their properties or attributes. They may also function as predicates. These include the categories known as 區別詞 and 形容詞.
@@ -453,55 +234,62 @@ Example
 佢 突然 話 ：「 lkjwe/X 」
 
 
-{in_context_prompt}"""
-    
-    return pos_prompt
+EXAMPLE INPUT SENTENCE:
+ＯＫ㗎！
 
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["ＯＫ", "VERB"], ["㗎", "PART"], ["！", "PUNCT"]]}
 
-if __name__ == "__main__":
-    if args.prompt_version == 'v1':
-        pos_prompt = generate_prompt_v1(args.prompt_dataset)
-    elif args.prompt_version == 'v2':
-        pos_prompt = generate_prompt_v2(args.prompt_dataset)
+EXAMPLE INPUT SENTENCE:
+噉，但係我哋好多嘅議員都聽倒……似乎佢哋嗰種宣誓嘅方式，我哋過往歷屆嘅立法會議員都試過用類似嘅方式，都係冇問題嘅。
 
-    # Write the updated word segmentation prompt to the file
-    with open(f'data/pos_{args.prompt_dataset}_prompt_{args.prompt_version}.txt', 'w', encoding='utf-8') as f:
-        f.write(pos_prompt)
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["噉", "ADV"], ["，", "PUNCT"], ["但係", "ADV"], ["我哋", "PRON"], ["好多", "DET"], ["嘅", "PART"], ["議員", "NOUN"], ["都", "ADV"], ["聽", "VERB"], ["倒", "VERB"], ["……", "PUNCT"], ["似乎", "ADV"], ["佢哋", "PRON"], ["嗰", "DET"], ["種", "NOUN"], ["宣誓", "NOUN"], ["嘅", "PART"], ["方式", "NOUN"], ["，", "PUNCT"], ["我哋", "PRON"], ["過往", "NOUN"], ["歷屆", "ADJ"], ["嘅", "PART"], ["立法會", "NOUN"], ["議員", "NOUN"], ["都", "ADV"], ["試", "VERB"], ["過", "AUX"], ["用", "VERB"], ["類似", "ADJ"], ["嘅", "PART"], ["方式", "NOUN"], ["，", "PUNCT"], ["都", "ADV"], ["係", "VERB"], ["冇", "VERB"], ["問題", "NOUN"], ["嘅", "PART"], ["。", "PUNCT"]]}
 
-    if args.eval_dataset == 'ud_yue':
-        testing_samples = load_ud_yue()
-    elif args.eval_dataset == 'hkcancor':
-        testing_samples = load_hkcancor()
-    
-    testing_samples = testing_samples[:args.sample_size]
+EXAMPLE INPUT SENTENCE:
+不過我一個女人，拉電嘅體力真係有限。拉唔郁嘅，拉唔到，搵啲工人拉。
 
-    with open(f'outputs/pos_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}.jsonl', 'w', encoding='utf-8') as file, open(f'outputs/pos_errors_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}.jsonl', 'w', encoding='utf-8') as error_file:
-        lock = Lock()
-        def process_sample(sample):
-            input_sentence = "".join([word for word, pos in sample])
-            pos_result = segment_words(input_sentence)
-            if 'error' in pos_result:
-                print(f"POS tagging failed for sentence: {input_sentence}")
-                print(f"Error: {pos_result['error']}")
-                error_result = {
-                    "reference": sample,
-                    "error": pos_result['error'],
-                    "hypothesis": pos_result['result']
-                }
-                with lock:
-                    error_file.write(json.dumps(error_result, ensure_ascii=False) + '\n')
-                    error_file.flush()
-                result = {
-                    "reference": sample,
-                    "hypothesis": [(char, "X") for char in list(input_sentence)]
-                }
-            else:
-                result = {
-                    "reference": sample,
-                    "hypothesis": pos_result
-                }
-            with lock:
-                file.write(json.dumps(result, ensure_ascii=False) + '\n')
-                file.flush()
-        with ThreadPoolExecutor(max_workers=100) as executor:
-            list(tqdm(executor.map(process_sample, testing_samples), total=len(testing_samples)))
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["不過", "CCONJ"], ["我", "PRON"], ["一", "NUM"], ["個", "NOUN"], ["女人", "NOUN"], ["，", "PUNCT"], ["拉", "VERB"], ["電", "NOUN"], ["嘅", "PART"], ["體力", "NOUN"], ["真係", "ADV"], ["有限", "VERB"], ["。", "PUNCT"], ["拉", "VERB"], ["唔", "ADV"], ["郁", "VERB"], ["嘅", "PART"], ["，", "PUNCT"], ["拉", "VERB"], ["唔", "ADV"], ["到", "VERB"], ["，", "PUNCT"], ["搵", "VERB"], ["啲", "NOUN"], ["工人", "NOUN"], ["拉", "VERB"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+係佢冇運啫。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["係", "VERB"], ["佢", "PRON"], ["冇", "VERB"], ["運", "NOUN"], ["啫", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+做咩噉問呀？
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["做咩", "ADV"], ["噉", "ADV"], ["問", "VERB"], ["呀", "PART"], ["？", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+唏～噉樣？
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["唏", "INTJ"], ["～", "PUNCT"], ["噉樣", "ADV"], ["？", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+噉好啦，媽咪去攞畀你啦，好唔好？
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["噉", "ADV"], ["好", "ADJ"], ["啦", "PART"], ["，", "PUNCT"], ["媽咪", "NOUN"], ["去", "VERB"], ["攞", "VERB"], ["畀", "ADP"], ["你", "PRON"], ["啦", "PART"], ["，", "PUNCT"], ["好", "ADJ"], ["唔", "ADV"], ["好", "ADJ"], ["？", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+下，噉，我就，就會係，喺-在坐嘅議員呢，係經過選舉嗰度呢，確認咗佢係議員嘅話呢，雖然佢未宣誓，我係畀佢喺依度呢，係發-發言㗎。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["下", "INTJ"], ["，", "PUNCT"], ["噉", "ADV"], ["，", "PUNCT"], ["我", "PRON"], ["就", "ADV"], ["，", "PUNCT"], ["就", "ADV"], ["會", "AUX"], ["係", "VERB"], ["，", "PUNCT"], ["喺", "ADP"], ["-", "PUNCT"], ["在坐", "ADJ"], ["嘅", "PART"], ["議員", "NOUN"], ["呢", "PART"], ["，", "PUNCT"], ["係", "VERB"], ["經過", "VERB"], ["選舉", "VERB"], ["嗰度", "PRON"], ["呢", "PART"], ["，", "PUNCT"], ["確認", "VERB"], ["咗", "AUX"], ["佢", "PRON"], ["係", "AUX"], ["議員", "NOUN"], ["嘅話", "SCONJ"], ["呢", "PART"], ["，", "PUNCT"], ["雖然", "SCONJ"], ["佢", "PRON"], ["未", "ADV"], ["宣誓", "VERB"], ["，", "PUNCT"], ["我", "PRON"], ["係", "VERB"], ["畀", "VERB"], ["佢", "PRON"], ["喺", "ADP"], ["依度", "PRON"], ["呢", "PART"], ["，", "PUNCT"], ["係", "VERB"], ["發", "VERB"], ["-", "PUNCT"], ["發言", "VERB"], ["㗎", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+黐埋一齊嗰個叫histogram吖嘛。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["黐", "VERB"], ["埋", "VERB"], ["一齊", "ADV"], ["嗰個", "PRON"], ["叫", "VERB"], ["histogram", "NOUN"], ["吖嘛", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+係好決定我哋未來呢個立法會任期入便呢啲會議係點樣進行，係對全香港人嘅公眾利益都係，即係非常重大嘅關係。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["係", "VERB"], ["好", "ADV"], ["決定", "VERB"], ["我哋", "PRON"], ["未來", "NOUN"], ["呢", "DET"], ["個", "NOUN"], ["立法會", "NOUN"], ["任期", "NOUN"], ["入便", "NOUN"], ["呢啲", "DET"], ["會議", "NOUN"], ["係", "VERB"], ["點樣", "ADV"], ["進行", "VERB"], ["，", "PUNCT"], ["係", "VERB"], ["對", "VERB"], ["全", "DET"], ["香港", "PROPN"], ["人", "NOUN"], ["嘅", "PART"], ["公眾", "ADJ"], ["利益", "NOUN"], ["都", "ADV"], ["係", "VERB"], ["，", "PUNCT"], ["即", "ADV"], ["係", "AUX"], ["非常", "ADV"], ["重大", "ADJ"], ["嘅", "PART"], ["關係", "NOUN"], ["。", "PUNCT"]]}
