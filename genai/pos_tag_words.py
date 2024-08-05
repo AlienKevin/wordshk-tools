@@ -129,15 +129,19 @@ VERB: verb
 X: other
 
 {in_context_prompt}"""
-
-    # Write the updated word segmentation prompt to the file
-    with open('data/pos_prompt.txt', 'w', encoding='utf-8') as f:
-        f.write(pos_prompt)
     
     return pos_prompt, testing_samples
 
 if __name__ == "__main__":
-    pos_prompt, testing_samples = generate_prompt()
+    _pos_prompt, testing_samples = generate_prompt()
+
+    # # Write the updated word segmentation prompt to the file
+    # with open('data/pos_prompt.txt', 'w', encoding='utf-8') as f:
+    #     f.write(_pos_prompt)
+
+    with open('data/pos_prompt_v2.txt', 'r', encoding='utf-8') as f:
+        pos_prompt = f.read()
+    
     testing_samples = testing_samples[:args.sample_size]
     with open(f'outputs/hkcancor_pos_tagged_{args.model}.jsonl', 'w', encoding='utf-8') as file, open(f'outputs/hkcancor_pos_tagged_errors_{args.model}.jsonl', 'w', encoding='utf-8') as error_file:
         lock = Lock()
@@ -157,7 +161,7 @@ if __name__ == "__main__":
                     error_file.flush()
                 result = {
                     "reference": sample,
-                    "hypothesis": [(char, "X") for char in list(sample)]
+                    "hypothesis": [(char, "X") for char in list(input_sentence)]
                 }
             else:
                 result = {

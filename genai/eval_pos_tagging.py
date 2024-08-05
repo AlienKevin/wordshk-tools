@@ -3,15 +3,20 @@ from spacy.training import Example
 from spacy.scorer import Scorer
 from spacy.tokens import Doc
 from spacy.vocab import Vocab
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--model', type=str, choices=['deepseek-chat', 'gpt4o', 'gpt4o-mini'], required=True, help='Model to use for POS tagging')
+args = parser.parse_args()
 
 V = Vocab()
 
 # Load the tokenized data
-with open('outputs/hkcancor_pos_tagged.jsonl', 'r', encoding='utf-8') as file:
+with open(f'outputs/hkcancor_pos_tagged_{args.model}.jsonl', 'r', encoding='utf-8') as file:
     data = [json.loads(line) for line in file]
 
 # Load the error data
-with open('outputs/hkcancor_pos_tagged_errors.jsonl', 'r', encoding='utf-8') as error_file:
+with open(f'outputs/hkcancor_pos_tagged_errors_{args.model}.jsonl', 'r', encoding='utf-8') as error_file:
     error_data = [json.loads(line) for line in error_file]
 
 # Extract references from error data
