@@ -182,6 +182,7 @@ Examples
 亞洲/PROPN
 威威/PROPN 木材 公司
 
+
 PUNCT: Punctuation marks are character groups used to delimit linguistic units in printed text.
 
 Punctuation is not taken to include logograms such as $, %, and §, which are instead tagged as SYM.
@@ -217,11 +218,13 @@ Examples
 :), ^_^, 😝
 siu.ming@universal.org, http://universaldependencies.org/, 1-800-COMPANY
 
+
 VERB: A verb is a member of the syntactic class of words that typically signal events and actions, can constitute a minimal predicate in a clause, and govern the number and types of other constituents which may occur in the clause.
 
 Despite its use in copular constructions, 係 is tagged as a verb due to its other non-copular meanings and functions.
 
 Examples: 游水, 聽, 呼吸, 鍾意, 決定, 有, 係
+
 
 X: The tag X is used for words that for some reason cannot be assigned a real part-of-speech category. It should be used very restrictively.
 
