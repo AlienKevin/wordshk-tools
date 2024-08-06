@@ -87,6 +87,14 @@ Token F1 Score: 0.9245518966235932
 Token Precision: 0.9342881213142376
 Token Recall: 0.915016501650165
 
+(wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model doubao-lite-32k --prompt_version v1 --eval_dataset ud_yue
+POS Tagging Accuracy (Normalized): 0.8437190900098912
+POS Tagging Accuracy: 0.8348170128585558
+Token Accuracy: 0.9887535145267105
+Token F1 Score: 0.8807339449541284
+Token Precision: 0.8547328959700093
+Token Recall: 0.9083665338645418
+
 (wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model doubao-pro-32k --prompt_version v2 --eval_dataset ud_yue
 POS Tagging Accuracy (Normalized): 0.8941009239516703
 POS Tagging Accuracy: 0.8898365316275765
@@ -94,6 +102,15 @@ Token Accuracy: 0.9674220963172805
 Token F1 Score: 0.9329608938547487
 Token Precision: 0.9461756373937678
 Token Recall: 0.9201101928374655
+
+
+(wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model doubao-lite-32k --prompt_version v2 --eval_dataset ud_yue
+POS Tagging Accuracy (Normalized): 0.8508771929824561
+POS Tagging Accuracy: 0.841130604288499
+Token Accuracy: 0.9889400921658986
+Token F1 Score: 0.8767253688719657
+Token Precision: 0.8488479262672811
+Token Recall: 0.906496062992126
 
 
 (wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model gpt-4o-mini --prompt_version v1 --eval_dataset ud_yue
