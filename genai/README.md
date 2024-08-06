@@ -5,12 +5,26 @@ Token F1 Score: 0.9292001530807501
 Token Precision: 0.9309815950920245
 Token Recall: 0.9274255156608098
 
+(wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-chat --prompt_version v1 --eval_dataset ud_yue --segmentation_given True
+POS Tagging Accuracy: 0.9136745607333843
+Token Accuracy: 1.0
+Token F1 Score: 1.0
+Token Precision: 1.0
+Token Recall: 1.0
+
 (wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-chat --prompt_version v2 --eval_dataset ud_yue
 POS Tagging Accuracy: 0.9036519036519037
 Token Accuracy: 0.9776751347190146
 Token F1 Score: 0.9409509202453988
 Token Precision: 0.9445727482678984
 Token Recall: 0.9373567608861727
+
+(wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-chat --prompt_version v2 --eval_dataset ud_yue --segmentation_given True
+POS Tagging Accuracy: 0.920550038197097
+Token Accuracy: 1.0
+Token F1 Score: 1.0
+Token Precision: 1.0
+Token Recall: 1.0
 
 (wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-coder --prompt_version v1 --eval_dataset ud_yue
 POS Tagging Accuracy: 0.890795631825273
@@ -19,12 +33,26 @@ Token F1 Score: 0.9298581832119586
 Token Precision: 0.933076923076923
 Token Recall: 0.9266615737203973
 
+(wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-coder --prompt_version v1 --eval_dataset ud_yue --segmentation_given True
+POS Tagging Accuracy: 0.9136745607333843
+Token Accuracy: 1.0
+Token F1 Score: 1.0
+Token Precision: 1.0
+Token Recall: 1.0
+
 (wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-coder --prompt_version v2 --eval_dataset ud_yue
 POS Tagging Accuracy: 0.9033760186263097
 Token Accuracy: 0.9807987711213517
 Token F1 Score: 0.9467636920720031
 Token Precision: 0.9493087557603687
 Token Recall: 0.9442322383498855
+
+(wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-coder --prompt_version v2 --eval_dataset ud_yue --segmentation_given True
+POS Tagging Accuracy: 0.9182582123758595
+Token Accuracy: 1.0
+Token F1 Score: 1.0
+Token Precision: 1.0
+Token Recall: 1.0
 
 (wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model gpt-4o-mini --prompt_version v1 --eval_dataset ud_yue
 POS Tagging Accuracy: 0.8630904723779024
