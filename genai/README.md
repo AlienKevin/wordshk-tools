@@ -145,3 +145,13 @@ Token Recall: 0.93048128342246
 # Sources
 
 data/t2s.txt: https://github.com/tyrchen/fast2s/blob/0940d611d6cbf4fd79f096f8b681ef271e1c4573/src/t2s.txt
+
+# Doubao SFT
+
+这里的训练文本，不是简单的计算训练集的总 tokens 数，而是实际训练的文本总 tokens 数
+精调预估 token 数公式如下：
+tokens-per-batch（模型窗口长度）
+batch-size（固定配置，现在线上大部分是 8，覆盖 doubao lite 和 pro 六个模型）
+假设用户实际 token 数为 M（包括混数据之后的），tokens-per-batch * batch-size = N，则预估 token 数 = (int(M / N) + 1) * N
+例如用户用 Doubao-lite-128k 进行训练，那么就会有一个最小启动成本：128 * 1024 * 8
+前端根据后端返回 token 数 * epoch * 单价得到预估费用
