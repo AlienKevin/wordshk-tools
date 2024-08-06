@@ -12,6 +12,20 @@ Token F1 Score: 0.9409509202453988
 Token Precision: 0.9445727482678984
 Token Recall: 0.9373567608861727
 
+(wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-coder --prompt_version v1 --eval_dataset ud_yue
+POS Tagging Accuracy: 0.890795631825273
+Token Accuracy: 0.9730769230769231
+Token F1 Score: 0.9298581832119586
+Token Precision: 0.933076923076923
+Token Recall: 0.9266615737203973
+
+(wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-coder --prompt_version v2 --eval_dataset ud_yue
+POS Tagging Accuracy: 0.9033760186263097
+Token Accuracy: 0.9807987711213517
+Token F1 Score: 0.9467636920720031
+Token Precision: 0.9493087557603687
+Token Recall: 0.9442322383498855
+
 (wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model gpt-4o-mini --prompt_version v1 --eval_dataset ud_yue
 POS Tagging Accuracy: 0.8630904723779024
 Token Accuracy: 0.9770206022187005
