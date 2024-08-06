@@ -6,7 +6,7 @@ from spacy.vocab import Vocab
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', type=str, choices=['deepseek-chat', 'gpt-4o', 'gpt-4o-mini'], required=True, help='Model to use for POS tagging')
+parser.add_argument('--model', type=str, choices=['deepseek-chat', 'gpt-4o', 'gpt-4o-mini', 'qwen-max', 'qwen-plus', 'qwen-turbo'], required=True, help='Model to use for POS tagging')
 parser.add_argument('--prompt_version', type=str, choices=['v1', 'v2'], required=True, help='Prompt version to use for POS tagging')
 parser.add_argument('--eval_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to evaluate POS tagging on')
 args = parser.parse_args()

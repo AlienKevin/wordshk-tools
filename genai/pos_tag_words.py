@@ -12,7 +12,7 @@ import argparse
 random.seed(42)
 
 parser = argparse.ArgumentParser(description="POS Tagging with OpenAI API")
-parser.add_argument('--model', type=str, choices=['deepseek-chat', 'gpt-4o', 'gpt-4o-mini'], required=True, help='Model to use for POS tagging')
+parser.add_argument('--model', type=str, choices=['deepseek-chat', 'gpt-4o', 'gpt-4o-mini', 'qwen-max', 'qwen-plus', 'qwen-turbo'], required=True, help='Model to use for POS tagging')
 parser.add_argument('--sample_size', type=int, default=100, help='Number of samples to test')
 parser.add_argument('--prompt_version', type=str, choices=['v1', 'v2'], required=True, help='Prompt version to use for POS tagging')
 parser.add_argument('--prompt_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to use for POS tagging')
@@ -24,9 +24,13 @@ if args.model == 'deepseek-chat':
     base_url = "https://api.deepseek.com"
     with open('deepseek_api_key.txt', 'r') as file:
         api_key = file.read().strip()
-elif args.model in ['gpt-4o', 'gpt-4o-mini']:
+elif args.model.startswith('gpt-4o'):
     base_url = None
     with open('openai_api_key.txt', 'r') as file:
+        api_key = file.read().strip()
+elif args.model.startswith('qwen'):
+    base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    with open('qwen_api_key.txt', 'r') as file:
         api_key = file.read().strip()
 
 client = OpenAI(api_key=api_key, base_url=base_url)
@@ -50,7 +54,7 @@ def segment_words(sentence):
                 response_format={
                     'type': 'json_object'
                 },
-                max_tokens=2048,
+                max_tokens=2000,
                 temperature=1.1,
                 stream=False
             )
