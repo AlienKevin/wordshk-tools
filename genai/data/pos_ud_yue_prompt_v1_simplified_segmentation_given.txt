@@ -1,0 +1,78 @@
+You are an expert at Cantonese word segmentation and POS tagging. Output the segmented words with their parts of speech as JSON arrays. ALWAYS preserve typos, fragmented chunks, and punctuations in the original sentence. Output the parts of speech in the Universal Dependencies v2 tagset with 17 tags:
+ADJ: adjective
+ADP: adposition
+ADV: adverb
+AUX: auxiliary
+CCONJ: coordinating conjunction
+DET: determiner
+INTJ: interjection
+NOUN: noun
+NUM: numeral
+PART: particle
+PRON: pronoun
+PROPN: proper noun
+PUNCT: punctuation
+SCONJ: subordinating conjunction
+SYM: symbol
+VERB: verb
+X: other
+
+EXAMPLE INPUT SENTENCE:
+ＯＫ 㗎 ！
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["ＯＫ", "VERB"], ["㗎", "PART"], ["！", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+噉 ， 但係 我哋 好多 嘅 議員 都 聽 倒 …… 似乎 佢哋 嗰 種 宣誓 嘅 方式 ， 我哋 過往 歷屆 嘅 立法會 議員 都 試 過 用 類似 嘅 方式 ， 都 係 冇 問題 嘅 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["噉", "ADV"], ["，", "PUNCT"], ["但係", "ADV"], ["我哋", "PRON"], ["好多", "DET"], ["嘅", "PART"], ["議員", "NOUN"], ["都", "ADV"], ["聽", "VERB"], ["倒", "VERB"], ["……", "PUNCT"], ["似乎", "ADV"], ["佢哋", "PRON"], ["嗰", "DET"], ["種", "NOUN"], ["宣誓", "NOUN"], ["嘅", "PART"], ["方式", "NOUN"], ["，", "PUNCT"], ["我哋", "PRON"], ["過往", "NOUN"], ["歷屆", "ADJ"], ["嘅", "PART"], ["立法會", "NOUN"], ["議員", "NOUN"], ["都", "ADV"], ["試", "VERB"], ["過", "AUX"], ["用", "VERB"], ["類似", "ADJ"], ["嘅", "PART"], ["方式", "NOUN"], ["，", "PUNCT"], ["都", "ADV"], ["係", "VERB"], ["冇", "VERB"], ["問題", "NOUN"], ["嘅", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+不過 我 一 個 女人 ， 拉 電 嘅 體力 真係 有限 。 拉 唔 郁 嘅 ， 拉 唔 到 ， 搵 啲 工人 拉 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["不過", "CCONJ"], ["我", "PRON"], ["一", "NUM"], ["個", "NOUN"], ["女人", "NOUN"], ["，", "PUNCT"], ["拉", "VERB"], ["電", "NOUN"], ["嘅", "PART"], ["體力", "NOUN"], ["真係", "ADV"], ["有限", "VERB"], ["。", "PUNCT"], ["拉", "VERB"], ["唔", "ADV"], ["郁", "VERB"], ["嘅", "PART"], ["，", "PUNCT"], ["拉", "VERB"], ["唔", "ADV"], ["到", "VERB"], ["，", "PUNCT"], ["搵", "VERB"], ["啲", "NOUN"], ["工人", "NOUN"], ["拉", "VERB"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+係 佢 冇 運 啫 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["係", "VERB"], ["佢", "PRON"], ["冇", "VERB"], ["運", "NOUN"], ["啫", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+做咩 噉 問 呀 ？
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["做咩", "ADV"], ["噉", "ADV"], ["問", "VERB"], ["呀", "PART"], ["？", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+唏 ～ 噉樣 ？
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["唏", "INTJ"], ["～", "PUNCT"], ["噉樣", "ADV"], ["？", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+噉 好 啦 ， 媽咪 去 攞 畀 你 啦 ， 好 唔 好 ？
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["噉", "ADV"], ["好", "ADJ"], ["啦", "PART"], ["，", "PUNCT"], ["媽咪", "NOUN"], ["去", "VERB"], ["攞", "VERB"], ["畀", "ADP"], ["你", "PRON"], ["啦", "PART"], ["，", "PUNCT"], ["好", "ADJ"], ["唔", "ADV"], ["好", "ADJ"], ["？", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+下 ， 噉 ， 我 就 ， 就 會 係 ， 喺 - 在坐 嘅 議員 呢 ， 係 經過 選舉 嗰度 呢 ， 確認 咗 佢 係 議員 嘅話 呢 ， 雖然 佢 未 宣誓 ， 我 係 畀 佢 喺 依度 呢 ， 係 發 - 發言 㗎 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["下", "INTJ"], ["，", "PUNCT"], ["噉", "ADV"], ["，", "PUNCT"], ["我", "PRON"], ["就", "ADV"], ["，", "PUNCT"], ["就", "ADV"], ["會", "AUX"], ["係", "VERB"], ["，", "PUNCT"], ["喺", "ADP"], ["-", "PUNCT"], ["在坐", "ADJ"], ["嘅", "PART"], ["議員", "NOUN"], ["呢", "PART"], ["，", "PUNCT"], ["係", "VERB"], ["經過", "VERB"], ["選舉", "VERB"], ["嗰度", "PRON"], ["呢", "PART"], ["，", "PUNCT"], ["確認", "VERB"], ["咗", "AUX"], ["佢", "PRON"], ["係", "AUX"], ["議員", "NOUN"], ["嘅話", "SCONJ"], ["呢", "PART"], ["，", "PUNCT"], ["雖然", "SCONJ"], ["佢", "PRON"], ["未", "ADV"], ["宣誓", "VERB"], ["，", "PUNCT"], ["我", "PRON"], ["係", "VERB"], ["畀", "VERB"], ["佢", "PRON"], ["喺", "ADP"], ["依度", "PRON"], ["呢", "PART"], ["，", "PUNCT"], ["係", "VERB"], ["發", "VERB"], ["-", "PUNCT"], ["發言", "VERB"], ["㗎", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+黐 埋 一齊 嗰個 叫 histogram 吖嘛 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["黐", "VERB"], ["埋", "VERB"], ["一齊", "ADV"], ["嗰個", "PRON"], ["叫", "VERB"], ["histogram", "NOUN"], ["吖嘛", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+係 好 決定 我哋 未來 呢 個 立法會 任期 入便 呢啲 會議 係 點樣 進行 ， 係 對 全 香港 人 嘅 公眾 利益 都 係 ， 即 係 非常 重大 嘅 關係 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["係", "VERB"], ["好", "ADV"], ["決定", "VERB"], ["我哋", "PRON"], ["未來", "NOUN"], ["呢", "DET"], ["個", "NOUN"], ["立法會", "NOUN"], ["任期", "NOUN"], ["入便", "NOUN"], ["呢啲", "DET"], ["會議", "NOUN"], ["係", "VERB"], ["點樣", "ADV"], ["進行", "VERB"], ["，", "PUNCT"], ["係", "VERB"], ["對", "VERB"], ["全", "DET"], ["香港", "PROPN"], ["人", "NOUN"], ["嘅", "PART"], ["公眾", "ADJ"], ["利益", "NOUN"], ["都", "ADV"], ["係", "VERB"], ["，", "PUNCT"], ["即", "ADV"], ["係", "AUX"], ["非常", "ADV"], ["重大", "ADJ"], ["嘅", "PART"], ["關係", "NOUN"], ["。", "PUNCT"]]}

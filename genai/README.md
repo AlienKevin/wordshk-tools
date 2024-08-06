@@ -42,6 +42,14 @@ Token F1 Score: 0.9987336428872942
 Token Precision: 0.9983122362869198
 Token Recall: 0.9991554054054054
 
+(wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-chat --prompt_version v2 --eval_dataset ud_yue --segmentation_given True --to_simplified True
+POS Tagging Accuracy (Normalized): 0.9197860962566845
+POS Tagging Accuracy: 0.9197860962566845
+Token Accuracy: 1.0
+Token F1 Score: 1.0
+Token Precision: 1.0
+Token Recall: 1.0
+
 (wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-coder --prompt_version v1 --eval_dataset ud_yue
 POS Tagging Accuracy: 0.890795631825273
 Token Accuracy: 0.9730769230769231
@@ -97,3 +105,8 @@ Token Accuracy: 0.9744384198295895
 Token F1 Score: 0.9369230769230769
 Token Precision: 0.9434546862896979
 Token Recall: 0.93048128342246
+
+
+# Sources
+
+data/t2s.txt: https://github.com/tyrchen/fast2s/blob/0940d611d6cbf4fd79f096f8b681ef271e1c4573/src/t2s.txt

@@ -19,6 +19,7 @@ parser.add_argument('--prompt_dataset', type=str, choices=['hkcancor', 'ud_yue']
 parser.add_argument('--eval_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to use for evaluation')
 parser.add_argument('--segmentation_given', type=bool, default=False, help='Whether to use given segmentation')
 parser.add_argument('--maximize_diversity', type=bool, default=False, help='Whether to maximize in-context example diversity')
+parser.add_argument('--to_simplified', type=bool, default=False, help='Whether to convert to simplified Chinese')
 parser.add_argument('--max_workers', type=int, default=100, help='Maximum number of workers to use for parallel processing')
 args = parser.parse_args()
 
@@ -39,7 +40,7 @@ client = OpenAI(api_key=api_key, base_url=base_url)
 
 valid_pos_tags = {"ADJ", "ADP", "ADV", "AUX", "CCONJ", "DET", "INTJ", "NOUN", "NUM", "PART", "PRON", "PROPN", "PUNCT", "SCONJ", "SYM", "VERB", "X"}
 
-def segment_words(input_words):
+def segment_words(pos_prompt, input_words):
     attempts = 0
     while True:
         try:
@@ -503,6 +504,18 @@ Example
     
     return pos_prompt
 
+# Load the traditional to simplified character mappings
+t2s_map = {}
+with open('data/t2s.txt', 'r', encoding='utf-8') as f:
+    for line in f:
+        trad, simp = line.strip().split()
+        t2s_map[trad] = simp
+
+def to_simplified(text):
+    # Convert the text from traditional to simplified characters
+    simplified_text = ''.join(t2s_map.get(char, char) for char in text)
+    return simplified_text
+
 
 if __name__ == "__main__":
     if args.prompt_version == 'v1':
@@ -511,8 +524,11 @@ if __name__ == "__main__":
         pos_prompt = generate_prompt_v2(args.prompt_dataset, args.segmentation_given, args.maximize_diversity)
 
     # Write the updated word segmentation prompt to the file
-    with open(f'data/pos_{args.prompt_dataset}_prompt_{args.prompt_version}{"_segmentation_given" if args.segmentation_given else ""}.txt', 'w', encoding='utf-8') as f:
+    with open(f'data/pos_{args.prompt_dataset}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{"_segmentation_given" if args.segmentation_given else ""}.txt', 'w', encoding='utf-8') as f:
         f.write(pos_prompt)
+
+    if args.to_simplified:
+        pos_prompt = to_simplified(pos_prompt)
 
     if args.eval_dataset == 'ud_yue':
         testing_samples = load_ud_yue()
@@ -523,12 +539,13 @@ if __name__ == "__main__":
     random.shuffle(testing_samples)
     testing_samples = testing_samples[:args.sample_size]
 
-    with open(f'outputs/pos_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'w', encoding='utf-8') as file, open(f'outputs/pos_errors_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'w', encoding='utf-8') as error_file:
+    with open(f'outputs/pos_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'w', encoding='utf-8') as file, open(f'outputs/pos_errors_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'w', encoding='utf-8') as error_file:
         lock = Lock()
         def process_sample(sample):
+            sample = [(to_simplified(word), pos) for word, pos in sample] if args.to_simplified else sample
             input_words = [word for word, pos in sample]
             input_sentence = "".join(input_words)
-            pos_result = segment_words(input_words if args.segmentation_given else [input_sentence])
+            pos_result = segment_words(pos_prompt, input_words if args.segmentation_given else [input_sentence])
             if 'error' in pos_result:
                 print(f"POS tagging failed for sentence: {input_sentence}")
                 print(f"Error: {pos_result['error']}")
