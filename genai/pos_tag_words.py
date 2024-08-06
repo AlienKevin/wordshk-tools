@@ -12,7 +12,7 @@ import argparse
 random.seed(42)
 
 parser = argparse.ArgumentParser(description="POS Tagging with OpenAI API")
-parser.add_argument('--model', type=str, choices=['deepseek-chat', 'deepseek-coder', 'gpt-4o', 'gpt-4o-mini', 'qwen-max', 'qwen-plus', 'qwen-turbo'], required=True, help='Model to use for POS tagging')
+parser.add_argument('--model', type=str, choices=['deepseek-chat', 'deepseek-coder', 'gpt-4o', 'gpt-4o-mini', 'doubao-pro-32k', 'qwen-max', 'qwen-plus', 'qwen-turbo'], required=True, help='Model to use for POS tagging')
 parser.add_argument('--sample_size', type=int, default=100, help='Number of samples to test')
 parser.add_argument('--prompt_version', type=str, choices=['v1', 'v2'], required=True, help='Prompt version to use for POS tagging')
 parser.add_argument('--prompt_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to use for POS tagging')
@@ -31,6 +31,11 @@ elif args.model.startswith('gpt-4o'):
     base_url = None
     with open('openai_api_key.txt', 'r') as file:
         api_key = file.read().strip()
+elif args.model.startswith('doubao'):
+    base_url = "https://ark.cn-beijing.volces.com/api/v3"
+    with open('doubao_api_key.txt', 'r') as file:
+        api_key = file.read().strip()
+    model_id = 'ep-20240806143354-rfb7r'
 elif args.model.startswith('qwen'):
     base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     with open('qwen_api_key.txt', 'r') as file:
@@ -45,7 +50,7 @@ def segment_words(pos_prompt, input_words):
     while True:
         try:
             response = client.chat.completions.create(
-                model=args.model,
+                model=model_id if args.model.startswith('doubao') else args.model,
                 messages=[{
                             "role": "system",
                             "content": pos_prompt
@@ -58,7 +63,7 @@ def segment_words(pos_prompt, input_words):
                     'type': 'json_object'
                 },
                 max_tokens=2000,
-                temperature=1.1,
+                temperature=0,
                 stream=False
             )
             result = response.choices[0].message.content

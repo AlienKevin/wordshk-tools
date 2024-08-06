@@ -6,14 +6,15 @@ parser.add_argument('--model', type=str, choices=['deepseek-chat', 'deepseek-cod
 parser.add_argument('--prompt_version', type=str, choices=['v1', 'v2'], required=True, help='Prompt version to use for POS tagging')
 parser.add_argument('--eval_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to evaluate POS tagging on')
 parser.add_argument('--segmentation_given', type=bool, default=False, help='Whether the segmentation is given')
+parser.add_argument('--to_simplified', type=bool, default=False, help='Whether to convert the input words to simplified characters')
 parser.add_argument('--maximize_diversity', type=bool, default=False, help='Whether to maximize in-context example diversity')
 args = parser.parse_args()
 
 # Read the error data
-with open(f'outputs/pos_errors_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'r', encoding='utf-8') as error_file:
+with open(f'outputs/pos_errors_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'r', encoding='utf-8') as error_file:
     error_data = [json.loads(line) for line in error_file]
 
-with open(f'outputs/pos_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'r', encoding='utf-8') as file:
+with open(f'outputs/pos_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'r', encoding='utf-8') as file:
     data = [json.loads(line) for line in file]
 
 import difflib
