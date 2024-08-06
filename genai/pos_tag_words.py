@@ -12,19 +12,20 @@ import argparse
 random.seed(42)
 
 parser = argparse.ArgumentParser(description="POS Tagging with OpenAI API")
-parser.add_argument('--model', type=str, choices=['deepseek-chat', 'gpt4o', 'gpt4o-mini'], required=True, help='Model to use for POS tagging')
+parser.add_argument('--model', type=str, choices=['deepseek-chat', 'gpt-4o', 'gpt-4o-mini'], required=True, help='Model to use for POS tagging')
 parser.add_argument('--sample_size', type=int, default=100, help='Number of samples to test')
 parser.add_argument('--prompt_version', type=str, choices=['v1', 'v2'], required=True, help='Prompt version to use for POS tagging')
 parser.add_argument('--prompt_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to use for POS tagging')
 parser.add_argument('--eval_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to use for evaluation')
+parser.add_argument('--max_workers', type=int, default=100, help='Maximum number of workers to use for parallel processing')
 args = parser.parse_args()
 
 if args.model == 'deepseek-chat':
     base_url = "https://api.deepseek.com"
     with open('deepseek_api_key.txt', 'r') as file:
         api_key = file.read().strip()
-elif args.model in ['gpt4o', 'gpt4o-mini']:
-    base_url = "https://api.openai.com"
+elif args.model in ['gpt-4o', 'gpt-4o-mini']:
+    base_url = None
     with open('openai_api_key.txt', 'r') as file:
         api_key = file.read().strip()
 
@@ -88,6 +89,8 @@ def load_hkcancor():
 
 
 def split_hkcancor():
+    random.seed(42)
+
     utterances = load_hkcancor()
 
     latin_fragmented_utterances = []
@@ -141,7 +144,7 @@ def load_ud_yue():
     from datasets import load_dataset
 
     # Load the universal_dependencies dataset from Hugging Face
-    dataset = load_dataset('universal_dependencies', 'yue_hk', trust_remote_code=True)
+    dataset = load_dataset('universal-dependencies/universal_dependencies', 'yue_hk', trust_remote_code=True)
 
     # Gather all word segmented utterances
     utterances = [[(token, upos_id_to_str(pos)) for token, pos in zip(sentence['tokens'], sentence['upos'])] for sentence in dataset['test']]
@@ -151,6 +154,8 @@ def load_ud_yue():
 
 def split_ud_yue():
     import random
+
+    random.seed(42)
 
     utterances = load_ud_yue()
 
@@ -473,6 +478,8 @@ if __name__ == "__main__":
     elif args.eval_dataset == 'hkcancor':
         testing_samples = load_hkcancor()
     
+    random.seed(42)
+    random.shuffle(testing_samples)
     testing_samples = testing_samples[:args.sample_size]
 
     with open(f'outputs/pos_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}.jsonl', 'w', encoding='utf-8') as file, open(f'outputs/pos_errors_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}.jsonl', 'w', encoding='utf-8') as error_file:
@@ -503,5 +510,5 @@ if __name__ == "__main__":
             with lock:
                 file.write(json.dumps(result, ensure_ascii=False) + '\n')
                 file.flush()
-        with ThreadPoolExecutor(max_workers=100) as executor:
+        with ThreadPoolExecutor(max_workers=args.max_workers) as executor:
             list(tqdm(executor.map(process_sample, testing_samples), total=len(testing_samples)))
