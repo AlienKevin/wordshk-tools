@@ -14,10 +14,11 @@ random.seed(42)
 parser = argparse.ArgumentParser(description="POS Tagging with OpenAI API")
 parser.add_argument('--model', type=str, choices=['deepseek-chat', 'deepseek-coder', 'gpt-4o', 'gpt-4o-mini', 'qwen-max', 'qwen-plus', 'qwen-turbo'], required=True, help='Model to use for POS tagging')
 parser.add_argument('--sample_size', type=int, default=100, help='Number of samples to test')
-parser.add_argument('--prompt_version', type=str, choices=['v1', 'v1_max_diversity', 'v2', 'v2_max_diversity'], required=True, help='Prompt version to use for POS tagging')
+parser.add_argument('--prompt_version', type=str, choices=['v1', 'v2'], required=True, help='Prompt version to use for POS tagging')
 parser.add_argument('--prompt_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to use for POS tagging')
 parser.add_argument('--eval_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to use for evaluation')
 parser.add_argument('--segmentation_given', type=bool, default=False, help='Whether to use given segmentation')
+parser.add_argument('--maximize_diversity', type=bool, default=False, help='Whether to maximize in-context example diversity')
 parser.add_argument('--max_workers', type=int, default=100, help='Maximum number of workers to use for parallel processing')
 args = parser.parse_args()
 
@@ -505,13 +506,9 @@ Example
 
 if __name__ == "__main__":
     if args.prompt_version == 'v1':
-        pos_prompt = generate_prompt_v1(args.prompt_dataset, args.segmentation_given)
-    elif args.prompt_version == 'v1_max_diversity':
-        pos_prompt = generate_prompt_v1(args.prompt_dataset, args.segmentation_given, maximize_diversity=True)
+        pos_prompt = generate_prompt_v1(args.prompt_dataset, args.segmentation_given, args.maximize_diversity)
     elif args.prompt_version == 'v2':
-        pos_prompt = generate_prompt_v2(args.prompt_dataset, args.segmentation_given)
-    elif args.prompt_version == 'v2_max_diversity':
-        pos_prompt = generate_prompt_v2(args.prompt_dataset, args.segmentation_given, maximize_diversity=True)
+        pos_prompt = generate_prompt_v2(args.prompt_dataset, args.segmentation_given, args.maximize_diversity)
 
     # Write the updated word segmentation prompt to the file
     with open(f'data/pos_{args.prompt_dataset}_prompt_{args.prompt_version}{"_segmentation_given" if args.segmentation_given else ""}.txt', 'w', encoding='utf-8') as f:
