@@ -1,0 +1,295 @@
+You are an expert at Cantonese word segmentation and POS tagging. Output the segmented words with their parts of speech as JSON arrays. ALWAYS preserve typos, fragmented chunks, and punctuations in the original sentence. Output the parts of speech in the Universal Dependencies v2 tagset with 17 tags:
+
+
+ADJ: Adjectives are words that typically modify nouns and specify their properties or attributes. They may also function as predicates. These include the categories known as 區別詞 and 形容詞.
+
+好/ADJ 風景
+天氣 好 好/ADJ
+
+The adjective may by accompanied by the particle 嘅 when functioning as a prenominal modifier (for either 區別詞 or 形容詞), and often obligatorily when functioning as a predicate if it is a 區別詞.
+
+嚴重/ADJ 嘅 問題
+呢 種 癌症 係 慢性/ADJ 嘅
+
+Note that ordinal numerals such as 第一 and 第三 are to be treated as adjectives and tagged ADJ per UD specifications, even though they are traditionally classified as numerals in Chinese.
+
+Examples
+形容詞: 好, 靚, 細, 老
+區別詞: 女, 慢性, 親生
+Ordinal numbers: 第一, 第三, 第五十三
+
+
+ADP: The Cantonese ADP covers three categories of function words analyzed as adpositions: (1) prepositions, (2) valence markers, and (3) “localizers”/postpositions.
+
+Prepositions introduce an extra argument to the event/main verb in a clause or give information about the time or the location or direction, etc.
+
+佢 喺/ADP 2000年 出世
+
+Valence markers such as 將 and the formal 被 are also tagged ADP.
+
+你 將/ADP 啲 嘢 擺 低 喇
+兇手 凌晨 一點 被/ADP 捕
+
+Localizers (also known as 方位詞), typically indicate spatial information in relation to the noun preceding it. Some localizers have also grammaticalized into clausal markers indicating temporal information. Localizers with the clausal function are still tagged as ADP (but are labeled with the dependency relation mark).
+
+我 擺 咗 啲 梨 喺 枱 度/ADP
+佢 老婆 死 咗 之後/ADP ， 佢 都 唔 想 生存 落去 嘑
+
+Examples
+Prepositions: 喺, 畀, 由, 為咗
+Valence markers: 將, 被 (passive)
+Localizers / postpositions: 度, 之後, 之前, 時
+
+
+ADV:Adverbs (副詞 / fu3ci4) typically modify verbs, adjectives, and other adverbs for such categories as time, manner, degree, frequency, or negation.
+
+你 慢慢/ADV 講
+佢 非常之/ADV 開心
+佢哋 好/ADV 早/ADV 起身
+
+Some adverbs also modify clauses with conjunctive and discursive functions.
+
+佢 反而/ADV 冇 同 我 講
+今日 當然/ADV 冇 人 喇
+
+A small number of adverbs may also modify numerals and determiners, or nouns and pronouns.
+
+差唔多/ADV 五千
+連/ADV 佢 都 唔 去 嘑
+
+There is a closed subclass of pronominal adverbs that refer to circumstances in context, rather than naming them directly; similarly to pronouns, these can be categorized as interrogative, demonstrative, etc. These should be treated as adverbs when modifying a predicate, but otherwise some of them can function as a nominal in the syntax, in which case they should be tagged PRON.
+
+你 點解/ADV 唔 來
+我 係 咁樣/ADV 做 嘅
+
+Note that although some adverbs express temporal information, many common time expressions (e.g., 今日, 舊年, 夜晚) are actually nouns and should be tagged NOUN.
+
+Examples
+Manner adverbs: 慢慢, 互相
+Temporal, aspectual, and modal adverbs: 就嚟, 喺度, 寧可, 可能 (NB: 可能 can also function as ADJ “possible” and NOUN “possibility”)
+Conjunctive adverbs: 所以, 反而, 然後, 噉, 就
+Frequency and duration adverbs: 成日, 一陣
+Negation adverbs: 唔, 未
+Numeral-modifying adverbs: 大概, 差唔多, 至少, 最多
+Noun-modifying adverbs: 連
+Pronominal adverbs: 點樣, 噉樣, 咁, 點解
+Other: 都, 亦都, 先至, 越嚟越, 當然, 譬如, 譬如話, 例如, 好似 (note 好似 can also function as a main verb; an example of the adverbial usage is 好似 佢 琴日 噉 講…)
+
+
+AUX: An auxiliary is a word that accompanies the lexical verb of a verb phrase and expresses grammatical distinctions not carried by the lexical verb, such as person, number, tense, mood, aspect, and voice.
+
+In Cantonese, auxiliaries can be divided into modal and modal-like auxiliaries which are mostly preverbal (except for the postverbal usage of 得) and do not have to be adjacent to the verb, and aspect markers, which must come immediately after the verb and certain verb compounds. Note that some modal auxiliaries can also function as main verbs, usually when they have a direct object or full clausal complement.
+
+Examples
+Modal and modal-like auxiliaries: 能夠, 會, 可以, 應該, 肯, 敢, 有 (perfective), 冇 (negative perfective), 得
+Aspect markers: 咗 (perfective), 住 (durative), 過 (experiential), 緊 (progressive), 吓 (delimitative), 開 (habitual)
+
+
+CCONJ: A coordinating conjunction is a word that links words or larger constituents without syntactically subordinating one to the other and expresses a semantic relationship between them.
+
+Examples
+“and”: 同, 同埋, 而, 而且. Note that 同 may also function as a preposition (ADP)
+“or”: 或者, 定(係)
+“but”: 但係
+
+
+DET: Determiners are words that modify nouns or noun phrases and express the reference of the noun phrase in context.
+
+Note that Chinese does not traditionally define determiners as a separate word class, but categorizes them as pronouns and/or adjectives. For this reason, in the UD framework some words in Cantonese may function as determiners and be tagged DET in one syntactic context (i.e., when modifying a noun), and as pronouns (tagged PRON) when behaving as a nominal or the head of a nominal phrase.
+
+Examples
+Demonstrative determiners: 呢, 嗰
+Possessive determiner: 本
+Quantifying determiners:
+Definite: 每, 成, 全, 全部, 所有
+Indefinite: 任何, 有啲, (好)多, (好)少, 幾, 大部分, 唔少, 多數
+Interrogative determiners: 邊, 乜(嘢), 咩, 幾多
+Other: 上, 下, 前, 後, 頭, 其餘, 某, 其他, 另(外), 同
+
+
+INTJ: An interjection is a word that is used most often as an exclamation or part of an exclamation. It typically expresses an emotional reaction, is not syntactically related to other accompanying expressions, and may include a combination of sounds not otherwise found in the language.
+
+Note that words primarily belonging to another part of speech retain their original category when used in exclamations. For example, 係！ would still be tagged VERB.
+
+Onomatopoeic words (擬聲詞) should only be treated as interjections if they are used as an exclamation (e.g., 喵!), otherwise they should be tagged according to their syntactic function in context (often as adverbs in Chinese, e.g., 佢哋 吱吱喳喳/ADV 噉 叫).
+
+Examples: 哦, 哎呀, 咦
+
+
+NOUN: Nouns are a part of speech typically denoting a person, place, thing, animal, or idea.
+
+The NOUN tag is intended for common nouns only. See PROPN for proper nouns and PRON for pronouns.
+
+As a special case, classifiers (量詞) are also tagged NOUN per UD guidelines. Their classifier status may be preserved in the feature column (FEATS) as NounType=CLf.
+
+Examples
+Nouns: 杯, 草, 氧氣, 地方, 能力, 歷史
+Classifiers: 個, 條, 本, 對, 杯, 磅, 年
+
+
+NUM: A numeral is a word, functioning most typically as a determiner, a pronoun or an adjective, that expresses a number and a relation to the number, such as quantity, sequence, frequency or fraction.
+
+Cardinal numerals are covered by NUM regardless of syntactic function and regardless of whether they are expressed as words (五 / ng5 “five”) or digits (5). By contrast, ordinal numerals (such as 第一) are always tagged ADJ.
+
+Examples: 1, 2, 3, 4, 5, 100, 10,358, 5.23, 3/4, 一, 二, 三, 一百, 五十六, 一萬三百五十八, 四分之三
+
+
+PART: Particles are function words that must be associated with another word, phrase, or clause to impart meaning and that do not satisfy definitions of other universal parts of speech (such as ADP, AUX, CCONJ, or SCONJ).
+
+In Cantonese, particles include the genitive/associative/relativizer/nominalizer marker 嘅; 得 and 到 in V-得/到 extent/descriptive constructions; the manner adverbializer 噉; the “et cetera” marker 等(等); sentence-final particles; the quantifiers 埋 and 晒; the adversative 親; and so on.
+
+Examples
+Genitive 的: 狗 嘅/PART 尾巴
+Associative 的: 開心 嘅/PART 小朋友
+Relativizer 的: 跴 單車 嘅/PART 人
+Nominalizer 的: 食 唔 晒 嘅/PART 唔 准 走
+Extent/descriptive 得到:
+佢 跑 得/PART 好 快
+佢 跑 到/PART 出 晒 汗
+Adverbializer 地: 佢 慢慢 噉/PART 跑
+Etc. marker: 呢度 有 梨，橙，等等/PART
+Sentence-final particles:
+你 想 去 呀/PART ？
+我哋 一齊 去 喇/PART
+佢 一 個 人 啫/PART
+佢哋 一定 嚟 嘅/PART
+Quantifiers:
+畀 埋/PART 我
+佢哋 走 晒/PART
+Adversative 親: 佢 跌 親/PART
+
+
+PRON: Pronouns are words that substitute for nouns or noun phrases, whose meaning is recoverable from the linguistic or extralinguistic context. Some pronouns – in particular certain demonstrative, total, indefinite, and interrogatives pronouns – may also function as determiners (DET) and are tagged as such when functioning as a modifier of a noun.
+
+Examples
+Personal pronouns: 我, 你, 佢, 我哋, 你哋, 佢哋, 人哋
+Reciprocal and reflexive pronouns: 自己, 我自己, 你自己, 佢哋自己
+Total pronouns: 全部, 大家
+Indefinite pronouns: 有啲, 好多, 大部分, 唔少, 多數, 其他
+Locational pronouns: 呢度, 呢邊, 呢處, 嗰度, 嗰邊, 嗰處
+Manner pronouns: 咁樣 (also ADV)
+Interrogative pronouns: 邊個, 乜(嘢), 咩, 幾多, 邊度, 點樣 (also ADV)
+Other:
+X + 方: 對方, 雙方
+X + 者: 前者, 後者, 兩者, 三者
+其餘
+
+
+PROPN: A proper noun is a noun (or nominal content word) that is the name (or part of the name) of a specific individual, place, or object. For institutional names that contain regular words belonging to other parts of speech such as nouns (e.g., 公司, 大學, etc.), those words should be segmented as their own tokens and still tagged their native part of speech; only the proper nouns in such complex names should be tagged PROPN.
+
+Examples
+孔子/PROPN
+亞洲/PROPN
+威威/PROPN 木材 公司
+
+
+PUNCT: Punctuation marks are character groups used to delimit linguistic units in printed text.
+
+Punctuation is not taken to include logograms such as $, %, and §, which are instead tagged as SYM.
+
+Examples
+Period: 。
+Comma: ， 、
+Quotation marks: ‘ ’ “ ”「 」 『 』
+Title marks: 《 》
+
+
+SCONJ: A subordinating conjunction is a conjunction that links constructions by making one of them a constituent of the other. The subordinating conjunction typically marks the incorporated constituent which has the status of a subordinate clause.
+
+Subordinating conjunctions in Cantonese include all markers of subordinate clauses, including conditional clauses, purpose clauses, etc.
+
+In paired clauses where both clauses are marked by a conjunctive word and the first is subordinate to the second, we treat the conjunctive word in the first clause as SCONJ, whereas the one in the second, main clause as an adverb (ADV) (e.g., 雖然/SCONJ… 但係/ADV…).
+
+Examples: 如果, 嘅話, 雖然, 即管, 無論
+嚟: 你 慳 嚟/SCONJ 做 乜 呀 ?
+
+
+SYM: A symbol is a word-like entity that differs from ordinary words by form, function, or both.
+
+Many symbols are or contain special non-alphanumeric, non-standard logographic characters, similarly to punctuation. What makes them different from punctuation is that they can be substituted by normal words. This involves all currency symbols, e.g. $ 75 is identical to 七十五 蚊.
+
+Mathematical operators form another group of symbols.
+
+Another group of symbols is emoticons and emoji.
+
+Examples
+＄, ％, §, ©
++, −, ×, ÷, =, <, >
+:), ^_^, 😝
+siu.ming@universal.org, http://universaldependencies.org/, 1-800-COMPANY
+
+
+VERB: A verb is a member of the syntactic class of words that typically signal events and actions, can constitute a minimal predicate in a clause, and govern the number and types of other constituents which may occur in the clause.
+
+Despite its use in copular constructions, 係 is tagged as a verb due to its other non-copular meanings and functions.
+
+Examples: 游水, 聽, 呼吸, 鍾意, 決定, 有, 係
+
+
+X: The tag X is used for words that for some reason cannot be assigned a real part-of-speech category. It should be used very restrictively.
+
+A special usage of X is for cases of code-switching where it is not possible (or meaningful) to analyze the intervening language grammatically (and where the dependency relation foreign is typically used in the syntactic analysis). This usage does not extend to ordinary loan words which should be assigned a normal part-of-speech.
+
+Example
+佢 突然 話 ：「 lkjwe/X 」
+
+
+EXAMPLE INPUT SENTENCE:
+而 秘書處 同埋 主席 ， 你 ， 係 應該 - 如果 係 對 成 個 選舉 係 有 責任 或者 係 覺得 成 個 立法會 - 我哋 要 取信於民 ， 我哋 要 攞 返 市民 嘅 信任 ， 我哋 更加 要 將 每 一 個 程序 做 得 更加 緊 ， 而 唔 係 「 按章工作 」 ， 即 係 秘書處 佢 話 唔 查 就 唔 查 ， 唔 需要 查 就 唔 查 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["而", "CCONJ"], ["秘書處", "NOUN"], ["同埋", "CCONJ"], ["主席", "NOUN"], ["，", "PUNCT"], ["你", "PRON"], ["，", "PUNCT"], ["係", "VERB"], ["應該", "AUX"], ["-", "PUNCT"], ["如果", "SCONJ"], ["係", "VERB"], ["對", "ADP"], ["成", "DET"], ["個", "NOUN"], ["選舉", "NOUN"], ["係", "VERB"], ["有", "VERB"], ["責任", "NOUN"], ["或者", "CCONJ"], ["係", "VERB"], ["覺得", "VERB"], ["成", "DET"], ["個", "NOUN"], ["立法會", "NOUN"], ["-", "PUNCT"], ["我哋", "PRON"], ["要", "AUX"], ["取信於民", "VERB"], ["，", "PUNCT"], ["我哋", "PRON"], ["要", "AUX"], ["攞", "VERB"], ["返", "VERB"], ["市民", "NOUN"], ["嘅", "PART"], ["信任", "NOUN"], ["，", "PUNCT"], ["我哋", "PRON"], ["更加", "ADV"], ["要", "AUX"], ["將", "ADP"], ["每", "DET"], ["一", "NUM"], ["個", "NOUN"], ["程序", "NOUN"], ["做", "VERB"], ["得", "PART"], ["更加", "ADV"], ["緊", "ADJ"], ["，", "PUNCT"], ["而", "CCONJ"], ["唔", "ADV"], ["係", "VERB"], ["「", "PUNCT"], ["按章工作", "VERB"], ["」", "PUNCT"], ["，", "PUNCT"], ["即", "ADV"], ["係", "VERB"], ["秘書處", "NOUN"], ["佢", "PRON"], ["話", "VERB"], ["唔", "ADV"], ["查", "VERB"], ["就", "ADV"], ["唔", "ADV"], ["查", "VERB"], ["，", "PUNCT"], ["唔", "ADV"], ["需要", "AUX"], ["查", "VERB"], ["就", "ADV"], ["唔", "ADV"], ["查", "VERB"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+不過 呢 ， 但係 呢 ， 但係 不過 呢 ， 係 會議 規則 呢 ， 就 話 呢 ， 誒 …… 根據 依個 《 議事 規則 》 嘅 呀 …… 附表 一 ， 按照 《 議事 規則 》 嘅 附表 一 同埋 六 ， 第六 同 第七 段 嘅 規定 呢 ， 係 由 我 去 做 依個 嘅 會議 嘅 主持 嘅 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["不過", "CCONJ"], ["呢", "PART"], ["，", "PUNCT"], ["但係", "CCONJ"], ["呢", "PART"], ["，", "PUNCT"], ["但係", "CCONJ"], ["不過", "ADV"], ["呢", "PART"], ["，", "PUNCT"], ["係", "VERB"], ["會議", "NOUN"], ["規則", "NOUN"], ["呢", "PART"], ["，", "PUNCT"], ["就", "ADV"], ["話", "VERB"], ["呢", "PART"], ["，", "PUNCT"], ["誒", "INTJ"], ["……", "PUNCT"], ["根據", "ADP"], ["依個", "DET"], ["《", "PUNCT"], ["議事", "VERB"], ["規則", "NOUN"], ["》", "PUNCT"], ["嘅", "PART"], ["呀", "INTJ"], ["……", "PUNCT"], ["附表", "NOUN"], ["一", "NUM"], ["，", "PUNCT"], ["按照", "ADP"], ["《", "PUNCT"], ["議事", "VERB"], ["規則", "NOUN"], ["》", "PUNCT"], ["嘅", "PART"], ["附表", "NOUN"], ["一", "NUM"], ["同埋", "CCONJ"], ["六", "NUM"], ["，", "PUNCT"], ["第六", "ADJ"], ["同", "CCONJ"], ["第七", "ADJ"], ["段", "NOUN"], ["嘅", "PART"], ["規定", "VERB"], ["呢", "PART"], ["，", "PUNCT"], ["係", "VERB"], ["由", "ADP"], ["我", "PRON"], ["去", "VERB"], ["做", "VERB"], ["依個", "DET"], ["嘅", "PART"], ["會議", "NOUN"], ["嘅", "PART"], ["主持", "NOUN"], ["嘅", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+噉 ， 喺 嗰度 識 咗 嗰 啲 唱歌 啲 朋友 啦 。 帶 咗 我 入 嚟 廟街 話 ： 「 哎 ， 廟街 都 有 歌 唱 㗎 喎 ， 誒 但係 嗰度 啲 唱歌 就 唔 同 嘞 ， 係 靠 啲 客 打賞 呀 噉 。 」
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["噉", "ADV"], ["，", "PUNCT"], ["喺", "ADP"], ["嗰度", "PRON"], ["識", "VERB"], ["咗", "AUX"], ["嗰", "DET"], ["啲", "NOUN"], ["唱歌", "VERB"], ["啲", "PART"], ["朋友", "NOUN"], ["啦", "PART"], ["。", "PUNCT"], ["帶", "VERB"], ["咗", "AUX"], ["我", "PRON"], ["入", "VERB"], ["嚟", "VERB"], ["廟街", "PROPN"], ["話", "VERB"], ["：", "PUNCT"], ["「", "PUNCT"], ["哎", "INTJ"], ["，", "PUNCT"], ["廟街", "PROPN"], ["都", "ADV"], ["有", "VERB"], ["歌", "NOUN"], ["唱", "VERB"], ["㗎", "PART"], ["喎", "PART"], ["，", "PUNCT"], ["誒", "INTJ"], ["但係", "CCONJ"], ["嗰度", "PRON"], ["啲", "NOUN"], ["唱歌", "VERB"], ["就", "ADV"], ["唔", "ADV"], ["同", "VERB"], ["嘞", "PART"], ["，", "PUNCT"], ["係", "VERB"], ["靠", "VERB"], ["啲", "NOUN"], ["客", "NOUN"], ["打賞", "VERB"], ["呀", "PART"], ["噉", "ADV"], ["。", "PUNCT"], ["」", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+不過 我 想 同 大家 講講 ， 就 鑒於 阿 梁君彥 議員 呢 ， 就 已經 一而再，再而三 呢 ， 除咗 提供 資料 ， 同埋 係 公開 場合 裏面 係 澄清 之後 呢 ， 噉 ， 其實 議員 呀 ， 可以 自己 自行 去 決定 一下 稍後 時間 會 唔 會 去 投票 支持 佢 嘅 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["不過", "ADV"], ["我", "PRON"], ["想", "AUX"], ["同", "VERB"], ["大家", "PRON"], ["講講", "PRON"], ["，", "PUNCT"], ["就", "ADV"], ["鑒於", "ADV"], ["阿", "PART"], ["梁君彥", "PROPN"], ["議員", "NOUN"], ["呢", "PART"], ["，", "PUNCT"], ["就", "ADV"], ["已經", "ADV"], ["一而再，再而三", "ADV"], ["呢", "PART"], ["，", "PUNCT"], ["除咗", "ADP"], ["提供", "VERB"], ["資料", "NOUN"], ["，", "PUNCT"], ["同埋", "CCONJ"], ["係", "VERB"], ["公開", "ADJ"], ["場合", "NOUN"], ["裏面", "NOUN"], ["係", "VERB"], ["澄清", "VERB"], ["之後", "ADP"], ["呢", "PART"], ["，", "PUNCT"], ["噉", "ADV"], ["，", "PUNCT"], ["其實", "ADV"], ["議員", "NOUN"], ["呀", "PART"], ["，", "PUNCT"], ["可以", "AUX"], ["自己", "PRON"], ["自行", "ADV"], ["去", "VERB"], ["決定", "VERB"], ["一下", "ADV"], ["稍後", "ADJ"], ["時間", "NOUN"], ["會", "AUX"], ["唔", "ADV"], ["會", "AUX"], ["去", "VERB"], ["投票", "VERB"], ["支持", "VERB"], ["佢", "PRON"], ["嘅", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+如果 喺 噉 嘅 情況 之下 ， 如果 根據 基本法 七十一 條 所 講 呢 ， 其實 講 緊 居留權 嘅 ， 噉 ， 我 覺得 呢個 喺 未 澄清 之前 ， 係咪 需要 ， 欸 ， 喺 依 一 刻 做 依樣 嘢 呢 ？
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["如果", "SCONJ"], ["喺", "ADP"], ["噉", "ADV"], ["嘅", "PART"], ["情況", "NOUN"], ["之下", "NOUN"], ["，", "PUNCT"], ["如果", "SCONJ"], ["根據", "SCONJ"], ["基本法", "NOUN"], ["七十一", "NUM"], ["條", "NOUN"], ["所", "PART"], ["講", "VERB"], ["呢", "PART"], ["，", "PUNCT"], ["其實", "ADV"], ["講", "VERB"], ["緊", "AUX"], ["居留權", "NOUN"], ["嘅", "PART"], ["，", "PUNCT"], ["噉", "ADV"], ["，", "PUNCT"], ["我", "PRON"], ["覺得", "VERB"], ["呢個", "PRON"], ["喺", "ADP"], ["未", "ADV"], ["澄清", "VERB"], ["之前", "ADP"], ["，", "PUNCT"], ["係咪", "ADV"], ["需要", "AUX"], ["，", "PUNCT"], ["欸", "INTJ"], ["，", "PUNCT"], ["喺", "ADP"], ["依", "DET"], ["一", "NUM"], ["刻", "NOUN"], ["做", "VERB"], ["依樣", "ADV"], ["嘢", "NOUN"], ["呢", "PART"], ["？", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+媽 、 爸 ， 八 日 七 夜 吉隆坡 加 浮羅交怡 之 旅 嚟 到 第四 日 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["媽", "NOUN"], ["、", "PUNCT"], ["爸", "NOUN"], ["，", "PUNCT"], ["八", "NUM"], ["日", "NOUN"], ["七", "NUM"], ["夜", "NOUN"], ["吉隆坡", "PROPN"], ["加", "CCONJ"], ["浮羅交怡", "PROPN"], ["之", "PART"], ["旅", "NOUN"], ["嚟", "VERB"], ["到", "ADP"], ["第四", "ADJ"], ["日", "NOUN"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+你 要 聽 歌 可以 用 十 蚊 去 買 一 隻 雜錦 錄音帶 ， 又 或者 係 用 廿 蚊 去 買 一 隻 老翻 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["你", "PRON"], ["要", "AUX"], ["聽", "VERB"], ["歌", "NOUN"], ["可以", "AUX"], ["用", "VERB"], ["十", "NUM"], ["蚊", "NOUN"], ["去", "SCONJ"], ["買", "VERB"], ["一", "NUM"], ["隻", "NOUN"], ["雜錦", "ADJ"], ["錄音帶", "NOUN"], ["，", "PUNCT"], ["又", "ADV"], ["或者", "CCONJ"], ["係", "VERB"], ["用", "VERB"], ["廿", "NUM"], ["蚊", "NOUN"], ["去", "SCONJ"], ["買", "VERB"], ["一", "NUM"], ["隻", "NOUN"], ["老翻", "NOUN"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+喺 立法會 每 屆 任期 首 次 會議 上面 ， 議員 ， 係 需要 按照 本 議事 規則 第一 條 ， 括弧 ， 《 宗教 式 或者 非宗教 式 宣誓 》 嘅 規定 作 宗教 式 或者 非宗教 式 嘅 宣誓 嘅 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["喺", "ADP"], ["立法會", "NOUN"], ["每", "DET"], ["屆", "NOUN"], ["任期", "NOUN"], ["首", "NOUN"], ["次", "NOUN"], ["會議", "NOUN"], ["上面", "NOUN"], ["，", "PUNCT"], ["議員", "NOUN"], ["，", "PUNCT"], ["係", "VERB"], ["需要", "AUX"], ["按照", "VERB"], ["本", "DET"], ["議事", "VERB"], ["規則", "NOUN"], ["第一", "ADJ"], ["條", "NOUN"], ["，", "PUNCT"], ["括弧", "NOUN"], ["，", "PUNCT"], ["《", "PUNCT"], ["宗教", "NOUN"], ["式", "NOUN"], ["或者", "CCONJ"], ["非宗教", "ADJ"], ["式", "NOUN"], ["宣誓", "NOUN"], ["》", "PUNCT"], ["嘅", "PART"], ["規定", "NOUN"], ["作", "VERB"], ["宗教", "NOUN"], ["式", "NOUN"], ["或者", "CCONJ"], ["非宗教", "ADJ"], ["式", "NOUN"], ["嘅", "PART"], ["宣誓", "NOUN"], ["嘅", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+喺 呢 一 刻 ， 我哋 絕對 係 有 義務 要 去 釐清 佢 已經 完成 晒 一切 嘅 放棄 居留權 嘅 手續 ， 並且 交 出 正本 ， 嚟 以 示 - 以 正 - 以 正 視聽 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["喺", "ADP"], ["呢", "DET"], ["一", "NUM"], ["刻", "NOUN"], ["，", "PUNCT"], ["我哋", "PRON"], ["絕對", "ADV"], ["係", "VERB"], ["有", "VERB"], ["義務", "NOUN"], ["要", "AUX"], ["去", "VERB"], ["釐清", "VERB"], ["佢", "PRON"], ["已經", "ADV"], ["完成", "VERB"], ["晒", "PART"], ["一切", "DET"], ["嘅", "PART"], ["放棄", "VERB"], ["居留權", "NOUN"], ["嘅", "PART"], ["手續", "NOUN"], ["，", "PUNCT"], ["並且", "ADV"], ["交", "VERB"], ["出", "VERB"], ["正本", "NOUN"], ["，", "PUNCT"], ["嚟", "SCONJ"], ["以", "ADV"], ["示", "VERB"], ["-", "PUNCT"], ["以", "ADV"], ["正", "VERB"], ["-", "PUNCT"], ["以", "ADV"], ["正", "VERB"], ["視聽", "NOUN"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+請 大家 坐 低 先 ， 請 大家 靜 下 先 ， 請 靜 下 先 ， 請 靜 下 先 ， 請 大家 靜 下 先 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["請", "VERB"], ["大家", "PRON"], ["坐", "VERB"], ["低", "ADJ"], ["先", "PART"], ["，", "PUNCT"], ["請", "VERB"], ["大家", "PRON"], ["靜", "VERB"], ["下", "ADV"], ["先", "PART"], ["，", "PUNCT"], ["請", "VERB"], ["靜", "VERB"], ["下", "ADV"], ["先", "PART"], ["，", "PUNCT"], ["請", "VERB"], ["靜", "VERB"], ["下", "ADV"], ["先", "PART"], ["，", "PUNCT"], ["請", "VERB"], ["大家", "PRON"], ["靜", "VERB"], ["下", "ADV"], ["先", "PART"], ["。", "PUNCT"]]}

@@ -14,7 +14,7 @@ random.seed(42)
 parser = argparse.ArgumentParser(description="POS Tagging with OpenAI API")
 parser.add_argument('--model', type=str, choices=['deepseek-chat', 'deepseek-coder', 'gpt-4o', 'gpt-4o-mini', 'qwen-max', 'qwen-plus', 'qwen-turbo'], required=True, help='Model to use for POS tagging')
 parser.add_argument('--sample_size', type=int, default=100, help='Number of samples to test')
-parser.add_argument('--prompt_version', type=str, choices=['v1', 'v2'], required=True, help='Prompt version to use for POS tagging')
+parser.add_argument('--prompt_version', type=str, choices=['v1', 'v1_max_diversity', 'v2', 'v2_max_diversity'], required=True, help='Prompt version to use for POS tagging')
 parser.add_argument('--prompt_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to use for POS tagging')
 parser.add_argument('--eval_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to use for evaluation')
 parser.add_argument('--segmentation_given', type=bool, default=False, help='Whether to use given segmentation')
@@ -157,7 +157,7 @@ def load_ud_yue():
     return utterances
 
 
-def split_ud_yue():
+def split_ud_yue(maximize_diversity=False):
     import random
 
     random.seed(42)
@@ -167,20 +167,55 @@ def split_ud_yue():
     # Shuffle the utterances to ensure randomness
     random.shuffle(utterances)
 
-    # Sample 10 random utterances for in_context_samples
-    in_context_samples = utterances[:10]
+    if maximize_diversity:
+        import math
+        from collections import Counter
 
-    # The rest of the utterances will be used as testing_samples
-    testing_samples = utterances[10:]
+        # Count the frequency of each tag in the utterances
+        tag_counter = Counter(pos for utterance in utterances for _, pos in utterance)
+
+        # Calculate the weight for each tag inversely to its frequency
+        tag_weights = {tag: 1 / math.log(count) for tag, count in tag_counter.items()}
+        from collections import defaultdict
+
+        # Initialize a frequency counter for seen (token, pos) pairs
+        seen_pairs = defaultdict(int)
+
+        in_context_samples = []
+        while len(in_context_samples) < 10 and utterances:
+            # Calculate diversity score for each utterance
+            diversity_scores = []
+            for utterance in utterances:
+                score = 0
+                for _, pos in utterance:
+                    score += tag_weights[pos] / (1 + seen_pairs[(pos, _)])
+                diversity_scores.append((utterance, score / math.sqrt(len(utterance))))
+
+            # Sort utterances by diversity score in descending order
+            sorted_utterances = sorted(diversity_scores, key=lambda x: x[1], reverse=True)
+
+            # Select the utterance with the highest diversity score
+            selected_utterance, _ = sorted_utterances[0]
+            in_context_samples.append(selected_utterance)
+
+            # Update the frequency counter for seen (token, pos) pairs
+            for token, pos in selected_utterance:
+                seen_pairs[(pos, token)] += 1
+
+            # Remove the selected utterance from the list
+            utterances.remove(selected_utterance)
+    else:
+        # Sample 10 random utterances for in_context_samples
+        in_context_samples = utterances[:10]
 
     return in_context_samples
 
 
-def generate_prompt_v1(prompt_dataset, segmentation_given):
+def generate_prompt_v1(prompt_dataset, segmentation_given, maximize_diversity=False):
     if prompt_dataset == 'hkcancor':
         in_context_samples = split_hkcancor()
     elif prompt_dataset == 'ud_yue':
-        in_context_samples = split_ud_yue()
+        in_context_samples = split_ud_yue(maximize_diversity)
     
     # Format in-context samples for the prompt
     in_context_prompt = "\n\n".join([
@@ -214,11 +249,11 @@ X: other
 
 
 
-def generate_prompt_v2(prompt_dataset, segmentation_given):
+def generate_prompt_v2(prompt_dataset, segmentation_given, maximize_diversity=False):
     if prompt_dataset == 'hkcancor':
         in_context_samples = split_hkcancor()
     elif prompt_dataset == 'ud_yue':
-        in_context_samples = split_ud_yue()
+        in_context_samples = split_ud_yue(maximize_diversity)
     
     # Format in-context samples for the prompt
     in_context_prompt = "\n\n".join([
@@ -471,8 +506,12 @@ Example
 if __name__ == "__main__":
     if args.prompt_version == 'v1':
         pos_prompt = generate_prompt_v1(args.prompt_dataset, args.segmentation_given)
+    elif args.prompt_version == 'v1_max_diversity':
+        pos_prompt = generate_prompt_v1(args.prompt_dataset, args.segmentation_given, maximize_diversity=True)
     elif args.prompt_version == 'v2':
         pos_prompt = generate_prompt_v2(args.prompt_dataset, args.segmentation_given)
+    elif args.prompt_version == 'v2_max_diversity':
+        pos_prompt = generate_prompt_v2(args.prompt_dataset, args.segmentation_given, maximize_diversity=True)
 
     # Write the updated word segmentation prompt to the file
     with open(f'data/pos_{args.prompt_dataset}_prompt_{args.prompt_version}{"_segmentation_given" if args.segmentation_given else ""}.txt', 'w', encoding='utf-8') as f:

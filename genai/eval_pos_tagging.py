@@ -7,7 +7,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=str, choices=['deepseek-chat', 'deepseek-coder', 'gpt-4o', 'gpt-4o-mini', 'qwen-max', 'qwen-plus', 'qwen-turbo'], required=True, help='Model to use for POS tagging')
-parser.add_argument('--prompt_version', type=str, choices=['v1', 'v2'], required=True, help='Prompt version to use for POS tagging')
+parser.add_argument('--prompt_version', type=str, choices=['v1', 'v1_max_diversity', 'v2', 'v2_max_diversity'], required=True, help='Prompt version to use for POS tagging')
 parser.add_argument('--eval_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to evaluate POS tagging on')
 parser.add_argument('--segmentation_given', type=bool, default=False, help='Whether the segmentation is given')
 args = parser.parse_args()
@@ -34,6 +34,7 @@ data = filtered_data
 
 # Prepare the references and predictions
 examples = []
+normalized_examples = []
 
 # Patches https://github.com/jacksonllee/pycantonese/issues/48
 def patch_pycantonese_tag_bug(tag):
@@ -41,6 +42,9 @@ def patch_pycantonese_tag_bug(tag):
         return "VERB"
     else:
         return tag
+
+def normalize_pos(tags):
+    return [(token, "VERB" if token == "係" else pos) for (token, pos) in tags]
 
 for entry in data:
     reference = entry['reference']
@@ -50,10 +54,19 @@ for entry in data:
     example = Example(predicted, target)
     examples.append(example)
 
+    reference_normalized = normalize_pos(reference)
+    hypothesis_normalized = normalize_pos(hypothesis)
+    predicted = Doc(V, words=[x[0] for x in hypothesis_normalized], spaces=[False for _ in hypothesis_normalized], pos=[x[1] for x in hypothesis_normalized])
+    target = Doc(V, words=[x[0] for x in reference_normalized], spaces=[False for _ in reference_normalized], pos=[patch_pycantonese_tag_bug(x[1]) for x in reference_normalized])
+    example = Example(predicted, target)
+    normalized_examples.append(example)
+
 # Calculate the F1 score using Scorer
 scorer = Scorer()
 results = scorer.score(examples)
+results_normalized = scorer.score(normalized_examples)
 
+print(f"POS Tagging Accuracy (Normalized): {results_normalized['pos_acc']}")
 print(f"POS Tagging Accuracy: {results['pos_acc']}")
 print(f"Token Accuracy: {results['token_acc']}")
 print(f"Token F1 Score: {results['token_f']}")

@@ -12,6 +12,14 @@ Token F1 Score: 1.0
 Token Precision: 1.0
 Token Recall: 1.0
 
+(wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-chat --prompt_version v1_max_diversity --eval_dataset ud_yue --segmentation_given True
+POS Tagging Accuracy (Normalized): 0.9264705882352942
+POS Tagging Accuracy: 0.9174836601307189
+Token Accuracy: 1.0
+Token F1 Score: 1.0
+Token Precision: 1.0
+Token Recall: 1.0
+
 (wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-chat --prompt_version v2 --eval_dataset ud_yue
 POS Tagging Accuracy: 0.9036519036519037
 Token Accuracy: 0.9776751347190146
@@ -25,6 +33,14 @@ Token Accuracy: 1.0
 Token F1 Score: 1.0
 Token Precision: 1.0
 Token Recall: 1.0
+
+(wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-chat --prompt_version v2_max_diversity --eval_dataset ud_yue --segmentation_given True
+POS Tagging Accuracy (Normalized): 0.9244406922752215
+POS Tagging Accuracy: 0.9151540734487125
+Token Accuracy: 1.0
+Token F1 Score: 0.9987336428872942
+Token Precision: 0.9983122362869198
+Token Recall: 0.9991554054054054
 
 (wordshk) kevin@Kevins-MacBook-Pro-10 genai % python eval_pos_tagging.py --model deepseek-coder --prompt_version v1 --eval_dataset ud_yue
 POS Tagging Accuracy: 0.890795631825273

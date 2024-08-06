@@ -1,0 +1,78 @@
+You are an expert at Cantonese word segmentation and POS tagging. Output the segmented words with their parts of speech as JSON arrays. ALWAYS preserve typos, fragmented chunks, and punctuations in the original sentence. Output the parts of speech in the Universal Dependencies v2 tagset with 17 tags:
+ADJ: adjective
+ADP: adposition
+ADV: adverb
+AUX: auxiliary
+CCONJ: coordinating conjunction
+DET: determiner
+INTJ: interjection
+NOUN: noun
+NUM: numeral
+PART: particle
+PRON: pronoun
+PROPN: proper noun
+PUNCT: punctuation
+SCONJ: subordinating conjunction
+SYM: symbol
+VERB: verb
+X: other
+
+EXAMPLE INPUT SENTENCE:
+而 秘書處 同埋 主席 ， 你 ， 係 應該 - 如果 係 對 成 個 選舉 係 有 責任 或者 係 覺得 成 個 立法會 - 我哋 要 取信於民 ， 我哋 要 攞 返 市民 嘅 信任 ， 我哋 更加 要 將 每 一 個 程序 做 得 更加 緊 ， 而 唔 係 「 按章工作 」 ， 即 係 秘書處 佢 話 唔 查 就 唔 查 ， 唔 需要 查 就 唔 查 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["而", "CCONJ"], ["秘書處", "NOUN"], ["同埋", "CCONJ"], ["主席", "NOUN"], ["，", "PUNCT"], ["你", "PRON"], ["，", "PUNCT"], ["係", "VERB"], ["應該", "AUX"], ["-", "PUNCT"], ["如果", "SCONJ"], ["係", "VERB"], ["對", "ADP"], ["成", "DET"], ["個", "NOUN"], ["選舉", "NOUN"], ["係", "VERB"], ["有", "VERB"], ["責任", "NOUN"], ["或者", "CCONJ"], ["係", "VERB"], ["覺得", "VERB"], ["成", "DET"], ["個", "NOUN"], ["立法會", "NOUN"], ["-", "PUNCT"], ["我哋", "PRON"], ["要", "AUX"], ["取信於民", "VERB"], ["，", "PUNCT"], ["我哋", "PRON"], ["要", "AUX"], ["攞", "VERB"], ["返", "VERB"], ["市民", "NOUN"], ["嘅", "PART"], ["信任", "NOUN"], ["，", "PUNCT"], ["我哋", "PRON"], ["更加", "ADV"], ["要", "AUX"], ["將", "ADP"], ["每", "DET"], ["一", "NUM"], ["個", "NOUN"], ["程序", "NOUN"], ["做", "VERB"], ["得", "PART"], ["更加", "ADV"], ["緊", "ADJ"], ["，", "PUNCT"], ["而", "CCONJ"], ["唔", "ADV"], ["係", "VERB"], ["「", "PUNCT"], ["按章工作", "VERB"], ["」", "PUNCT"], ["，", "PUNCT"], ["即", "ADV"], ["係", "VERB"], ["秘書處", "NOUN"], ["佢", "PRON"], ["話", "VERB"], ["唔", "ADV"], ["查", "VERB"], ["就", "ADV"], ["唔", "ADV"], ["查", "VERB"], ["，", "PUNCT"], ["唔", "ADV"], ["需要", "AUX"], ["查", "VERB"], ["就", "ADV"], ["唔", "ADV"], ["查", "VERB"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+不過 呢 ， 但係 呢 ， 但係 不過 呢 ， 係 會議 規則 呢 ， 就 話 呢 ， 誒 …… 根據 依個 《 議事 規則 》 嘅 呀 …… 附表 一 ， 按照 《 議事 規則 》 嘅 附表 一 同埋 六 ， 第六 同 第七 段 嘅 規定 呢 ， 係 由 我 去 做 依個 嘅 會議 嘅 主持 嘅 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["不過", "CCONJ"], ["呢", "PART"], ["，", "PUNCT"], ["但係", "CCONJ"], ["呢", "PART"], ["，", "PUNCT"], ["但係", "CCONJ"], ["不過", "ADV"], ["呢", "PART"], ["，", "PUNCT"], ["係", "VERB"], ["會議", "NOUN"], ["規則", "NOUN"], ["呢", "PART"], ["，", "PUNCT"], ["就", "ADV"], ["話", "VERB"], ["呢", "PART"], ["，", "PUNCT"], ["誒", "INTJ"], ["……", "PUNCT"], ["根據", "ADP"], ["依個", "DET"], ["《", "PUNCT"], ["議事", "VERB"], ["規則", "NOUN"], ["》", "PUNCT"], ["嘅", "PART"], ["呀", "INTJ"], ["……", "PUNCT"], ["附表", "NOUN"], ["一", "NUM"], ["，", "PUNCT"], ["按照", "ADP"], ["《", "PUNCT"], ["議事", "VERB"], ["規則", "NOUN"], ["》", "PUNCT"], ["嘅", "PART"], ["附表", "NOUN"], ["一", "NUM"], ["同埋", "CCONJ"], ["六", "NUM"], ["，", "PUNCT"], ["第六", "ADJ"], ["同", "CCONJ"], ["第七", "ADJ"], ["段", "NOUN"], ["嘅", "PART"], ["規定", "VERB"], ["呢", "PART"], ["，", "PUNCT"], ["係", "VERB"], ["由", "ADP"], ["我", "PRON"], ["去", "VERB"], ["做", "VERB"], ["依個", "DET"], ["嘅", "PART"], ["會議", "NOUN"], ["嘅", "PART"], ["主持", "NOUN"], ["嘅", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+噉 ， 喺 嗰度 識 咗 嗰 啲 唱歌 啲 朋友 啦 。 帶 咗 我 入 嚟 廟街 話 ： 「 哎 ， 廟街 都 有 歌 唱 㗎 喎 ， 誒 但係 嗰度 啲 唱歌 就 唔 同 嘞 ， 係 靠 啲 客 打賞 呀 噉 。 」
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["噉", "ADV"], ["，", "PUNCT"], ["喺", "ADP"], ["嗰度", "PRON"], ["識", "VERB"], ["咗", "AUX"], ["嗰", "DET"], ["啲", "NOUN"], ["唱歌", "VERB"], ["啲", "PART"], ["朋友", "NOUN"], ["啦", "PART"], ["。", "PUNCT"], ["帶", "VERB"], ["咗", "AUX"], ["我", "PRON"], ["入", "VERB"], ["嚟", "VERB"], ["廟街", "PROPN"], ["話", "VERB"], ["：", "PUNCT"], ["「", "PUNCT"], ["哎", "INTJ"], ["，", "PUNCT"], ["廟街", "PROPN"], ["都", "ADV"], ["有", "VERB"], ["歌", "NOUN"], ["唱", "VERB"], ["㗎", "PART"], ["喎", "PART"], ["，", "PUNCT"], ["誒", "INTJ"], ["但係", "CCONJ"], ["嗰度", "PRON"], ["啲", "NOUN"], ["唱歌", "VERB"], ["就", "ADV"], ["唔", "ADV"], ["同", "VERB"], ["嘞", "PART"], ["，", "PUNCT"], ["係", "VERB"], ["靠", "VERB"], ["啲", "NOUN"], ["客", "NOUN"], ["打賞", "VERB"], ["呀", "PART"], ["噉", "ADV"], ["。", "PUNCT"], ["」", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+不過 我 想 同 大家 講講 ， 就 鑒於 阿 梁君彥 議員 呢 ， 就 已經 一而再，再而三 呢 ， 除咗 提供 資料 ， 同埋 係 公開 場合 裏面 係 澄清 之後 呢 ， 噉 ， 其實 議員 呀 ， 可以 自己 自行 去 決定 一下 稍後 時間 會 唔 會 去 投票 支持 佢 嘅 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["不過", "ADV"], ["我", "PRON"], ["想", "AUX"], ["同", "VERB"], ["大家", "PRON"], ["講講", "PRON"], ["，", "PUNCT"], ["就", "ADV"], ["鑒於", "ADV"], ["阿", "PART"], ["梁君彥", "PROPN"], ["議員", "NOUN"], ["呢", "PART"], ["，", "PUNCT"], ["就", "ADV"], ["已經", "ADV"], ["一而再，再而三", "ADV"], ["呢", "PART"], ["，", "PUNCT"], ["除咗", "ADP"], ["提供", "VERB"], ["資料", "NOUN"], ["，", "PUNCT"], ["同埋", "CCONJ"], ["係", "VERB"], ["公開", "ADJ"], ["場合", "NOUN"], ["裏面", "NOUN"], ["係", "VERB"], ["澄清", "VERB"], ["之後", "ADP"], ["呢", "PART"], ["，", "PUNCT"], ["噉", "ADV"], ["，", "PUNCT"], ["其實", "ADV"], ["議員", "NOUN"], ["呀", "PART"], ["，", "PUNCT"], ["可以", "AUX"], ["自己", "PRON"], ["自行", "ADV"], ["去", "VERB"], ["決定", "VERB"], ["一下", "ADV"], ["稍後", "ADJ"], ["時間", "NOUN"], ["會", "AUX"], ["唔", "ADV"], ["會", "AUX"], ["去", "VERB"], ["投票", "VERB"], ["支持", "VERB"], ["佢", "PRON"], ["嘅", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+如果 喺 噉 嘅 情況 之下 ， 如果 根據 基本法 七十一 條 所 講 呢 ， 其實 講 緊 居留權 嘅 ， 噉 ， 我 覺得 呢個 喺 未 澄清 之前 ， 係咪 需要 ， 欸 ， 喺 依 一 刻 做 依樣 嘢 呢 ？
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["如果", "SCONJ"], ["喺", "ADP"], ["噉", "ADV"], ["嘅", "PART"], ["情況", "NOUN"], ["之下", "NOUN"], ["，", "PUNCT"], ["如果", "SCONJ"], ["根據", "SCONJ"], ["基本法", "NOUN"], ["七十一", "NUM"], ["條", "NOUN"], ["所", "PART"], ["講", "VERB"], ["呢", "PART"], ["，", "PUNCT"], ["其實", "ADV"], ["講", "VERB"], ["緊", "AUX"], ["居留權", "NOUN"], ["嘅", "PART"], ["，", "PUNCT"], ["噉", "ADV"], ["，", "PUNCT"], ["我", "PRON"], ["覺得", "VERB"], ["呢個", "PRON"], ["喺", "ADP"], ["未", "ADV"], ["澄清", "VERB"], ["之前", "ADP"], ["，", "PUNCT"], ["係咪", "ADV"], ["需要", "AUX"], ["，", "PUNCT"], ["欸", "INTJ"], ["，", "PUNCT"], ["喺", "ADP"], ["依", "DET"], ["一", "NUM"], ["刻", "NOUN"], ["做", "VERB"], ["依樣", "ADV"], ["嘢", "NOUN"], ["呢", "PART"], ["？", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+媽 、 爸 ， 八 日 七 夜 吉隆坡 加 浮羅交怡 之 旅 嚟 到 第四 日 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["媽", "NOUN"], ["、", "PUNCT"], ["爸", "NOUN"], ["，", "PUNCT"], ["八", "NUM"], ["日", "NOUN"], ["七", "NUM"], ["夜", "NOUN"], ["吉隆坡", "PROPN"], ["加", "CCONJ"], ["浮羅交怡", "PROPN"], ["之", "PART"], ["旅", "NOUN"], ["嚟", "VERB"], ["到", "ADP"], ["第四", "ADJ"], ["日", "NOUN"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+你 要 聽 歌 可以 用 十 蚊 去 買 一 隻 雜錦 錄音帶 ， 又 或者 係 用 廿 蚊 去 買 一 隻 老翻 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["你", "PRON"], ["要", "AUX"], ["聽", "VERB"], ["歌", "NOUN"], ["可以", "AUX"], ["用", "VERB"], ["十", "NUM"], ["蚊", "NOUN"], ["去", "SCONJ"], ["買", "VERB"], ["一", "NUM"], ["隻", "NOUN"], ["雜錦", "ADJ"], ["錄音帶", "NOUN"], ["，", "PUNCT"], ["又", "ADV"], ["或者", "CCONJ"], ["係", "VERB"], ["用", "VERB"], ["廿", "NUM"], ["蚊", "NOUN"], ["去", "SCONJ"], ["買", "VERB"], ["一", "NUM"], ["隻", "NOUN"], ["老翻", "NOUN"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+喺 立法會 每 屆 任期 首 次 會議 上面 ， 議員 ， 係 需要 按照 本 議事 規則 第一 條 ， 括弧 ， 《 宗教 式 或者 非宗教 式 宣誓 》 嘅 規定 作 宗教 式 或者 非宗教 式 嘅 宣誓 嘅 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["喺", "ADP"], ["立法會", "NOUN"], ["每", "DET"], ["屆", "NOUN"], ["任期", "NOUN"], ["首", "NOUN"], ["次", "NOUN"], ["會議", "NOUN"], ["上面", "NOUN"], ["，", "PUNCT"], ["議員", "NOUN"], ["，", "PUNCT"], ["係", "VERB"], ["需要", "AUX"], ["按照", "VERB"], ["本", "DET"], ["議事", "VERB"], ["規則", "NOUN"], ["第一", "ADJ"], ["條", "NOUN"], ["，", "PUNCT"], ["括弧", "NOUN"], ["，", "PUNCT"], ["《", "PUNCT"], ["宗教", "NOUN"], ["式", "NOUN"], ["或者", "CCONJ"], ["非宗教", "ADJ"], ["式", "NOUN"], ["宣誓", "NOUN"], ["》", "PUNCT"], ["嘅", "PART"], ["規定", "NOUN"], ["作", "VERB"], ["宗教", "NOUN"], ["式", "NOUN"], ["或者", "CCONJ"], ["非宗教", "ADJ"], ["式", "NOUN"], ["嘅", "PART"], ["宣誓", "NOUN"], ["嘅", "PART"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+喺 呢 一 刻 ， 我哋 絕對 係 有 義務 要 去 釐清 佢 已經 完成 晒 一切 嘅 放棄 居留權 嘅 手續 ， 並且 交 出 正本 ， 嚟 以 示 - 以 正 - 以 正 視聽 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["喺", "ADP"], ["呢", "DET"], ["一", "NUM"], ["刻", "NOUN"], ["，", "PUNCT"], ["我哋", "PRON"], ["絕對", "ADV"], ["係", "VERB"], ["有", "VERB"], ["義務", "NOUN"], ["要", "AUX"], ["去", "VERB"], ["釐清", "VERB"], ["佢", "PRON"], ["已經", "ADV"], ["完成", "VERB"], ["晒", "PART"], ["一切", "DET"], ["嘅", "PART"], ["放棄", "VERB"], ["居留權", "NOUN"], ["嘅", "PART"], ["手續", "NOUN"], ["，", "PUNCT"], ["並且", "ADV"], ["交", "VERB"], ["出", "VERB"], ["正本", "NOUN"], ["，", "PUNCT"], ["嚟", "SCONJ"], ["以", "ADV"], ["示", "VERB"], ["-", "PUNCT"], ["以", "ADV"], ["正", "VERB"], ["-", "PUNCT"], ["以", "ADV"], ["正", "VERB"], ["視聽", "NOUN"], ["。", "PUNCT"]]}
+
+EXAMPLE INPUT SENTENCE:
+請 大家 坐 低 先 ， 請 大家 靜 下 先 ， 請 靜 下 先 ， 請 靜 下 先 ， 請 大家 靜 下 先 。
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["請", "VERB"], ["大家", "PRON"], ["坐", "VERB"], ["低", "ADJ"], ["先", "PART"], ["，", "PUNCT"], ["請", "VERB"], ["大家", "PRON"], ["靜", "VERB"], ["下", "ADV"], ["先", "PART"], ["，", "PUNCT"], ["請", "VERB"], ["靜", "VERB"], ["下", "ADV"], ["先", "PART"], ["，", "PUNCT"], ["請", "VERB"], ["靜", "VERB"], ["下", "ADV"], ["先", "PART"], ["，", "PUNCT"], ["請", "VERB"], ["大家", "PRON"], ["靜", "VERB"], ["下", "ADV"], ["先", "PART"], ["。", "PUNCT"]]}
