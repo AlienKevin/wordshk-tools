@@ -20,7 +20,13 @@ def load_hkcancor():
     return utterances
 
 
-system_prompt = "You are an expert at Cantonese word segmentation and POS tagging. Output the parts of speech in the Universal Dependencies v2 tagset with 17 tags in the JSON format."
+system_prompt = """You are an expert at Cantonese word segmentation and POS tagging. Output the parts of speech in the Universal Dependencies v2 tagset with 17 tags in the JSON format.
+
+EXAMPLE INPUT SENTENCE:
+即係大陸-,香港就係office來嘅.
+
+EXAMPLE JSON OUTPUT:
+{"pos_tagged_words": [["即係", "CCONJ"], ["大陸", "PROPN"], ["-", "PUNCT"], [",", "PUNCT"], ["香港", "PROPN"], ["就", "ADV"], ["係", "VERB"], ["office", "NOUN"], ["來", "PART"], ["嘅", "PART"], [".", "PUNCT"]]}"""
 
 
 def create_sft(utterances, output_file):
@@ -38,7 +44,7 @@ def create_sft(utterances, output_file):
             f.write(json.dumps(sft_entry, ensure_ascii=False) + "\n")
 
 
-def create_sft_jsonl_dataset(utterances, output_file, train_size=200, validation_size=100):
+def create_sft_jsonl_dataset(utterances, output_file, train_size=2600, validation_size=1000):
     random.seed(42)
 
     random.shuffle(utterances)
