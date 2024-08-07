@@ -9,19 +9,23 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=str, choices=['deepseek-chat', 'deepseek-coder', 'gpt-4o', 'gpt-4o-mini', 'doubao-pro-32k', 'doubao-lite-32k', 'doubao-pro-4k', 'doubao-pro-4k-sample-200-step-1', 'doubao-pro-32k-sample-2500_global_step_22', 'qwen-max', 'qwen-plus', 'qwen-turbo'], required=True, help='Model to use for POS tagging')
 parser.add_argument('--prompt_version', type=str, choices=['v1', 'v2'], required=True, help='Prompt version to use for POS tagging')
 parser.add_argument('--eval_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to evaluate POS tagging on')
+parser.add_argument('--prompt_dataset', type=str, choices=['hkcancor', 'ud_yue'], default=None, help='Dataset to use for prompting (optional, defaults to same as eval_dataset)')
 parser.add_argument('--segmentation_given', type=bool, default=False, help='Whether the segmentation is given')
 parser.add_argument('--maximize_diversity', type=bool, default=False, help='Whether to maximize in-context example diversity')
 parser.add_argument('--to_simplified', type=bool, default=False, help='Whether to convert the input words to simplified characters')
 args = parser.parse_args()
 
+if args.prompt_dataset is None:
+    args.prompt_dataset = args.eval_dataset
+
 V = Vocab()
 
 # Load the tokenized data
-with open(f'outputs/pos_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'r', encoding='utf-8') as file:
+with open(f'outputs/pos_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{f"_prompt_dataset_{args.prompt_dataset}" if args.prompt_dataset != args.eval_dataset else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'r', encoding='utf-8') as file:
     data = [json.loads(line) for line in file]
 
 # Load the error data
-with open(f'outputs/pos_errors_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'r', encoding='utf-8') as error_file:
+with open(f'outputs/pos_errors_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{f"_prompt_dataset_{args.prompt_dataset}" if args.prompt_dataset != args.eval_dataset else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'r', encoding='utf-8') as error_file:
     error_data = [json.loads(line) for line in error_file]
 
 # Extract references from error data

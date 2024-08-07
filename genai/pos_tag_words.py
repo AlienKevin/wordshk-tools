@@ -538,7 +538,7 @@ if __name__ == "__main__":
         pos_prompt = generate_prompt_v2(args.prompt_dataset, args.segmentation_given, args.maximize_diversity)
 
     # Write the updated word segmentation prompt to the file
-    with open(f'data/pos_{args.prompt_dataset}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{"_segmentation_given" if args.segmentation_given else ""}.txt', 'w', encoding='utf-8') as f:
+    with open(f'data/pos_{args.prompt_dataset}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{f"_prompt_dataset_{args.prompt_dataset}" if args.prompt_dataset != args.eval_dataset else ""}{"_segmentation_given" if args.segmentation_given else ""}.txt', 'w', encoding='utf-8') as f:
         f.write(pos_prompt)
 
     if args.to_simplified:
@@ -553,7 +553,7 @@ if __name__ == "__main__":
     random.shuffle(testing_samples)
     testing_samples = testing_samples[:args.sample_size]
 
-    with open(f'outputs/pos_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'w', encoding='utf-8') as file, open(f'outputs/pos_errors_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'w', encoding='utf-8') as error_file:
+    with open(f'outputs/pos_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{f"_prompt_dataset_{args.prompt_dataset}" if args.prompt_dataset != args.eval_dataset else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'w', encoding='utf-8') as file, open(f'outputs/pos_errors_{args.eval_dataset}_{args.model}_prompt_{args.prompt_version}{"_max_diversity" if args.maximize_diversity else ""}{"_simplified" if args.to_simplified else ""}{f"_prompt_dataset_{args.prompt_dataset}" if args.prompt_dataset != args.eval_dataset else ""}{"_segmentation_given" if args.segmentation_given else ""}.jsonl', 'w', encoding='utf-8') as error_file:
         lock = Lock()
         def process_sample(sample):
             sample = [(to_simplified(word), pos) for word, pos in sample] if args.to_simplified else sample
