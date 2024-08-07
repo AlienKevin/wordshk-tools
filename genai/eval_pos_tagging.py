@@ -6,7 +6,7 @@ from spacy.vocab import Vocab
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', type=str, choices=['deepseek-chat', 'deepseek-coder', 'gpt-4o', 'gpt-4o-mini', 'doubao-pro-32k', 'doubao-lite-32k', 'doubao-pro-4k', 'doubao-pro-4k-sample-200-step-1', 'qwen-max', 'qwen-plus', 'qwen-turbo'], required=True, help='Model to use for POS tagging')
+parser.add_argument('--model', type=str, choices=['deepseek-chat', 'deepseek-coder', 'gpt-4o', 'gpt-4o-mini', 'doubao-pro-32k', 'doubao-lite-32k', 'doubao-pro-4k', 'doubao-pro-4k-sample-200-step-1', 'doubao-pro-32k-sample-2500_global_step_22', 'qwen-max', 'qwen-plus', 'qwen-turbo'], required=True, help='Model to use for POS tagging')
 parser.add_argument('--prompt_version', type=str, choices=['v1', 'v2'], required=True, help='Prompt version to use for POS tagging')
 parser.add_argument('--eval_dataset', type=str, choices=['hkcancor', 'ud_yue'], required=True, help='Dataset to evaluate POS tagging on')
 parser.add_argument('--segmentation_given', type=bool, default=False, help='Whether the segmentation is given')
