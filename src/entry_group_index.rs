@@ -30,14 +30,14 @@ where
 {
     dict.get_entry_group(id)
         .iter()
-        .map(|id| dict.get_entry(*id))
+        .filter_map(|id| dict.get_entry(*id))
         .collect()
 }
 
-pub fn get_entry_group_ids(dict: &RichDict, id: EntryId) -> Vec<EntryId> {
-    let entry = dict.get_entry(id);
+pub fn get_entry_group_ids(dict: &RichDict, id: EntryId) -> Option<Vec<EntryId>> {
+    let entry = dict.get_entry(id)?;
     let query_word_set: HashSet<&str> = entry.variants.to_words_set();
-    sort_entry_group_ids(
+    Some(sort_entry_group_ids(
         dict,
         dict.par_iter()
             .filter_map(|(id, entry)| {
@@ -53,9 +53,10 @@ pub fn get_entry_group_ids(dict: &RichDict, id: EntryId) -> Vec<EntryId> {
                 }
             })
             .collect(),
-    )
+    ))
 }
 
+// Assumes all EntryIds in entry_group are valid
 fn sort_entry_group_ids(dict: &dyn RichDictLike, mut entry_group: Vec<EntryId>) -> Vec<EntryId> {
     entry_group.sort_by(|a, b| {
         get_entry_frequency(*a)
@@ -63,9 +64,10 @@ fn sort_entry_group_ids(dict: &dyn RichDictLike, mut entry_group: Vec<EntryId>) 
             .reverse()
             .then(
                 dict.get_entry(*a)
+                    .unwrap()
                     .defs
                     .len()
-                    .cmp(&dict.get_entry(*b).defs.len())
+                    .cmp(&dict.get_entry(*b).unwrap().defs.len())
                     .reverse(),
             )
             .then(a.cmp(b))

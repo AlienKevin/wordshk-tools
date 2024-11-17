@@ -120,7 +120,7 @@ impl PartialOrd for PrSearchRank {
 }
 
 pub trait RichDictLike: Sync + Send {
-    fn get_entry(&self, id: EntryId) -> RichEntry;
+    fn get_entry(&self, id: EntryId) -> Option<RichEntry>;
     fn get_ids(&self) -> Vec<EntryId>;
 }
 
@@ -138,13 +138,13 @@ fn pick_variant(variant: &RichVariant, script: Script) -> Variant {
 }
 
 impl RichDictLike for SqliteDb {
-    fn get_entry(&self, entry_id: EntryId) -> RichEntry {
+    fn get_entry(&self, entry_id: EntryId) -> Option<RichEntry> {
         let conn = self.conn();
         let mut stmt = conn
             .prepare("SELECT entry FROM rich_dict WHERE id = ?")
-            .unwrap();
-        let entry_str: String = stmt.query_row([entry_id], |row| row.get(0)).unwrap();
-        serde_json::from_str(&entry_str).unwrap()
+            .ok()?;
+        let entry_str: String = stmt.query_row([entry_id], |row| row.get(0)).ok()?;
+        serde_json::from_str(&entry_str).ok()
     }
 
     fn get_ids(&self) -> Vec<EntryId> {
@@ -531,10 +531,9 @@ pub fn pr_search(
                     // Decompose tone marks for Yale
                     let query = query.nfd().collect::<String>();
 
-                    let jyutping: &LaxJyutPing = &dict.get_entry(entry_id).variants.0
-                        [variant_index as Index]
-                        .prs
-                        .0[pr_index as Index];
+                    let entry = dict.get_entry(entry_id).unwrap();
+                    let jyutping: &LaxJyutPing =
+                        &entry.variants.0[variant_index as Index].prs.0[pr_index as Index];
                     let jyutping = jyutping.to_string();
                     let (pr_variant, pr_variant_insertions) = pr_variant_generator(&jyutping);
                     let distance = match search_result {
@@ -594,15 +593,10 @@ pub fn pr_search(
                                 }
                             }
                         }
-                        let frequency_count =
-                            get_max_frequency_count(&dict.get_entry(entry_id).variants);
-                        let def_len = dict.get_entry(entry_id).defs.len();
+                        let frequency_count = get_max_frequency_count(&entry.variants);
+                        let def_len = entry.defs.len();
                         let variant = pick_variant(
-                            dict.get_entry(entry_id)
-                                .variants
-                                .0
-                                .get(variant_index as usize)
-                                .unwrap(),
+                            entry.variants.0.get(variant_index as usize).unwrap(),
                             script,
                         )
                         .word;
@@ -876,7 +870,7 @@ pub fn variant_search(
             entry_ids
         });
     for id in entry_ids {
-        let entry = dict.get_entry(id);
+        let entry = dict.get_entry(id).unwrap();
         let frequency_count = get_max_frequency_count(&entry.variants);
         entry
             .variants
@@ -889,7 +883,7 @@ pub fn variant_search(
                 if occurrence_index < usize::MAX {
                     ranks.push(VariantSearchRank {
                         id,
-                        def_len: dict.get_entry(id).defs.len(),
+                        def_len: entry.defs.len(),
                         variant_index,
                         variant: pick_variant(variant, script).word,
                         occurrence_index,
@@ -959,7 +953,7 @@ pub fn eg_search(
     use rayon::iter::ParallelIterator;
 
     dict.get_ids().par_iter().for_each(|entry_id| {
-        let entry = dict.get_entry(*entry_id);
+        let entry = dict.get_entry(*entry_id).unwrap();
         for (def_index, def) in entry.defs.iter().enumerate() {
             for (eg_index, eg) in def.egs.iter().enumerate() {
                 let get_line_in_script = |script| match script {
@@ -1606,31 +1600,27 @@ pub fn english_search(
         .unwrap_or(fuzzy_english_search(english_index, &[query.clone()]));
     results
         .into_iter()
-        .map(
+        .filter_map(
             |EnglishIndexData {
                  entry_id,
                  def_index,
                  score,
              }| {
-                let entry = dict.get_entry(entry_id);
+                let entry = dict.get_entry(entry_id)?;
                 let def = &entry.defs[def_index as usize];
                 let eng: Clause = def.eng.as_ref().unwrap().clone();
                 let eng = clause_to_string(&eng);
                 let matched_eng = match_eng_words(&eng, &query);
-                let frequency_count = get_max_frequency_count(&dict.get_entry(entry_id).variants);
-                EnglishSearchRank {
+                let frequency_count = get_max_frequency_count(&entry.variants);
+                Some(EnglishSearchRank {
                     entry_id,
                     def_len: entry.defs.len(),
                     def_index,
-                    variant: pick_variant(
-                        dict.get_entry(entry_id).variants.0.first().unwrap(),
-                        script,
-                    )
-                    .word,
+                    variant: pick_variant(entry.variants.0.first().unwrap(), script).word,
                     score,
                     frequency_count,
                     matched_eng,
-                }
+                })
             },
         )
         .collect()

@@ -195,7 +195,7 @@ fn generate_pr_variants(
 pub fn generate_pr_indices(dict: &dyn RichDictLike, romanization: Romanization) -> PrIndices {
     let mut indices = PrIndices::default();
     for entry_id in dict.get_ids() {
-        let entry = dict.get_entry(entry_id);
+        let entry = dict.get_entry(entry_id).unwrap();
         for (variant_index, variant) in entry.variants.0.iter().enumerate() {
             for (pr_index, pr) in variant.prs.0.iter().enumerate() {
                 // only add standard jyutping to pr index

@@ -18,8 +18,8 @@ use std::fmt;
 pub type RichDict = BTreeMap<EntryId, RichEntry>;
 
 impl RichDictLike for RichDict {
-    fn get_entry(&self, id: EntryId) -> RichEntry {
-        self.get(&id).unwrap().clone()
+    fn get_entry(&self, id: EntryId) -> Option<RichEntry> {
+        self.get(&id).cloned()
     }
     fn get_ids(&self) -> Vec<EntryId> {
         self.keys().cloned().collect_vec()
@@ -269,8 +269,8 @@ impl RichDictWrapper {
 }
 
 impl RichDictLike for RichDictWrapper {
-    fn get_entry(&self, id: EntryId) -> RichEntry {
-        self.dict.get(&id).unwrap().clone()
+    fn get_entry(&self, id: EntryId) -> Option<RichEntry> {
+        self.dict.get(&id).cloned()
     }
 
     fn get_ids(&self) -> Vec<EntryId> {
