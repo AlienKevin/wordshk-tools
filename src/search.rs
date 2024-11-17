@@ -903,6 +903,106 @@ pub fn variant_search(
     ranks
 }
 
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct EgSearchRank {
+    pub id: EntryId,
+    pub def_len: usize,
+    pub def_index: Index,
+    pub eg_index: Index,
+    pub variant: String,
+    pub eg_length: usize,
+    pub matched_eg: MatchedInfix,
+}
+
+impl Ord for EgSearchRank {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other
+            .eg_length
+            .cmp(&self.eg_length)
+            .then(other.variant.cmp(&self.variant))
+            .then_with(|| get_entry_frequency(self.id).cmp(&get_entry_frequency(other.id)))
+            .then(self.def_len.cmp(&other.def_len))
+            .then(other.id.cmp(&self.id))
+            .then(other.def_index.cmp(&self.def_index))
+            .then(other.eg_index.cmp(&self.eg_index))
+    }
+}
+
+impl PartialOrd for EgSearchRank {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+pub fn eg_search(
+    dict: &dyn RichDictLike,
+    query: &str,
+    max_first_index_in_eg: usize,
+    script: Script,
+) -> BinaryHeap<EgSearchRank> {
+    let query_normalized = unicode::to_hk_safe_variant(&unicode::normalize(query));
+    let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
+        // query contains iconic simplified characters
+        Script::Simplified
+    } else if query_normalized.chars().any(|c| ICONIC_TRADS.contains(&c)) {
+        Script::Traditional
+    } else {
+        script
+    };
+
+    use std::sync::Arc;
+    use std::sync::Mutex;
+
+    let ranks: Arc<Mutex<BinaryHeap<_>>> = Arc::new(Mutex::new(BinaryHeap::new()));
+
+    use rayon::iter::IntoParallelRefIterator;
+    use rayon::iter::ParallelIterator;
+
+    dict.get_ids().par_iter().for_each(|entry_id| {
+        let entry = dict.get_entry(*entry_id);
+        for (def_index, def) in entry.defs.iter().enumerate() {
+            for (eg_index, eg) in def.egs.iter().enumerate() {
+                let get_line_in_script = |script| match script {
+                    Script::Traditional => eg.yue.as_ref().map(|line| line.to_string()),
+                    Script::Simplified => eg.yue_simp.clone(),
+                };
+                let line: Option<String> = get_line_in_script(query_script);
+                if let Some(line) = line {
+                    let line_len = line.chars().count();
+                    if let Some(first_index) = line.find(&query_normalized) {
+                        let char_index = line[..first_index].chars().count();
+                        if char_index <= max_first_index_in_eg {
+                            let line = if query_script == script {
+                                line
+                            } else {
+                                get_line_in_script(script).unwrap()
+                            };
+                            let matched_eg = MatchedInfix {
+                                prefix: line[..first_index].to_string(),
+                                query: line[first_index..first_index + query_normalized.len()]
+                                    .to_string(),
+                                suffix: line[first_index + query_normalized.len()..].to_string(),
+                            };
+                            ranks.lock().unwrap().push(EgSearchRank {
+                                id: *entry_id,
+                                def_len: entry.defs.len(),
+                                def_index,
+                                eg_index,
+                                variant: pick_variant(entry.variants.0.first().unwrap(), script)
+                                    .word,
+                                eg_length: line_len,
+                                matched_eg,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    Arc::try_unwrap(ranks).unwrap().into_inner().unwrap()
+}
+
 pub enum CombinedSearchRank {
     Variant(BinaryHeap<VariantSearchRank>),
     Pr(BinaryHeap<PrSearchRank>),
