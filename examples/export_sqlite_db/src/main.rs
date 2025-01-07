@@ -91,6 +91,21 @@ fn test_sqlite_search() {
     );
     // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
+
+    let start_time = Instant::now();
+    let results = search::eg_search(&dict, "閂水喉", Script::Traditional);
+    println!("{:?}", start_time.elapsed());
+    println!("{:?}", results);
+
+    let start_time = Instant::now();
+    let results = search::eg_search(&dict, "佢話", Script::Traditional);
+    println!("{:?}", start_time.elapsed());
+    println!("{:?}", results);
+
+    let start_time = Instant::now();
+    let results = search::eg_search(&dict, "我", Script::Traditional);
+    println!("{:?}", start_time.elapsed());
+    // println!("{:?}", results);
 }
 
 fn show_pr_index_sizes() {

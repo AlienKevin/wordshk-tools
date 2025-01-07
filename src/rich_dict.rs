@@ -21,6 +21,13 @@ impl RichDictLike for RichDict {
     fn get_entry(&self, id: EntryId) -> Option<RichEntry> {
         self.get(&id).cloned()
     }
+
+    fn get_entries(&self, ids: &[EntryId]) -> HashMap<EntryId, RichEntry> {
+        ids.iter()
+            .filter_map(|id| self.get(id).cloned().map(|entry| (*id, entry)))
+            .collect()
+    }
+
     fn get_ids(&self) -> Vec<EntryId> {
         self.keys().cloned().collect_vec()
     }
@@ -270,11 +277,15 @@ impl RichDictWrapper {
 
 impl RichDictLike for RichDictWrapper {
     fn get_entry(&self, id: EntryId) -> Option<RichEntry> {
-        self.dict.get(&id).cloned()
+        self.dict.get_entry(id)
+    }
+
+    fn get_entries(&self, ids: &[EntryId]) -> HashMap<EntryId, RichEntry> {
+        self.dict.get_entries(ids)
     }
 
     fn get_ids(&self) -> Vec<EntryId> {
-        self.dict.keys().map(|x| *x).collect()
+        self.dict.get_ids()
     }
 }
 

@@ -2,6 +2,7 @@ pub mod app_api;
 #[path = "../data/char_jyutpings/charlist.rs"]
 mod charlist;
 pub mod dict;
+pub mod eg_index;
 pub mod emit_apple_dict;
 pub mod emit_html;
 pub mod english_index;

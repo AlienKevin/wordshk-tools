@@ -1,4 +1,5 @@
 use crate::dict::{clause_to_string, Clause, EntryId};
+use crate::eg_index::EgIndexLike;
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
 use crate::lihkg_frequencies::LIHKG_FREQUENCIES;
 use crate::pr_index::{FstPrIndicesLike, FstSearchResult, PrLocation, MAX_DELETIONS};
@@ -17,10 +18,11 @@ use super::unicode;
 use super::word_frequencies::WORD_FREQUENCIES;
 use core::fmt;
 use itertools::Itertools;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
 use std::cmp::Ordering;
-use std::collections::BinaryHeap;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BinaryHeap, HashSet};
 use strsim::{generic_levenshtein, levenshtein, normalized_levenshtein};
 use unicode_normalization::UnicodeNormalization;
 
@@ -121,6 +123,7 @@ impl PartialOrd for PrSearchRank {
 
 pub trait RichDictLike: Sync + Send {
     fn get_entry(&self, id: EntryId) -> Option<RichEntry>;
+    fn get_entries(&self, ids: &[EntryId]) -> HashMap<EntryId, RichEntry>;
     fn get_ids(&self) -> Vec<EntryId>;
 }
 
@@ -145,6 +148,59 @@ impl RichDictLike for SqliteDb {
             .ok()?;
         let entry_str: String = stmt.query_row([entry_id], |row| row.get(0)).ok()?;
         serde_json::from_str(&entry_str).ok()
+    }
+
+    fn get_entries(&self, entry_ids: &[EntryId]) -> HashMap<EntryId, RichEntry> {
+        let batch_size = 100;
+        let entry_ids_batches: Vec<&[EntryId]> = entry_ids.chunks(batch_size).collect();
+
+        // Process batches in parallel using Rayon
+        let result: HashMap<EntryId, RichEntry> = entry_ids_batches
+            .par_iter()
+            .map(|batch| {
+                let conn = self.conn();
+                let placeholders = batch.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+                let query = format!(
+                    "SELECT id, entry FROM rich_dict WHERE id IN ({})",
+                    placeholders
+                );
+
+                let mut stmt = match conn.prepare(&query) {
+                    Ok(stmt) => stmt,
+                    Err(_) => return HashMap::new(),
+                };
+
+                let rows = match stmt.query_map(rusqlite::params_from_iter(*batch), |row| {
+                    let id = row.get::<_, EntryId>(0)?;
+                    let entry_str = row.get::<_, String>(1)?;
+                    let entry = serde_json::from_str(&entry_str).map_err(|serde_err| {
+                        rusqlite::Error::FromSqlConversionFailure(
+                            1, // hint
+                            rusqlite::types::Type::Text,
+                            Box::new(serde_err),
+                        )
+                    })?;
+                    Ok((id, entry))
+                }) {
+                    Ok(rows) => rows,
+                    Err(_) => return HashMap::new(),
+                };
+
+                let mut batch_entries = HashMap::new();
+                for row in rows {
+                    if let Ok((id, entry)) = row {
+                        batch_entries.insert(id, entry);
+                    }
+                }
+
+                batch_entries
+            })
+            .reduce(HashMap::new, |mut acc, batch| {
+                acc.extend(batch);
+                acc
+            });
+
+        result
     }
 
     fn get_ids(&self) -> Vec<EntryId> {
@@ -900,10 +956,8 @@ pub fn variant_search(
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct EgSearchRank {
     pub id: EntryId,
-    pub def_len: usize,
     pub def_index: Index,
     pub eg_index: Index,
-    pub variant: String,
     pub eg_length: usize,
     pub matched_eg: MatchedInfix,
 }
@@ -913,10 +967,7 @@ impl Ord for EgSearchRank {
         other
             .eg_length
             .cmp(&self.eg_length)
-            .then(other.variant.cmp(&self.variant))
             .then_with(|| get_entry_frequency(self.id).cmp(&get_entry_frequency(other.id)))
-            .then(self.def_len.cmp(&other.def_len))
-            .then(other.id.cmp(&self.id))
             .then(other.def_index.cmp(&self.def_index))
             .then(other.eg_index.cmp(&self.eg_index))
     }
@@ -929,9 +980,8 @@ impl PartialOrd for EgSearchRank {
 }
 
 pub fn eg_search(
-    dict: &dyn RichDictLike,
+    eg_index: &dyn EgIndexLike,
     query: &str,
-    max_first_index_in_eg: usize,
     script: Script,
 ) -> BinaryHeap<EgSearchRank> {
     let query_normalized = unicode::to_hk_safe_variant(&unicode::normalize(query));
@@ -944,6 +994,10 @@ pub fn eg_search(
         script
     };
 
+    if query_normalized.is_empty() {
+        return BinaryHeap::new();
+    }
+
     use std::sync::Arc;
     use std::sync::Mutex;
 
@@ -952,47 +1006,45 @@ pub fn eg_search(
     use rayon::iter::IntoParallelRefIterator;
     use rayon::iter::ParallelIterator;
 
-    dict.get_ids().par_iter().for_each(|entry_id| {
-        let entry = dict.get_entry(*entry_id).unwrap();
-        for (def_index, def) in entry.defs.iter().enumerate() {
-            for (eg_index, eg) in def.egs.iter().enumerate() {
-                let get_line_in_script = |script| match script {
-                    Script::Traditional => eg.yue.as_ref().map(|line| line.to_string()),
-                    Script::Simplified => eg.yue_simp.clone(),
+    let eg_locations = query_normalized.chars().skip(1).fold(
+        eg_index.get_egs_by_character(query_normalized.chars().next().unwrap()),
+        |eg_locations, c| {
+            eg_locations
+                .intersection(&eg_index.get_egs_by_character(c))
+                .cloned()
+                .collect()
+        },
+    );
+
+    eg_locations
+        .par_iter()
+        .for_each(|((entry_id, def_index, eg_index), eg_yue, eg_yue_simp)| {
+            let get_line_in_script = |script| match script {
+                Script::Traditional => eg_yue.clone(),
+                Script::Simplified => eg_yue_simp.clone(),
+            };
+            let line: String = get_line_in_script(query_script);
+            let line_len = line.chars().count();
+            if let Some(first_index) = line.find(&query_normalized) {
+                let line = if query_script == script {
+                    line
+                } else {
+                    get_line_in_script(script)
                 };
-                let line: Option<String> = get_line_in_script(query_script);
-                if let Some(line) = line {
-                    let line_len = line.chars().count();
-                    if let Some(first_index) = line.find(&query_normalized) {
-                        let char_index = line[..first_index].chars().count();
-                        if char_index <= max_first_index_in_eg {
-                            let line = if query_script == script {
-                                line
-                            } else {
-                                get_line_in_script(script).unwrap()
-                            };
-                            let matched_eg = MatchedInfix {
-                                prefix: line[..first_index].to_string(),
-                                query: line[first_index..first_index + query_normalized.len()]
-                                    .to_string(),
-                                suffix: line[first_index + query_normalized.len()..].to_string(),
-                            };
-                            ranks.lock().unwrap().push(EgSearchRank {
-                                id: *entry_id,
-                                def_len: entry.defs.len(),
-                                def_index,
-                                eg_index,
-                                variant: pick_variant(entry.variants.0.first().unwrap(), script)
-                                    .word,
-                                eg_length: line_len,
-                                matched_eg,
-                            });
-                        }
-                    }
-                }
+                let matched_eg = MatchedInfix {
+                    prefix: line[..first_index].to_string(),
+                    query: line[first_index..first_index + query_normalized.len()].to_string(),
+                    suffix: line[first_index + query_normalized.len()..].to_string(),
+                };
+                ranks.lock().unwrap().push(EgSearchRank {
+                    id: *entry_id,
+                    def_index: *def_index,
+                    eg_index: *eg_index,
+                    eg_length: line_len,
+                    matched_eg,
+                });
             }
-        }
-    });
+        });
 
     Arc::try_unwrap(ranks).unwrap().into_inner().unwrap()
 }

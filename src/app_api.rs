@@ -6,6 +6,7 @@ use crate::rich_dict::RichEntry;
 use crate::search::Script;
 use crate::variant_index::generate_variant_index;
 
+use super::eg_index::generate_eg_index;
 use super::english_index::generate_english_index;
 use super::parse::parse_dict;
 use super::rich_dict::{enrich_dict, EnrichDictOptions, RichDict};
@@ -72,6 +73,47 @@ impl Api {
             "INSERT INTO english_index (phrase, english_index_data) VALUES (?, ?)",
             rusqlite::params![phrase, serde_json::to_string(english_index_data).unwrap()],
         )?;
+        Ok(())
+    }
+
+    fn insert_eg_index_data(conn: &rusqlite::Connection, dict: &RichDict) -> rusqlite::Result<()> {
+        // Generate the EgIndex and EgIdMapping
+        let (eg_index, character_id_mapping, eg_id_mapping) = generate_eg_index(dict);
+
+        // Prepare SQL statements for inserting into Eg and CharacterEgIds tables
+        let mut insert_eg_stmt = conn
+            .prepare("INSERT INTO eg (eg_id, entry_id, def_index, eg_index, eg_yue, eg_yue_simp) VALUES (?, ?, ?, ?, ?, ?)")?;
+        let mut insert_character_id_stmt =
+            conn.prepare("INSERT INTO character_ids (character_id, character) VALUES (?, ?)")?;
+        let mut insert_character_eg_stmt =
+            conn.prepare("INSERT INTO character_eg_ids (character_id, eg_id) VALUES (?, ?)")?;
+
+        // Insert Eg metadata into the database
+        for (eg_id, ((entry_id, def_index, eg_index), eg_yue, eg_yue_simp)) in eg_id_mapping.iter()
+        {
+            insert_eg_stmt.execute(rusqlite::params![
+                eg_id,
+                entry_id,
+                def_index,
+                eg_index,
+                eg_yue,
+                eg_yue_simp
+            ])?;
+        }
+
+        for (character, character_id) in character_id_mapping.iter() {
+            insert_character_id_stmt
+                .execute(rusqlite::params![character_id, character.to_string()])?;
+        }
+
+        // Insert character-to-eg_id mappings into the database
+        for (character, eg_ids) in eg_index.iter() {
+            for eg_id in eg_ids {
+                insert_character_eg_stmt
+                    .execute(rusqlite::params![character.to_string(), eg_id])?;
+            }
+        }
+
         Ok(())
     }
 
@@ -211,6 +253,34 @@ impl Api {
             [],
         )?;
 
+        // Create tables for eg index
+        tx.execute(
+            "CREATE TABLE eg (
+            eg_id INTEGER PRIMARY KEY,
+            entry_id INTEGER NOT NULL,
+            def_index INTEGER NOT NULL,
+            eg_index INTEGER NOT NULL,
+            eg_yue TEXT NOT NULL,
+            eg_yue_simp TEXT NOT NULL
+        )",
+            [],
+        )?;
+        tx.execute(
+            "CREATE TABLE character_ids (
+                character_id INTEGER PRIMARY KEY,
+                character TEXT NOT NULL UNIQUE
+            );",
+            [],
+        )?;
+        tx.execute(
+            "CREATE TABLE character_eg_ids (
+            character_id INTEGER NOT NULL,
+            eg_id INTEGER NOT NULL,
+            PRIMARY KEY (character_id, eg_id)
+        )",
+            [],
+        )?;
+
         // Keep track of dict version in a separate metadata table
         tx.execute(
             "CREATE TABLE rich_dict_metadata (
@@ -234,6 +304,8 @@ impl Api {
         for (phrase, english_index_data) in generate_english_index(&self.dict) {
             Self::insert_english_index_data(&tx, &phrase, &english_index_data)?;
         }
+
+        Self::insert_eg_index_data(&tx, &self.dict)?;
 
         Self::insert_pr_index(&tx, &self.dict, Romanization::Jyutping)?;
         Self::insert_pr_index(&tx, &self.dict, Romanization::Yale)?;

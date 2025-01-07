@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 wordshk_tools = { path = "../../" }
 rusqlite = "0.31.0"
+
+[profile.release]
+debug = true
