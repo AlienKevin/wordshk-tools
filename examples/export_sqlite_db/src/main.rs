@@ -11,8 +11,8 @@ use wordshk_tools::{
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    export_sqlite_db();
-    // test_sqlite_search();
+    // export_sqlite_db();
+    test_sqlite_search();
     // show_pr_index_sizes();
 }
 
@@ -86,6 +86,18 @@ fn test_sqlite_search() {
         &dict,
         &dict,
         "ming4mei4",
+        Script::Traditional,
+        Romanization::Jyutping,
+    );
+    // println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
+
+    // Edge case where a long query would trigger TooManyStates(10000) during Levenshtein::new if not handled correctly
+    let start_time = Instant::now();
+    let results = search::pr_search(
+        &dict,
+        &dict,
+        "keoi5dei6so2ngo5wai4e6aa3jan1wai6bei3ngoi3jan4fei4po4si3dong1zan1",
         Script::Traditional,
         Romanization::Jyutping,
     );

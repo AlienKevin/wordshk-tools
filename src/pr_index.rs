@@ -76,10 +76,6 @@ impl FstPrIndicesLike for SqliteDb {
 
         let prefix_automaton = Str::new(&query_no_space).starts_with();
 
-        let max_deletions = (query_no_space.chars().count() - 1).min(MAX_DELETIONS);
-        let levenshtein_automaton =
-            Levenshtein::new(&query_no_space, max_deletions as u32).unwrap();
-
         let prefix_results: BTreeSet<PrLocation> = fst
             .search(prefix_automaton)
             .into_stream()
@@ -92,55 +88,37 @@ impl FstPrIndicesLike for SqliteDb {
             .collect();
 
         if prefix_results.is_empty() {
-            FstSearchResult::Levenshtein(
-                fst.search(levenshtein_automaton)
-                    .into_stream()
-                    .into_values()
-                    .into_iter()
-                    .flat_map(|loc| -> BTreeSet<PrLocation> {
-                        let locations_text: String =
-                            stmt.query_row([loc], |row| row.get(0)).unwrap();
-                        serde_json::from_str(&locations_text).unwrap()
-                    })
-                    .collect(),
-            )
-        } else {
-            FstSearchResult::Prefix(prefix_results)
-        }
-    }
-}
+            let mut max_deletions = (query_no_space.chars().count() - 1).min(MAX_DELETIONS) as i32;
+            let mut levenshtein_automaton = None;
 
-impl FstPrIndicesLike for FstPrIndices {
-    fn search(&self, has_tone: bool, query: &str, romanization: Romanization) -> FstSearchResult {
-        let fst = if has_tone { &self.tone } else { &self.none };
+            while max_deletions >= 0 {
+                match Levenshtein::new(&query_no_space, max_deletions as u32) {
+                    Ok(automaton) => {
+                        levenshtein_automaton = Some(automaton);
+                        break;
+                    }
+                    Err(_) => {
+                        max_deletions -= 1;
+                    }
+                }
+            }
 
-        let query_no_space = query.replace(' ', "");
-
-        let prefix_automaton = Str::new(&query_no_space).starts_with();
-
-        let max_deletions = (query_no_space.chars().count() - 1).min(MAX_DELETIONS);
-        let levenshtein_automaton =
-            Levenshtein::new(&query_no_space, max_deletions as u32).unwrap();
-
-        let prefix_results: BTreeSet<PrLocation> = fst
-            .search(prefix_automaton)
-            .into_stream()
-            .into_values()
-            .into_iter()
-            .flat_map(|loc| &self.locations[&loc])
-            .cloned()
-            .collect();
-
-        if prefix_results.is_empty() {
-            FstSearchResult::Levenshtein(
-                fst.search(levenshtein_automaton)
-                    .into_stream()
-                    .into_values()
-                    .into_iter()
-                    .flat_map(|loc| &self.locations[&loc])
-                    .cloned()
-                    .collect(),
-            )
+            if let Some(automaton) = levenshtein_automaton {
+                FstSearchResult::Levenshtein(
+                    fst.search(automaton)
+                        .into_stream()
+                        .into_values()
+                        .into_iter()
+                        .flat_map(|loc| -> BTreeSet<PrLocation> {
+                            let locations_text: String =
+                                stmt.query_row([loc], |row| row.get(0)).unwrap();
+                            serde_json::from_str(&locations_text).unwrap()
+                        })
+                        .collect(),
+                )
+            } else {
+                FstSearchResult::Levenshtein(BTreeSet::new())
+            }
         } else {
             FstSearchResult::Prefix(prefix_results)
         }
