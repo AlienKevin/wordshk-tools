@@ -1066,18 +1066,7 @@ pub fn combined_search<D>(
 where
     D: RichDictLike + VariantIndexLike + FstPrIndicesLike + EnglishIndexLike + EgIndexLike,
 {
-    // otherwise if the query doesn't have a very strong feature,
-    // it can be a variant, a jyutping or an english phrase
-    let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
-    let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
-        // query contains iconic simplified characters
-        Script::Simplified
-    } else if query_normalized.chars().any(|c| ICONIC_TRADS.contains(&c)) {
-        Script::Traditional
-    } else {
-        script
-    };
-    let variants_ranks = variant_search(dict, dict, query, query_script);
+    let variants_ranks = variant_search(dict, dict, query, script);
     let pr_ranks = pr_search(dict, dict, query, script, romanization);
     let english_results = english_search(dict, dict, query, script);
     let eg_results = eg_search(dict, query, script);
