@@ -210,28 +210,70 @@ fn is_unfinished_line(line: &Line) -> bool {
 
 pub fn filter_unfinished_entries(dict: Dict) -> Dict {
     dict.into_iter()
-        .filter(|(_, entry)| {
-            // no definition should contain unfinished lines
-            !entry.defs.iter().any(|def| {
-                def.yue.iter().any(is_unfinished_line)
-                    || def
+        .filter_map(|(key, mut entry)| {
+            // Filter definitions
+            entry.defs = entry
+                .defs
+                .into_iter()
+                .filter_map(|mut def| {
+                    // Remove definition if yue is unfinished
+                    if def.yue.iter().any(is_unfinished_line) {
+                        return None;
+                    }
+
+                    // Remove eng if any line is unfinished
+                    if def
                         .eng
                         .as_ref()
                         .map_or(false, |clause| clause.iter().any(is_unfinished_line))
-                    || def.egs.iter().any(|eg| {
-                        eg.zho
-                            .as_ref()
-                            .map_or(false, |(line, _)| is_unfinished_line(line))
-                            || eg
+                    {
+                        def.eng = None;
+                    }
+
+                    // Filter examples
+                    def.egs = def
+                        .egs
+                        .into_iter()
+                        .filter_map(|mut eg| {
+                            // Remove entire Eg if yue is unfinished
+                            if eg
                                 .yue
                                 .as_ref()
                                 .map_or(false, |(line, _)| is_unfinished_line(line))
-                            || eg
+                            {
+                                return None;
+                            }
+
+                            // Remove zho/eng if unfinished
+                            if eg
+                                .zho
+                                .as_ref()
+                                .map_or(false, |(line, _)| is_unfinished_line(line))
+                            {
+                                eg.zho = None;
+                            }
+                            if eg
                                 .eng
                                 .as_ref()
                                 .map_or(false, |line| is_unfinished_line(line))
-                    })
-            })
+                            {
+                                eg.eng = None;
+                            }
+
+                            Some(eg)
+                        })
+                        .collect();
+
+                    Some(def)
+                })
+                .collect();
+
+            // Remove entry if no definitions remain
+            if entry.defs.is_empty() {
+                None
+            } else {
+                Some((key, entry))
+            }
         })
         .collect()
 }
