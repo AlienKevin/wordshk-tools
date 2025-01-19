@@ -1049,14 +1049,11 @@ pub fn eg_search(
     Arc::try_unwrap(ranks).unwrap().into_inner().unwrap()
 }
 
-pub enum CombinedSearchRank {
-    Variant(BinaryHeap<VariantSearchRank>),
-    Pr(BinaryHeap<PrSearchRank>),
-    All(
-        BinaryHeap<VariantSearchRank>,
-        BinaryHeap<PrSearchRank>,
-        BinaryHeap<EnglishSearchRank>,
-    ),
+pub struct CombinedSearchRank {
+    pub variant: BinaryHeap<VariantSearchRank>,
+    pub pr: BinaryHeap<PrSearchRank>,
+    pub english: BinaryHeap<EnglishSearchRank>,
+    pub eg: BinaryHeap<EgSearchRank>,
 }
 
 // Auto recognize the type of the query
@@ -1067,11 +1064,16 @@ pub fn combined_search<D>(
     romanization: Romanization,
 ) -> CombinedSearchRank
 where
-    D: RichDictLike + VariantIndexLike + FstPrIndicesLike + EnglishIndexLike,
+    D: RichDictLike + VariantIndexLike + FstPrIndicesLike + EnglishIndexLike + EgIndexLike,
 {
     // if the query has CJK characters, it can only be a variant
     if query.chars().any(unicode::is_cjk) {
-        return CombinedSearchRank::Variant(variant_search(dict, dict, query, script));
+        return CombinedSearchRank {
+            variant: variant_search(dict, dict, query, script),
+            pr: BinaryHeap::default(),
+            english: BinaryHeap::default(),
+            eg: BinaryHeap::default(),
+        };
     }
 
     // otherwise if the query doesn't have a very strong feature,
@@ -1088,8 +1090,14 @@ where
     let variants_ranks = variant_search(dict, dict, query, query_script);
     let pr_ranks = pr_search(dict, dict, query, script, romanization);
     let english_results = english_search(dict, dict, query, script);
+    let eg_results = eg_search(dict, query, script);
 
-    CombinedSearchRank::All(variants_ranks, pr_ranks, english_results)
+    CombinedSearchRank {
+        variant: variants_ranks,
+        pr: pr_ranks,
+        english: english_results,
+        eg: eg_results,
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
