@@ -549,7 +549,7 @@ pub fn pr_search(
 ) -> BinaryHeap<PrSearchRank> {
     let query = unicode::normalize(query);
 
-    if query.is_empty() {
+    if query.is_empty() || query.chars().any(unicode::is_cjk) {
         return BinaryHeap::new();
     }
 
@@ -1066,16 +1066,6 @@ pub fn combined_search<D>(
 where
     D: RichDictLike + VariantIndexLike + FstPrIndicesLike + EnglishIndexLike + EgIndexLike,
 {
-    // if the query has CJK characters, it can only be a variant
-    if query.chars().any(unicode::is_cjk) {
-        return CombinedSearchRank {
-            variant: variant_search(dict, dict, query, script),
-            pr: BinaryHeap::default(),
-            english: BinaryHeap::default(),
-            eg: BinaryHeap::default(),
-        };
-    }
-
     // otherwise if the query doesn't have a very strong feature,
     // it can be a variant, a jyutping or an english phrase
     let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
@@ -1654,6 +1644,10 @@ pub fn english_search(
     query: &str,
     script: Script,
 ) -> BinaryHeap<EnglishSearchRank> {
+    if query.chars().any(unicode::is_cjk) {
+        return BinaryHeap::default();
+    }
+
     let query = unicode::normalize_english_word_for_search_index(query);
     let results = english_index
         .get(query.as_str())
