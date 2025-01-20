@@ -13,7 +13,7 @@ with open('deepseek_api_key.txt', 'r') as file:
 
 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
-with open('outputs/translate_def_prompt_v2.json', 'r') as file:
+with open('data/translate_def_prompt_v3.json', 'r') as file:
     prompt = json.load(file)
 
 def translate(variant, yue_def, eng_def):
@@ -40,13 +40,6 @@ def translate(variant, yue_def, eng_def):
                 return {'error': str(e)}
 
 
-cantonese_ids = set()
-with open('data/mandarin_variants_v1.tsv', 'r') as file:
-    for line in file:
-        id = line.split('\t')[0]
-        cantonese_ids.add(int(id))
-print(f'Number of Cantonese phrases: {len(cantonese_ids)}')
-
 # idiom.json from: https://github.com/mapull/chinese-dictionary/blob/main/idiom/idiom.json
 mandarin_words = set()
 with open('data/idiom.json', 'r') as file:
@@ -65,8 +58,6 @@ print(f'Number of Mandarin words: {len(mandarin_words)}')
 def extract_yue_variants_and_defs(data):
     entries = []
     for entry in data.values():
-        if entry['id'] not in cantonese_ids:
-            continue
         variants = entry.get('variants', [])
         variants = [variant.get('w', '') for variant in variants]
 

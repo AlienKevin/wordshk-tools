@@ -1,7 +1,7 @@
 [
     {
         "role": "system",
-        "content": "You are an expert translator proficient in Cantonese, English, and Mandarin. Your task is to translate a Cantonese word into its Mandarin counterpart by referencing its English definition."
+        "content": "You are an expert translator proficient in Cantonese, English, and Mandarin. Your task is to translate a Cantonese word into its Mandarin counterpart by referencing its English definition. If there are multiple Mandarin phrases with similar meaning as the Cantonese word, list all of them."
     },
     {
         "role": "user",
@@ -13,11 +13,11 @@
     },
     {
         "role": "user",
-        "content": "<english>loan shark; usurer; literally: big ear hole</english><cantonese>大耳窿</cantonese>"
+        "content": "<english>gravity (usu. gravity of the Earth)</english><cantonese>地心吸力</cantonese>"
     },
     {
         "role": "assistant",
-        "content": "<mandarin>放高利贷者</mandarin>"
+        "content": "<mandarin>地心引力/地球引力/地球重力</mandarin>"
     },
     {
         "role": "user",
@@ -26,6 +26,14 @@
     {
         "role": "assistant",
         "content": "<mandarin>绿豆</mandarin>"
+    },
+    {
+        "role": "user",
+        "content": "<english>the leader, outstanding performer; can be a person, community or company; widely used in gangs as well</english><cantonese>龍頭</cantonese>"
+    },
+    {
+        "role": "assistant",
+        "content": "<mandarin>老大/头目/领袖/首领</mandarin>"
     },
     {
         "role": "user",
