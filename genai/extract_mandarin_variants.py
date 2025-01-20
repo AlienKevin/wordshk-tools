@@ -15,7 +15,7 @@ def extract_result(result):
         start_index += len(start_tag)
         mandarin_content = result[start_index:end_index]
     else:
-        mandarin_content = ''
+        return []
     
     return mandarin_content.split('/')
 
@@ -32,17 +32,17 @@ def verify_translation_format(file_path):
         for line in file:
             entry = json.loads(line)
             result = entry.get('result', '')
-            if 'error' in result:
+            if isinstance(result, dict) and 'error' in result:
                 print(f"Error entry ID {entry['id']}: {result['error']}")
             else:
                 translations = extract_result(result)
+                if len(translations) == 0:
+                    continue
                 definition = cc.convert(entry['yueDef'])
                 variants = [cc.convert(variant) for variant in entry['variants']]
-                if len(set(translations).intersection(set(variants))) == 0 and \
-                    not any(variant in mandarin_phrases for variant in variants) and \
-                    not any('/'.join(variants) == translation for translation in translations) and \
+                if len(set(translations) - set(variants)) > 0 and \
                     not any(len(translation) > 2 * max(len(variant) for variant in variants) for translation in translations):
-                    cantonese_phrases[entry['id']] = ('/'.join(entry['variants']), translations, entry['defIndex'])
+                    cantonese_phrases[entry['id']] = ('/'.join(entry['variants']), [trans for trans in translations if trans not in variants], entry['defIndex'])
     return cantonese_phrases
 
 # Specify the path to the results.jsonl file
