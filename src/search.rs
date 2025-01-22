@@ -2,6 +2,7 @@ use crate::dict::{clause_to_string, Clause, EntryId};
 use crate::eg_index::EgIndexLike;
 use crate::jyutping::{parse_jyutpings, remove_yale_diacritics, LaxJyutPing};
 use crate::lihkg_frequencies::LIHKG_FREQUENCIES;
+use crate::mandarin_variant_index::MandarinVariantIndexLike;
 use crate::pr_index::{FstPrIndicesLike, FstSearchResult, PrLocation, MAX_DELETIONS};
 use crate::rich_dict::{RichVariant, RichVariants};
 use crate::sqlite_db::SqliteDb;
@@ -873,19 +874,18 @@ fn word_levenshtein(a: &Vec<&str>, b: &Vec<&str>) -> usize {
 }
 
 fn score_variant_query(
-    variant: &RichVariant,
+    variant_in_query_script: &str,
+    variant_in_target_script: &str,
     query_normalized: &str,
-    query_script: Script,
-    script: Script,
 ) -> (Index, Score, MatchedInfix) {
-    let variant_normalized = &unicode::normalize(&pick_variant(variant, query_script).word)[..];
+    let variant_normalized = &unicode::normalize(variant_in_query_script)[..];
     // The query has to be fully contained by the variant
     let occurrence_index = match variant_normalized.find(query_normalized) {
         Some(i) => i,
         None => return (usize::MAX, usize::MAX, MatchedInfix::default()),
     };
     let length_diff: usize = variant_normalized.chars().count() - query_normalized.chars().count();
-    let variant_normalized_original = &unicode::normalize(&pick_variant(variant, script).word)[..];
+    let variant_normalized_original = &unicode::normalize(variant_in_target_script)[..];
     assert_eq!(variant_normalized.len(), variant_normalized_original.len());
     let matched_variant = MatchedInfix {
         prefix: variant_normalized_original[..occurrence_index].to_string(),
@@ -934,14 +934,61 @@ pub fn variant_search(
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
-                let (occurrence_index, length_diff, matched_variant) =
-                    score_variant_query(variant, &query_normalized, query_script, script);
+                let (occurrence_index, length_diff, matched_variant) = score_variant_query(
+                    &pick_variant(variant, query_script).word,
+                    &pick_variant(variant, script).word,
+                    &query_normalized,
+                );
                 if occurrence_index < usize::MAX {
                     ranks.push(VariantSearchRank {
                         id,
                         def_len: entry.defs.len(),
                         variant_index,
                         variant: pick_variant(variant, script).word,
+                        occurrence_index,
+                        length_diff,
+                        matched_variant,
+                        frequency_count,
+                    });
+                }
+            });
+    }
+    ranks
+}
+
+pub fn mandarin_variant_search(
+    dict: &dyn RichDictLike,
+    mandarin_variant_index: &dyn MandarinVariantIndexLike,
+    query: &str,
+) -> BinaryHeap<VariantSearchRank> {
+    let mut ranks = BinaryHeap::new();
+    // For now, query is normalized to simplified
+    let query_normalized =
+        fast2s::convert(&unicode::to_hk_safe_variant(&unicode::normalize(query))[..]);
+
+    let entry_ids = query_normalized
+        .chars()
+        .fold(BTreeSet::new(), |mut entry_ids, c| {
+            entry_ids.extend(mandarin_variant_index.get(c).unwrap_or(BTreeSet::new()));
+            entry_ids
+        });
+    for id in entry_ids {
+        let entry = dict.get_entry(id).unwrap();
+        let frequency_count = get_max_frequency_count(&entry.variants);
+        entry
+            .mandarin_variants
+            .0
+            .iter()
+            .enumerate()
+            .for_each(|(variant_index, variant)| {
+                let (occurrence_index, length_diff, matched_variant) =
+                    score_variant_query(&variant.word_simp, &variant.word_simp, &query_normalized);
+                if occurrence_index < usize::MAX {
+                    ranks.push(VariantSearchRank {
+                        id,
+                        def_len: entry.defs.len(),
+                        variant_index,
+                        variant: variant.word_simp.clone(),
                         occurrence_index,
                         length_diff,
                         matched_variant,
@@ -1051,6 +1098,7 @@ pub fn eg_search(
 
 pub struct CombinedSearchRank {
     pub variant: BinaryHeap<VariantSearchRank>,
+    pub mandarin_variant: BinaryHeap<VariantSearchRank>,
     pub pr: BinaryHeap<PrSearchRank>,
     pub english: BinaryHeap<EnglishSearchRank>,
     pub eg: BinaryHeap<EgSearchRank>,
@@ -1064,15 +1112,22 @@ pub fn combined_search<D>(
     romanization: Romanization,
 ) -> CombinedSearchRank
 where
-    D: RichDictLike + VariantIndexLike + FstPrIndicesLike + EnglishIndexLike + EgIndexLike,
+    D: RichDictLike
+        + VariantIndexLike
+        + MandarinVariantIndexLike
+        + FstPrIndicesLike
+        + EnglishIndexLike
+        + EgIndexLike,
 {
     let variants_ranks = variant_search(dict, dict, query, script);
+    let mandarin_variants_ranks = mandarin_variant_search(dict, dict, query);
     let pr_ranks = pr_search(dict, dict, query, script, romanization);
     let english_results = english_search(dict, dict, query, script);
     let eg_results = eg_search(dict, query, script);
 
     CombinedSearchRank {
         variant: variants_ranks,
+        mandarin_variant: mandarin_variants_ranks,
         pr: pr_ranks,
         english: english_results,
         eg: eg_results,

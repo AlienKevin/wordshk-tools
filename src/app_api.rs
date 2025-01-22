@@ -1,10 +1,11 @@
 use crate::dict::EntryId;
 use crate::entry_group_index::get_entry_group_ids;
 use crate::jyutping::Romanization;
+use crate::mandarin_variant_index;
 use crate::pr_index::{generate_pr_indices, pr_indices_into_fst};
 use crate::rich_dict::RichEntry;
 use crate::search::Script;
-use crate::variant_index::generate_variant_index;
+use crate::variant_index;
 
 use super::eg_index::generate_eg_index;
 use super::english_index::generate_english_index;
@@ -137,6 +138,18 @@ impl Api {
         Ok(())
     }
 
+    fn insert_mandarin_variant_index_data(
+        conn: &rusqlite::Connection,
+        c: char,
+        entry_ids: &BTreeSet<EntryId>,
+    ) -> rusqlite::Result<()> {
+        conn.execute(
+            "INSERT INTO mandarin_variant_index (char, entry_ids) VALUES (?, ?)",
+            rusqlite::params![c.to_string(), serde_json::to_string(entry_ids).unwrap()],
+        )?;
+        Ok(())
+    }
+
     fn insert_pr_index(
         conn: &rusqlite::Connection,
         dict: &RichDict,
@@ -194,6 +207,14 @@ impl Api {
         )?;
         tx.execute(
             "CREATE TABLE variant_index_simp (
+                char TEXT PRIMARY KEY,
+                entry_ids TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        tx.execute(
+            "CREATE TABLE mandarin_variant_index (
                 char TEXT PRIMARY KEY,
                 entry_ids TEXT NOT NULL
             )",
@@ -310,12 +331,17 @@ impl Api {
         Self::insert_pr_index(&tx, &self.dict, Romanization::Jyutping)?;
         Self::insert_pr_index(&tx, &self.dict, Romanization::Yale)?;
 
-        let (index_trad, index_simp) = generate_variant_index(&self.dict);
+        let (index_trad, index_simp) = variant_index::generate_variant_index(&self.dict);
         for (c, entry_ids) in index_trad {
             Self::insert_variant_index_data(&tx, c, &entry_ids, Script::Traditional)?;
         }
         for (c, entry_ids) in index_simp {
             Self::insert_variant_index_data(&tx, c, &entry_ids, Script::Simplified)?;
+        }
+
+        let mandarin_index = mandarin_variant_index::generate_variant_index(&self.dict);
+        for (c, entry_ids) in mandarin_index {
+            Self::insert_mandarin_variant_index_data(&tx, c, &entry_ids)?;
         }
 
         tx.commit()?;
