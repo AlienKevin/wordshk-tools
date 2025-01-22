@@ -834,6 +834,12 @@ pub struct MatchedInfix {
     pub suffix: String,
 }
 
+impl std::fmt::Display for MatchedInfix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}{}", self.prefix, self.query, self.suffix)
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct VariantSearchRank {
     pub id: EntryId,
