@@ -1013,10 +1013,20 @@ pub fn mandarin_variant_search(
 
     let entry_ids = query_normalized
         .chars()
-        .fold(BTreeSet::new(), |mut entry_ids, c| {
-            entry_ids.extend(mandarin_variant_index.get(c).unwrap_or(BTreeSet::new()));
-            entry_ids
-        });
+        .fold(None, |acc: Option<BTreeSet<EntryId>>, c| {
+            if acc.as_ref().is_some_and(|acc| acc.is_empty()) {
+                acc
+            } else {
+                let current_set = mandarin_variant_index.get(c).unwrap_or(BTreeSet::new());
+                match acc {
+                    Some(entry_ids) => {
+                        Some(entry_ids.intersection(&current_set).cloned().collect())
+                    }
+                    None => Some(current_set),
+                }
+            }
+        })
+        .unwrap_or(BTreeSet::new());
     for id in entry_ids {
         let entry = dict.get_entry(id).unwrap();
         let frequency_count = get_max_frequency_count(&entry.variants);
