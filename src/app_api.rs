@@ -122,17 +122,9 @@ impl Api {
         conn: &rusqlite::Connection,
         c: char,
         entry_ids: &BTreeSet<EntryId>,
-        script: Script,
     ) -> rusqlite::Result<()> {
         conn.execute(
-            match script {
-                Script::Traditional => {
-                    "INSERT INTO variant_index_trad (char, entry_ids) VALUES (?, ?)"
-                }
-                Script::Simplified => {
-                    "INSERT INTO variant_index_simp (char, entry_ids) VALUES (?, ?)"
-                }
-            },
+            "INSERT INTO variant_index (char, entry_ids) VALUES (?, ?)",
             rusqlite::params![c.to_string(), serde_json::to_string(entry_ids).unwrap()],
         )?;
         Ok(())
@@ -199,14 +191,7 @@ impl Api {
         )?;
 
         tx.execute(
-            "CREATE TABLE variant_index_trad (
-                char TEXT PRIMARY KEY,
-                entry_ids TEXT NOT NULL
-            )",
-            [],
-        )?;
-        tx.execute(
-            "CREATE TABLE variant_index_simp (
+            "CREATE TABLE variant_index (
                 char TEXT PRIMARY KEY,
                 entry_ids TEXT NOT NULL
             )",
@@ -331,12 +316,9 @@ impl Api {
         Self::insert_pr_index(&tx, &self.dict, Romanization::Jyutping)?;
         Self::insert_pr_index(&tx, &self.dict, Romanization::Yale)?;
 
-        let (index_trad, index_simp) = variant_index::generate_variant_index(&self.dict);
-        for (c, entry_ids) in index_trad {
-            Self::insert_variant_index_data(&tx, c, &entry_ids, Script::Traditional)?;
-        }
-        for (c, entry_ids) in index_simp {
-            Self::insert_variant_index_data(&tx, c, &entry_ids, Script::Simplified)?;
+        let var_index = variant_index::generate_variant_index(&self.dict);
+        for (c, entry_ids) in var_index {
+            Self::insert_variant_index_data(&tx, c, &entry_ids)?;
         }
 
         let mandarin_index = mandarin_variant_index::generate_variant_index(&self.dict);

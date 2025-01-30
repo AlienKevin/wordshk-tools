@@ -44,6 +44,7 @@ fn test_sqlite_search() {
 
     let start_time = Instant::now();
     let results = search::variant_search(&dict, &dict, "苹", Script::Traditional);
+    assert!(!results.is_empty());
     // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 

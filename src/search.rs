@@ -880,27 +880,67 @@ fn word_levenshtein(a: &Vec<&str>, b: &Vec<&str>) -> usize {
 }
 
 fn score_variant_query(
-    variant_in_query_script: &str,
-    variant_in_target_script: &str,
+    variant_trad: &str,
+    variant_simp: &str,
+    script: Script,
     query_normalized: &str,
 ) -> (Index, Score, MatchedInfix) {
-    let variant_normalized = &unicode::normalize(variant_in_query_script)[..];
-    // The query has to be fully contained by the variant
-    let occurrence_index = match variant_normalized.find(query_normalized) {
-        Some(i) => i,
-        None => return (usize::MAX, usize::MAX, MatchedInfix::default()),
+    // Normalize variants once
+    let variant_trad_normalized: Vec<char> = unicode::normalize(variant_trad).chars().collect();
+    let variant_simp_normalized: Vec<char> = unicode::normalize(variant_simp).chars().collect();
+    assert_eq!(variant_trad_normalized.len(), variant_simp_normalized.len());
+    let query_chars: Vec<char> = query_normalized.chars().collect();
+
+    // Early return if query is longer than variant
+    if query_chars.len() > variant_trad_normalized.len() {
+        return (usize::MAX, usize::MAX, MatchedInfix::default());
+    }
+
+    // Find first matching position using windows
+    let occurrence_index = variant_trad_normalized
+        .windows(query_chars.len())
+        .enumerate()
+        .find(|(i, window)| {
+            window
+                .iter()
+                .zip(&query_chars)
+                .enumerate()
+                .all(|(j, (&w, &q))| w == q || variant_simp_normalized[i + j] == q)
+        })
+        .map(|(i, _)| i);
+
+    let Some(occurrence_index) = occurrence_index else {
+        return (usize::MAX, usize::MAX, MatchedInfix::default());
     };
-    let length_diff: usize = variant_normalized.chars().count() - query_normalized.chars().count();
-    let variant_normalized_original = &unicode::normalize(variant_in_target_script)[..];
-    assert_eq!(variant_normalized.len(), variant_normalized_original.len());
+
+    // Calculate length difference
+    let length_diff = variant_trad_normalized.len() - query_chars.len();
+
+    // Get the original variant based on script
+    let variant_normalized_original: Vec<char> = unicode::normalize(match script {
+        Script::Traditional => variant_trad,
+        Script::Simplified => variant_simp,
+    })
+    .chars()
+    .collect();
+    assert_eq!(
+        variant_trad_normalized.len(),
+        variant_normalized_original.len()
+    );
+
+    // Create matched infix using character indices
     let matched_variant = MatchedInfix {
-        prefix: variant_normalized_original[..occurrence_index].to_string(),
-        query: variant_normalized_original
-            [occurrence_index..occurrence_index + query_normalized.len()]
-            .to_string(),
-        suffix: variant_normalized_original[occurrence_index + query_normalized.len()..]
-            .to_string(),
+        prefix: variant_normalized_original[..occurrence_index]
+            .iter()
+            .collect(),
+        query: variant_normalized_original[occurrence_index..occurrence_index + query_chars.len()]
+            .iter()
+            .collect(),
+        suffix: variant_normalized_original[occurrence_index + query_chars.len()..]
+            .iter()
+            .collect(),
     };
+
     (occurrence_index, length_diff, matched_variant)
 }
 
@@ -911,17 +951,7 @@ pub fn variant_search(
     script: Script,
 ) -> BinaryHeap<VariantSearchRank> {
     let mut ranks = BinaryHeap::new();
-    let mut query_normalized = unicode::to_hk_safe_variant(&unicode::normalize(query));
-    let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
-        // query contains iconic simplified characters
-        // Normalize entire query to be simplified
-        query_normalized = fast2s::convert(&query_normalized);
-        Script::Simplified
-    } else if query_normalized.chars().any(|c| ICONIC_TRADS.contains(&c)) {
-        Script::Traditional
-    } else {
-        script
-    };
+    let query_normalized = unicode::to_hk_safe_variant(&unicode::normalize(query));
 
     let entry_ids = query_normalized
         .chars()
@@ -929,7 +959,7 @@ pub fn variant_search(
             query_normalized
                 .chars()
                 .next()
-                .and_then(|c| variant_index.get(c, query_script))
+                .and_then(|c| variant_index.get(c))
                 .unwrap_or(BTreeSet::new()),
             |entry_ids, c| {
                 if entry_ids.is_empty() {
@@ -937,11 +967,7 @@ pub fn variant_search(
                 } else {
                     itertools::FoldWhile::Continue(
                         entry_ids
-                            .intersection(
-                                &variant_index
-                                    .get(c, query_script)
-                                    .unwrap_or(BTreeSet::new()),
-                            )
+                            .intersection(&variant_index.get(c).unwrap_or(BTreeSet::new()))
                             .cloned()
                             .collect(),
                     )
@@ -959,8 +985,9 @@ pub fn variant_search(
             .enumerate()
             .for_each(|(variant_index, variant)| {
                 let (occurrence_index, length_diff, matched_variant) = score_variant_query(
-                    &pick_variant(variant, query_script).word,
-                    &pick_variant(variant, script).word,
+                    &pick_variant(variant, Script::Traditional).word,
+                    &pick_variant(variant, Script::Simplified).word,
+                    script,
                     &query_normalized,
                 );
                 if occurrence_index < usize::MAX {
@@ -1005,8 +1032,12 @@ pub fn mandarin_variant_search(
             .iter()
             .enumerate()
             .for_each(|(variant_index, variant)| {
-                let (occurrence_index, length_diff, matched_variant) =
-                    score_variant_query(&variant.word_simp, &variant.word_simp, &query_normalized);
+                let (occurrence_index, length_diff, matched_variant) = score_variant_query(
+                    &variant.word_simp,
+                    &variant.word_simp,
+                    Script::Simplified,
+                    &query_normalized,
+                );
                 if occurrence_index < usize::MAX {
                     ranks.push(VariantSearchRank {
                         id,
