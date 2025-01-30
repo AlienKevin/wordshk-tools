@@ -34,7 +34,7 @@ const MAX_SCORE: Score = 100;
 
 type Index = usize;
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Script {
     Simplified,
     Traditional,
@@ -911,9 +911,11 @@ pub fn variant_search(
     script: Script,
 ) -> BinaryHeap<VariantSearchRank> {
     let mut ranks = BinaryHeap::new();
-    let query_normalized = &unicode::to_hk_safe_variant(&unicode::normalize(query))[..];
+    let mut query_normalized = unicode::to_hk_safe_variant(&unicode::normalize(query));
     let query_script = if query_normalized.chars().any(|c| ICONIC_SIMPS.contains(&c)) {
         // query contains iconic simplified characters
+        // Normalize entire query to be simplified
+        query_normalized = fast2s::convert(&query_normalized);
         Script::Simplified
     } else if query_normalized.chars().any(|c| ICONIC_TRADS.contains(&c)) {
         Script::Traditional
@@ -923,14 +925,30 @@ pub fn variant_search(
 
     let entry_ids = query_normalized
         .chars()
-        .fold(BTreeSet::new(), |mut entry_ids, c| {
-            entry_ids.extend(
-                variant_index
-                    .get(c, query_script)
-                    .unwrap_or(BTreeSet::new()),
-            );
-            entry_ids
-        });
+        .fold_while(
+            query_normalized
+                .chars()
+                .next()
+                .and_then(|c| variant_index.get(c, query_script))
+                .unwrap_or(BTreeSet::new()),
+            |entry_ids, c| {
+                if entry_ids.is_empty() {
+                    itertools::FoldWhile::Done(entry_ids)
+                } else {
+                    itertools::FoldWhile::Continue(
+                        entry_ids
+                            .intersection(
+                                &variant_index
+                                    .get(c, query_script)
+                                    .unwrap_or(BTreeSet::new()),
+                            )
+                            .cloned()
+                            .collect(),
+                    )
+                }
+            },
+        )
+        .into_inner();
     for id in entry_ids {
         let entry = dict.get_entry(id).unwrap();
         let frequency_count = get_max_frequency_count(&entry.variants);

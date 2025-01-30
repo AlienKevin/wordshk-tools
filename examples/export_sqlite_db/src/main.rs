@@ -11,8 +11,8 @@ use wordshk_tools::{
 const APP_TMP_DIR: &str = "./app_tmp";
 
 fn main() {
-    export_sqlite_db();
-    // test_sqlite_search();
+    // export_sqlite_db();
+    test_sqlite_search();
     // show_pr_index_sizes();
 }
 
@@ -24,7 +24,7 @@ fn export_sqlite_db() {
     if std::fs::metadata(&dict_path).is_ok() {
         std::fs::remove_file(&dict_path).unwrap();
     }
-    api.export_dict_as_sqlite_db(&dict_path, "3.4.1+34")
+    api.export_dict_as_sqlite_db(&dict_path, "3.5.0+35")
         .unwrap();
 }
 
@@ -33,10 +33,12 @@ fn test_sqlite_search() {
     let start_time = Instant::now();
     let results = search::variant_search(&dict, &dict, "好", Script::Simplified);
     // println!("{:?}", results);
+    assert!(!results.is_empty());
     println!("{:?}", start_time.elapsed());
 
     let start_time = Instant::now();
     let results = search::variant_search(&dict, &dict, "苹", Script::Simplified);
+    assert!(!results.is_empty());
     // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 
@@ -47,11 +49,25 @@ fn test_sqlite_search() {
 
     let start_time = Instant::now();
     let results = search::variant_search(&dict, &dict, "蘋", Script::Simplified);
+    assert!(!results.is_empty());
     // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 
     let start_time = Instant::now();
     let results = search::variant_search(&dict, &dict, "蘋", Script::Traditional);
+    assert!(!results.is_empty());
+    // println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
+
+    let start_time = Instant::now();
+    let results = search::variant_search(&dict, &dict, "唔該晒", Script::Traditional);
+    assert!(!results.is_empty());
+    // println!("{:?}", results);
+    println!("{:?}", start_time.elapsed());
+
+    let start_time = Instant::now();
+    let results = search::variant_search(&dict, &dict, "扎晒馬", Script::Traditional);
+    assert!(!results.is_empty());
     // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 
@@ -62,11 +78,13 @@ fn test_sqlite_search() {
 
     let start_time = Instant::now();
     let results = search::english_search(&dict, &dict, "lucky", Script::Simplified);
+    assert!(!results.is_empty());
     // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 
     let start_time = Instant::now();
     let results = search::english_search(&dict, &dict, "thank you", Script::Simplified);
+    assert!(!results.is_empty());
     // println!("{:?}", results);
     println!("{:?}", start_time.elapsed());
 
@@ -107,15 +125,18 @@ fn test_sqlite_search() {
     let start_time = Instant::now();
     let results = search::eg_search(&dict, "閂水喉", Script::Traditional);
     println!("{:?}", start_time.elapsed());
-    println!("{:?}", results);
+    assert!(!results.is_empty());
+    // println!("{:?}", results);
 
     let start_time = Instant::now();
     let results = search::eg_search(&dict, "佢話", Script::Traditional);
+    assert!(!results.is_empty());
     println!("{:?}", start_time.elapsed());
-    println!("{:?}", results);
+    // println!("{:?}", results);
 
     let start_time = Instant::now();
     let results = search::eg_search(&dict, "我", Script::Traditional);
+    assert!(!results.is_empty());
     println!("{:?}", start_time.elapsed());
     // println!("{:?}", results);
 }
